@@ -11,7 +11,7 @@ use warnings;
 use Path::Tiny;
 use Readonly;
 
-Readonly my $htaccess_content => 'Require env PM20_INTERN';
+Readonly my $htaccess_content => 'Require env PM20_INTERNAL';
 
 # root directory for documents is required
 if ( not @ARGV ) {
