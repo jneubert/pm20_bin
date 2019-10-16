@@ -11,7 +11,9 @@ use warnings;
 use Path::Tiny;
 use Readonly;
 
-Readonly my $htaccess_content => 'Require env PM20_INTERNAL';
+Readonly my $HTACCESS_CONTENT => 'Require env PM20_INTERNAL';
+Readonly my $ACCESS_LOCKED_FN => 'access_locked.txt';
+Readonly my $ACCESS_FREE_FN   => 'access_free.txt';
 
 # root directory for documents is required
 if ( not @ARGV ) {
@@ -31,21 +33,21 @@ $docroot->visit(
     my $free_status = evalute_doc_path($path);
 
     # remove existing .htaccess file
-    my $htaccess = $path->child('.htaccess');
+    my $htaccess              = $path->child('.htaccess');
     my $pre_existing_htaccess = 0;
-    if ($htaccess->is_file) {
+    if ( $htaccess->is_file ) {
       $pre_existing_htaccess = 1;
       $htaccess->remove;
     }
-    if ($free_status eq 0) {
-      $htaccess->spew($htaccess_content);
+    if ( $free_status eq 0 ) {
+      $htaccess->spew($HTACCESS_CONTENT);
     }
-    
+
     # logging
-    if ($free_status and $pre_existing_htaccess) {
+    if ( $free_status and $pre_existing_htaccess ) {
       print "unblocked $path\n";
     }
-    if (!$free_status and !$pre_existing_htaccess) {
+    if ( !$free_status and !$pre_existing_htaccess ) {
       print "blocked $path\n";
     }
   },
@@ -64,9 +66,9 @@ sub evalute_doc_path {
   # - access_locked.txt overrides all
   # - access_free.txt overrides restricions in file name
 
-  if ( $path->child('access_locked.txt')->is_file ) {
+  if ( $path->child($ACCESS_LOCKED_FN)->is_file ) {
     $free_status = 0;
-  } elsif ( $path->child('access_free.txt')->is_file ) {
+  } elsif ( $path->child($ACCESS_FREE_FN)->is_file ) {
     $free_status = 1;
   } else {
     ## use the first page of the document, hi res version
