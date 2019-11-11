@@ -10,5 +10,10 @@ if [ ! -f "$input_file" ]; then
 fi
 
 output_file=$(dirname $input_file)/$(basename $input_file .md).html
+##echo $output_file
 
-pandoc -s --data-dir /disc1/pm20/web.public/pandoc --css /styles/simple.css -t html+pipe_tables $input_file -o $output_file
+# language variable is used in the form of is_$lang in templates
+lang=de
+
+pandoc --standalone --data-dir /disc1/pm20/web.public/pandoc --template pm20_default.html --css /styles/simple.css -t html+pipe_tables+fenced_divs+bracketed_spans --variable is_$lang --variable lang:$lang $input_file -o $output_file
+
