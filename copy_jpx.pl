@@ -2,6 +2,7 @@
 # nbt, 8.11.2019
 
 # copy .jpx "delimiter files" to .jpg
+# and truncate delimiter files
 
 use strict;
 use warnings;
@@ -27,9 +28,16 @@ foreach my $set ( sort @sets ) {
       # copy every .jpx file to .jpg
       foreach my $jpx ( sort @jpxs ) {
         ( my $jpg = $jpx ) =~ s/\.jpx$/\.jpg/;
-        next if ( -f $jpg );
-        print "$jpx -> $jpg\n";
-        $jpx->copy($jpg);
+        if ( ! -f $jpg ) {
+          print "$jpx -> $jpg\n";
+          $jpx->copy($jpg);
+        }
+        if ( $jpx->stat->size eq path($jpg)->stat->size ) {
+          print "truncate $jpx\n";
+          truncate($jpx, 0);
+        } else {
+          warn "$jpx and $jpg size differs\n";
+        }
       }
     }
   }
