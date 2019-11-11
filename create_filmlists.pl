@@ -12,15 +12,19 @@ use JSON;
 use Path::Tiny;
 use Readonly;
 
-my $filmdata_root    = path('../data/filmdata');
+# filmdata publicly available now
 my $film_intern_root = path('../web.intern/film');
 my $film_public_root = path('../web.public/film');
-my %page             = (
+my $filmdata_root    = $film_public_root;
+
+my %page = (
   h => {
     name       => 'Hamburgisches Welt-Wirtschafts-Archiv (HWWA)',
     column_ids => [
       qw/ film_id start_sig start_date end_sig end_date img_count online comment /
     ],
+    info =>
+'Das Material der Filme mit den [hellgrün unterlegten Links]{.is-online} ist in der [Pressemappe 20. Jahrhundert](http://webopac.hwwa.de/pressemappe20) erschlossen und online auf Mappen- und Dokumentebene zugreifbar, soweit rechtlich möglich auch im Web.',
     head =>
 'Filmnummer|Signatur des jeweils ersten Bildes|Datum des jeweils ersten Bilder|Signatur des jeweils letzten Bildes|Datum des jeweils letzten Bildes|Anzahl Doppelseiten|Online gestellt|Bemerkungen',
     delim => '-|---|-|---|-|-|-|-',
@@ -50,6 +54,7 @@ my %page             = (
     column_ids => [
       qw/ film_id img_id country geo_sig topic_sig from to no_material comment /
     ],
+    info => 'Vorläufige Übersicht',
     head =>
 'Film|Aufnahme|Land|Ländersign.|Sachsignatur|Von|Bis|Kein Material|Bemerkungen',
     delim => '--|--|---|--|--|--|--|--|---',
@@ -63,16 +68,13 @@ my %page             = (
     },
   },
 );
-      my %dummy = (
-      );
 
-##foreach my $prov ( keys %page ) {
-foreach my $prov ( 'k' ) {
+foreach my $prov ( keys %page ) {
   foreach my $page_name ( sort keys %{ $page{$prov}{list} } ) {
     my $title = $page{$prov}{list}{$page_name}{title};
     print "$page_name\n";
 
-    # some header information
+    # some header information for the page
     my @lines;
     push( @lines,
       '---', "title: \"$page_name: $title | ZBW Pressearchive\"",
@@ -83,10 +85,8 @@ foreach my $prov ( 'k' ) {
     push( @lines,
 'Aus urheberrechtlichen Gründen sind die digitalisierten Filme nur im ZBW-Lesesaal zugänglich.',
       '' );
-    if ( $prov eq 'h' ) {
-      push( @lines,
-'Das Material der Filme mit den [hellgrün unterlegten Links]{.is-online} ist in der [Pressemappe 20. Jahrhundert](http://webopac.hwwa.de/pressemappe20) erschlossen und online auf Mappen- und Dokumentebene zugreifbar, soweit rechtlich möglich auch im Web.',
-        '' );
+    if ( $page{$prov}{info} ) {
+      push( @lines, $page{$prov}{info}, '' );
     }
     push( @lines, '::: {.wikitable}', '' );
     push( @lines, $page{$prov}{head}, $page{$prov}{delim} );
@@ -153,7 +153,7 @@ sub insert_links {
       my $rest         = $3;
 
       # for film ids from Kiel
-      if ($film_id =~ m/^[0-9]+$/ ) {
+      if ( $film_id =~ m/^[0-9]+$/ ) {
         $film_id = sprintf( "%04d", $film_id );
       }
 
