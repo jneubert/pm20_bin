@@ -19,6 +19,11 @@ if [[ $input_file == *.en.md ]]; then
 else
   lang=de
 fi
+LANG_OPTS="--variable is_$lang --variable lang:$lang"
 
-pandoc --standalone --data-dir /disc1/pm20/web.public/pandoc --template pm20_default.html --css /styles/simple.css -t html+pipe_tables+fenced_divs+bracketed_spans --variable is_$lang --variable lang:$lang $input_file -o $output_file
+TMPL_OPTS="--data-dir /disc1/pm20/web.public --template pm20_default.html --css /styles/simple.css"
+
+EXT_OPTS="-t html+pipe_tables+fenced_divs+bracketed_spans"
+
+pandoc --standalone $EXT_OPTS $TMPL_OPTS $LANG_OPTS -o $output_file
 
