@@ -19,7 +19,7 @@ my $film_public_root = path('../web.public/film');
 my $filmdata_root    = path('../data/filmdata');
 ##my $filmdata_root    = $film_public_root;
 my $img_file         = $filmdata_root->child('img_count.json');
-my $ip_hints         = path('../web.public/templates/fragments/ip_hints.de.md')->slurp;
+my $ip_hints         = path('../web.public/templates/fragments/ip_hints.de.md.frag')->slurp_utf8;
 
 my %page = (
   h => {
