@@ -1,7 +1,10 @@
 #!/usr/bin/perl
 # nbt, 2019-02-14
 
-# Download, parse and trnasform PM20 Findbücher from Confluence Wiki
+# Count film images and aggregate various numbers
+# - grand total
+# - images on film only
+# - images from films starting with a certain notation
 
 use strict;
 use warnings;
