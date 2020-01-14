@@ -7,6 +7,7 @@ use strict;
 use warnings;
 use utf8;
 
+use Carp;
 use Data::Dumper;
 use JSON;
 use Path::Tiny;
@@ -91,11 +92,17 @@ my %nta_regex = (
   },
 );
 
+my %sequence = (
+  sh => [qw/ ge sh /],
+  wa => [qw/ wa ge /],
+  co => [qw/ ge co /],
+);
+
 
 ##foreach my $prov ( keys %page ) {
 foreach my $prov ( 'h' ) {
 ##  foreach my $page_name ( sort keys %{ $page{$prov}{list} } ) {
-  foreach my $page_name ( 'h2_sh' ) {
+  foreach my $page_name ( 'h1_sh' ) {
     print "$page_name\n";
 
     my $coll  = substr( $page_name, 3, 2 );
@@ -123,21 +130,41 @@ foreach my $prov ( 'h' ) {
         }
 				warn ("  Missing signature in ", Dumper $film_section) unless $nta;
 
-        # split into geographical and subject notation (the latter may be omitted)
-        my ($ge_nta, $sh_nta) = $nta =~ m/^(\S+)\s(.+)$/;
-        if ( not $ge_nta ) {
-          $ge_nta = $nta;
+        # split notation at the first blank (second part may have been omitted)
+        my @nta_parts = $nta =~ m/^(\S+)(?:\s(.+))?$/;
+
+        # check the parts of the notation
+        for ( my $i = 0; $i < scalar(@nta_parts); $i++ ) {
+          my $nta_type = $sequence{$coll}->[$i];
+          my $nta_part = $nta_parts[$i] || '';
+
+          # skip empty notation parts
+          next if $nta_part eq '';
+
+          # TODO check also sh
+          next unless $nta_type eq 'ge';
+
+          check_nta($film_section, $sig, $nta_type, $nta_part);
+
+          ##print Dumper $nta, $nta_type, $nta_part, $film_section; exit;
         }
-        
-        # check geo notation
-        if (not $ge_nta =~ m/$nta_regex{ge}{pattern}/x) {
-          warn "  Error in $ge_nta - $sig part of ", Dumper $film_section;
-        }
-        ##print Dumper $nta, $ge_nta, $sh_nta; exit;
+
 			}
     }
   }
 }
 
 #######################
+
+sub check_nta {
+  my $film_section = shift or die "Param missing";
+  my $sig = shift or die "Param missing";
+  my $nta_type = shift or die "Param missing";
+  my $nta_part = shift or confess "Param missing";
+
+  # check notation
+  if (not $nta_part =~ m/$nta_regex{$nta_type}{pattern}/x) {
+    warn "  Error in $nta_type [$nta_part] - $sig of ", Dumper $film_section;
+  }
+}
 
