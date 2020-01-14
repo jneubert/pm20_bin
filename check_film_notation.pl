@@ -18,6 +18,7 @@ use Scalar::Util qw(looks_like_number);
 my $film_intern_root = path('../web.intern/film');
 my $film_public_root = path('../web.public/film');
 my $filmdata_root    = path('../data/filmdata');
+my $klassdata_root   = path('../data/klassdata');
 ##my $filmdata_root    = $film_public_root;
 my $img_file = $filmdata_root->child('img_count.json');
 my $ip_hints =
@@ -76,7 +77,8 @@ my %nta_regex = (
             ( \(\d\d?\) )     # either numerical
             | \((alt|Wn|Bln)\)# or special codes (old|Wien|Berlin)
           ) ){0,1}
-        )? $ /x
+        )? $ /x,
+    lookup => decode_json( $klassdata_root->child('ag_lookup.json')->slurp ),
   },
   sh => {
     title   => 'Alte Hamburger Systematik',
@@ -88,8 +90,8 @@ my %nta_regex = (
         ){0,1}
         (                     # optional special folder
           \s SM \s .+
-        ){0,1} $ /x
-
+        ){0,1} $ /x,
+    lookup => decode_json( $klassdata_root->child('je_lookup.json')->slurp ),
   },
 );
 
@@ -99,10 +101,12 @@ my %sequence = (
   co => [qw/ ge co /],
 );
 
+## TODO extend to Kiel
 ##foreach my $prov ( keys %page ) {
 foreach my $prov ('h') {
+## TODO include companies and wares
 ##  foreach my $page_name ( sort keys %{ $page{$prov}{list} } ) {
-  foreach my $page_name ('h1_sh') {
+  foreach my $page_name ( 'h1_sh', 'h2_sh', 'h1_co', 'h2_co' ) {
     print "$page_name\n";
 
     my $coll = substr( $page_name, 3, 2 );
@@ -162,9 +166,25 @@ sub check_nta {
   my $nta_type     = shift or die "Param missing";
   my $nta_part     = shift or confess "Param missing";
 
-  # check notation
+  # check the notation formally
   if ( not $nta_part =~ m/$nta_regex{$nta_type}{pattern}/x ) {
-    warn "  Error in $nta_type [$nta_part] - $sig of ", Dumper $film_section;
+    warn sprintf(
+      "  %-8s: [%s] %s - format error (%s)",
+      $film_section->{film_id},
+      $nta_part, $nta_type, $sig
+      ),
+      "\n";
+    return;
+  }
+
+  # check if the notation is known
+  if ( not exists $nta_regex{$nta_type}{lookup}->{$nta_part} ) {
+    warn sprintf(
+      "  %-8s: [%s] %s - not found (%s)",
+      $film_section->{film_id},
+      $nta_part, $nta_type, $sig
+      ),
+      "\n";
   }
 }
 
