@@ -19,15 +19,16 @@ my $film_intern_root = path('../web.intern/film');
 my $film_public_root = path('../web.public/film');
 my $filmdata_root    = path('../data/filmdata');
 ##my $filmdata_root    = $film_public_root;
-my $img_file         = $filmdata_root->child('img_count.json');
-my $ip_hints         = path('../web.public/templates/fragments/ip_hints.de.md.frag')->slurp_utf8;
+my $img_file = $filmdata_root->child('img_count.json');
+my $ip_hints =
+  path('../web.public/templates/fragments/ip_hints.de.md.frag')->slurp_utf8;
 
 my %page = (
   h => {
     column_ids => [
       qw/ film_id start_sig start_date end_sig end_date img_count online comment /
     ],
-    list  => {
+    list => {
       'h1_sh' => {
         title => 'Länder-Sacharchiv 1. Verfilmung',
       },
@@ -52,7 +53,7 @@ my %page = (
     column_ids => [
       qw/ film_id img_id country geo_sig topic_sig from to no_material comment /
     ],
-    list  => {
+    list => {
       k1_sh => {
         title => 'Sacharchiv 1. Verfilmung',
       },
@@ -98,15 +99,14 @@ my %sequence = (
   co => [qw/ ge co /],
 );
 
-
 ##foreach my $prov ( keys %page ) {
-foreach my $prov ( 'h' ) {
+foreach my $prov ('h') {
 ##  foreach my $page_name ( sort keys %{ $page{$prov}{list} } ) {
-  foreach my $page_name ( 'h1_sh' ) {
+  foreach my $page_name ('h1_sh') {
     print "$page_name\n";
 
-    my $coll  = substr( $page_name, 3, 2 );
-    my $set   = substr( $page_name, 0, 2 );
+    my $coll = substr( $page_name, 3, 2 );
+    my $set  = substr( $page_name, 0, 2 );
 
     # read json input
     my @film_sections =
@@ -115,7 +115,7 @@ foreach my $prov ( 'h' ) {
     # iterate through the list of film sections (from the excel file)
     foreach my $film_section (@film_sections) {
       ##print Dumper $film_section;
-			foreach my $sig ( 'start_sig', 'end_sig' ) {
+      foreach my $sig ( 'start_sig', 'end_sig' ) {
         next unless $film_section->{$sig};
 
         # skip if special signature indicates empty film
@@ -128,28 +128,28 @@ foreach my $prov ( 'h' ) {
         } else {
           $nta = $film_section->{$sig};
         }
-				warn ("  Missing signature in ", Dumper $film_section) unless $nta;
+        warn( "  Missing signature in ", Dumper $film_section) unless $nta;
 
         # split notation at the first blank (second part may have been omitted)
         my @nta_parts = $nta =~ m/^(\S+)(?:\s(.+))?$/;
 
         # check the parts of the notation
-        for ( my $i = 0; $i < scalar(@nta_parts); $i++ ) {
+        for ( my $i = 0 ; $i < scalar(@nta_parts) ; $i++ ) {
           my $nta_type = $sequence{$coll}->[$i];
           my $nta_part = $nta_parts[$i] || '';
 
           # skip empty notation parts
           next if $nta_part eq '';
 
-          # TODO check also sh
+          # TODO check also sh and co
           next unless $nta_type eq 'ge';
 
-          check_nta($film_section, $sig, $nta_type, $nta_part);
+          check_nta( $film_section, $sig, $nta_type, $nta_part );
 
           ##print Dumper $nta, $nta_type, $nta_part, $film_section; exit;
         }
 
-			}
+      }
     }
   }
 }
@@ -158,12 +158,12 @@ foreach my $prov ( 'h' ) {
 
 sub check_nta {
   my $film_section = shift or die "Param missing";
-  my $sig = shift or die "Param missing";
-  my $nta_type = shift or die "Param missing";
-  my $nta_part = shift or confess "Param missing";
+  my $sig          = shift or die "Param missing";
+  my $nta_type     = shift or die "Param missing";
+  my $nta_part     = shift or confess "Param missing";
 
   # check notation
-  if (not $nta_part =~ m/$nta_regex{$nta_type}{pattern}/x) {
+  if ( not $nta_part =~ m/$nta_regex{$nta_type}{pattern}/x ) {
     warn "  Error in $nta_type [$nta_part] - $sig of ", Dumper $film_section;
   }
 }
