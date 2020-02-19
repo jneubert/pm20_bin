@@ -127,7 +127,7 @@ foreach my $prov ('h') {
 
         # remove the text part, reduce to notation
         my $nta;
-        if ( $film_section->{$sig} =~ m/^.+? \/ (.+)$/ ) {
+        if ( $film_section->{$sig} =~ m/^.+? \[(.+)\]$/ ) {
           $nta = $1;
         } else {
           $nta = $film_section->{$sig};
