@@ -18,8 +18,9 @@ my $film_intern_root = path('../web.intern/film');
 my $film_public_root = path('../web.public/film');
 my $filmdata_root    = path('../data/filmdata');
 ##my $filmdata_root    = $film_public_root;
-my $img_file         = $filmdata_root->child('img_count.json');
-my $ip_hints         = path('../web.public/templates/fragments/ip_hints.de.md.frag')->slurp_utf8;
+my $img_file = $filmdata_root->child('img_count.json');
+my $ip_hints =
+  path('../web.public/templates/fragments/ip_hints.de.md.frag')->slurp_utf8;
 
 my %page = (
   h => {
@@ -72,7 +73,6 @@ my %page = (
     },
   },
 );
-
 
 # TEMPORARY: remove path
 my $img_count = decode_json( $img_file->slurp );
@@ -132,7 +132,7 @@ foreach my $prov ( keys %page ) {
       }
       push( @lines, join( '|', @columns ) );
 
-      if ($#columns ne $#{ $page{$prov}->{column_ids} }) {
+      if ( $#columns ne $#{ $page{$prov}->{column_ids} } ) {
         warn "Number of columns: $#columns\n$columns[$#columns]\n";
       }
     }
@@ -180,8 +180,9 @@ sub insert_links {
       my $dir = join( '/', split( /_/, $page_name ) );
 
       # link only if there's content for the cell with the first image
+      # and the according film directory exists
       my $film_link;
-      if ( $second_match ne '' ) {
+      if ( $second_match ne '' and -d "$film_intern_root/$dir/$film_id" ) {
         $film_link = "[$film_id]($dir/$film_id)";
       } else {
         $film_link = $film_id;
@@ -190,12 +191,20 @@ sub insert_links {
       # Kiel entries have an image link, Hamburg entries don't
       if ( $prov eq 'k' ) {
         my $img_id = $second_match;
-        my $img_link;
+
+        # enhance number (if valid) from file_id and construct file name
         if ( looks_like_number($img_id) ) {
           $img_id = sprintf( "%04d", $img_id );
+        }
+        my $img_file =
+          "$film_intern_root/$dir/$film_id/S$film_id${img_id}K.jpg";
+
+        # check if according file exists
+        my $img_link;
+        if ( -f $img_file ) {
           $img_link = "[$img_id]($dir/$film_id/$img_id)";
         } else {
-          warn "    No img number: $film_id $img_id\n";
+          warn "    No img: $film_id $img_id\n";
           $img_link = $img_id;
         }
 
