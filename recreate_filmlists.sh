@@ -8,7 +8,7 @@ BASE_DIR=/disc1/pm20
 export PERL5LIB=/opt/perllib:/opt/perl5/lib/perl5
 
 cd $BASE_DIR/bin
-perl create_filmlists.pl 2>&1 /dev/null
+perl create_filmlists.pl > /dev/null
 
 cd $BASE_DIR/web.intern
 make > /dev/null

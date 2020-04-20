@@ -124,6 +124,12 @@ foreach my $prov ( keys %page ) {
       foreach my $column_id ( @{ $page{$prov}->{column_ids} } ) {
         my $cell = $film_section->{$column_id} || '';
 
+        # add film id anchor
+        # (don't use film_id column, otherwise linking fails)
+        if ( $column_id eq 'start_sig' ) {
+          $cell = "<a name='". $film_section->{film_id} . "'></a>$cell";
+        }
+
         # add class and link to "online" cell
         if ( $column_id eq 'online' ) {
           $cell = "[[$cell]{.is-online}](https://pm20.zbw.eu/folder/$coll)";
@@ -204,7 +210,7 @@ sub insert_links {
         if ( -f $img_file ) {
           $img_link = "[$img_id]($dir/$film_id/$img_id)";
         } else {
-          warn "    No img: $film_id $img_id\n";
+          print "    No img: $film_id $img_id\n";
           $img_link = $img_id;
         }
 
@@ -212,7 +218,7 @@ sub insert_links {
         if ( $film_id ne $prev_film_id ) {
           push( @lines_intern, "$film_link|$img_link|$rest" );
         } else {
-          push( @lines_intern, "$film_id|$img_link|$rest" );
+          push( @lines_intern, "\" |$img_link|$rest" );
         }
       } else {
         push( @lines_intern, "$film_link|$second_match|$rest" );
