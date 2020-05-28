@@ -19,6 +19,18 @@ my $pub_film_root = path('/disc1/pm20/web.public/film/');
 
 my ( $holding, $film_id, $dir );
 
+# datastructure for overview page with links
+#
+# {country_signature}
+#   {film_id}
+#     title_de
+#     title_en
+#     link
+#     page_count
+#
+my %public_film_section;
+
+# arguments
 if ( scalar(@ARGV) < 1 ) {
   &usage;
   exit;
@@ -33,13 +45,18 @@ if ( scalar(@ARGV) < 1 ) {
 
 # processing
 if ( defined $film_id ) {
+
   # one single film directory
   $film_id =~ m/(S|W|A|F)(\d{4})(H|K)/ or die "Film id $film_id not valid\n";
   $dir = $film_root->child($holding)->child($film_id);
   link_film($dir);
 } else {
+
+  # all directories of the holding
   $film_root->child($holding)->visit( \&link_film );
 }
+
+print Dumper \%public_film_section;
 
 ################
 
@@ -50,25 +67,30 @@ sub usage {
 sub link_film {
   my $dir = shift or die "param missing";
   return unless -d $dir;
-
-  my $checked_fn = $dir->child('checked.yaml');
-  return unless -f $checked_fn;
-  my $checked = YAML::Tiny->read($checked_fn);
-  ##print Dumper $checked; exit;
+  print "$dir\n";
 
   # prepare target dir
   my $target_dir = get_target_dir($dir);
-  print "$target_dir\n";
   prepare_target_dir($target_dir);
 
+  # iterate over checked sections
+  my $checked_fn = $dir->child('checked.yaml');
+  return unless -f $checked_fn;
+  my $checked = YAML::Tiny->read($checked_fn);
   foreach my $section ( @{$checked} ) {
 
     # skip empty "undef" section at the end
     next if not $section;
 
     print Dumper $section;
-    check_section_fields($checked_fn, $section);
-    link_section($dir, $section->{start}, $section->{end});
+    parse_section( $checked_fn, $section );
+    my $count = link_section( $dir, $section );
+
+    # fill data structure for overview page
+    $section->{count} = $count;
+    my ( $holding, $film_id ) = parse_dirname( $checked_fn->parent );
+    push( @{ $public_film_section{ $section->{country} }{$film_id} },
+      $section );
   }
 }
 
@@ -88,14 +110,14 @@ sub prepare_target_dir {
 }
 
 sub link_section {
-  my $dir       = shift or die "param missing";
-  my $start_img = shift or die "param missing";
-  my $end_img   = shift or die "param missing";
+  my $dir     = shift or die "param missing";
+  my $section = shift or die "param missing";
 
   # TODO extend for half films
-  $dir =~ m/(S|W|A|F)(\d{4})(H|K)/ or die "Film id in $dir not valid\n";
-  for ( my $i = $start_img ; $i <= $end_img ; $i++ ) {
+  my $count = 0;
+  for ( my $i = $section->{start} ; $i <= $section->{end} ; $i++ ) {
 
+    $dir =~ m/(S|W|A|F)(\d{4})(H|K)/ or die "Film id in $dir not valid\n";
     my $start_chr = $1;
     my $film_no   = $2;
     my $end_chr   = $3;
@@ -108,6 +130,7 @@ sub link_section {
 
     # check if a the source file is locked
     next if is_locked($src);
+    $count++;
 
     # build target file name and create as symlink
     my $target_dir = get_target_dir($dir);
@@ -116,6 +139,7 @@ sub link_section {
 
     print "$i: $src\n";
   }
+  return $count;
 }
 
 sub get_target_dir {
@@ -138,15 +162,34 @@ sub is_locked {
   }
 }
 
-sub check_section_fields {
+sub parse_section {
   my $checked_fn = shift or die "param missing";
-  my $section = shift or die "param missing";
+  my $section    = shift or die "param missing";
 
-  my @required_fields = qw/ title_de title_en start end checked_by checked_date /;
+  # verify section data structure
+  my @required_fields =
+    qw/ title_de title_en start end checked_by checked_date country /;
 
   foreach my $field (@required_fields) {
-    if (not defined $section->{$field}) {
+    if ( not defined $section->{$field} ) {
       die "missing $field field in $checked_fn\n";
     }
   }
+
+  # amend with start link name
+  my $link =
+    $checked_fn->parent->relative($film_root)->child( $section->{start} );
+  $section->{link} = "$link";
 }
+
+sub parse_dirname {
+  my $dir = shift or die "param missing";
+
+  $dir =~ m;film/(h(?:1|2)/(?:co|sh|wa))/((?:S|A|F|W)\d{4}(?:H|K}));
+    or die "Could not parse dir name $dir\n";
+  my $holding = $1;
+  my $film_id = $2;
+
+  return ( $holding, $film_id );
+}
+
