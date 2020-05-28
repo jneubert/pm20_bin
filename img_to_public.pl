@@ -28,7 +28,7 @@ my ( $holding, $film_id, $dir );
 #     link
 #     page_count
 #
-my %public_film_section;
+my %pub_film_sect;
 
 # arguments
 if ( scalar(@ARGV) < 1 ) {
@@ -56,7 +56,7 @@ if ( defined $film_id ) {
   $film_root->child($holding)->visit( \&link_film );
 }
 
-print Dumper \%public_film_section;
+create_overview_page( $holding, \%pub_film_sect );
 
 ################
 
@@ -67,15 +67,15 @@ sub usage {
 sub link_film {
   my $dir = shift or die "param missing";
   return unless -d $dir;
-  print "$dir\n";
+
+  # iterate over checked sections
+  my $checked_fn = $dir->child('checked.yaml');
+  return unless -f $checked_fn;
 
   # prepare target dir
   my $target_dir = get_target_dir($dir);
   prepare_target_dir($target_dir);
 
-  # iterate over checked sections
-  my $checked_fn = $dir->child('checked.yaml');
-  return unless -f $checked_fn;
   my $checked = YAML::Tiny->read($checked_fn);
   foreach my $section ( @{$checked} ) {
 
@@ -89,8 +89,7 @@ sub link_film {
     # fill data structure for overview page
     $section->{count} = $count;
     my ( $holding, $film_id ) = parse_dirname( $checked_fn->parent );
-    push( @{ $public_film_section{ $section->{country} }{$film_id} },
-      $section );
+    push( @{ $pub_film_sect{ $section->{country} }{$film_id} }, $section );
   }
 }
 
@@ -193,3 +192,42 @@ sub parse_dirname {
   return ( $holding, $film_id );
 }
 
+sub create_overview_page {
+  my $holding       = shift or die "param missing";
+  my $pub_film_sect = shift or die "param missing";
+
+  my %page_title = (
+    de => 'Veröffentlichte Abschnitte aus Filmen',
+    en => 'Published film sections',
+  );
+
+  foreach my $lang (qw/ de en/) {
+    my $head = <<"EOF";
+---
+title: $page_title{$lang}
+---
+
+# $page_title{$lang}
+
+EOF
+
+    my @page;
+    foreach my $country ( sort keys %{$pub_film_sect} ) {
+      push( @page, "## $country" );
+      foreach my $film_id ( sort keys %{ $pub_film_sect->{$country} } ) {
+        push( @page, "### $film_id" );
+        foreach my $section ( @{ $pub_film_sect->{$country}->{$film_id} } ) {
+          my $line = '- ['
+            . $section->{ 'title_' . $lang } . ']('
+            . $section->{link} . ') ('
+            . $section->{count} . ')';
+          push( @page, $line );
+        }
+      }
+    }
+    ( my $holding_flat = $holding ) =~ s;/;_;;
+    my $fn = $pub_film_root->child("public_section.$holding_flat.$lang.md");
+    $fn->spew_utf8( $head . join( "\n\n", @page ) );
+    print "\n$fn\n";
+  }
+}
