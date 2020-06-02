@@ -9,13 +9,15 @@ use warnings;
 use utf8;
 
 use Data::Dumper;
+use JSON;
 use Path::Tiny;
 use YAML::Tiny;
 
 binmode( STDOUT, ":utf8" );
 
-my $film_root     = path('/disc1/pm20/film/');
-my $pub_film_root = path('/disc1/pm20/web.public/film/');
+my $film_root      = path('/disc1/pm20/film/');
+my $pub_film_root  = path('/disc1/pm20/web.public/film/');
+my $klassdata_root = path('/disc1/pm20/data/klassdata/');
 
 my ( $holding, $film_id, $dir );
 
@@ -42,6 +44,10 @@ if ( scalar(@ARGV) < 1 ) {
     exit;
   }
 }
+
+# lookup file
+# (currently, only in German)
+my $lookup = decode_json( $klassdata_root->child('ag_lookup.json')->slurp );
 
 # processing
 if ( defined $film_id ) {
@@ -197,8 +203,8 @@ sub create_overview_page {
   my $pub_film_sect = shift or die "param missing";
 
   my %page_title = (
-    de => 'Veröffentlichte Abschnitte aus Filmen',
-    en => 'Published film sections',
+    de => 'Veröffentlichte Abschnitte aus digitalisierten Rollfilmen',
+    en => 'Published sections from digitized roll films',
   );
 
   foreach my $lang (qw/ de en/) {
@@ -213,7 +219,11 @@ EOF
 
     my @page;
     foreach my $country ( sort keys %{$pub_film_sect} ) {
-      push( @page, "## $country" );
+      if ( $lang eq 'de' ) {
+        push( @page, "## " . $lookup->{$country} );
+      } else {
+        push( @page, "## $country" );
+      }
       foreach my $film_id ( sort keys %{ $pub_film_sect->{$country} } ) {
         push( @page, "### $film_id" );
         foreach my $section ( @{ $pub_film_sect->{$country}->{$film_id} } ) {
