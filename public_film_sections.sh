@@ -8,13 +8,11 @@ set -e
 
 DIR=/disc1/pm20
 
+# recreate symlinks and markdown overview files
 cd $DIR/bin
 perl img_to_public.pl h1/sh
 
-cd $DIR/web.intern
-make
-
+# update html
 cd $DIR/web.public
 make
-
 

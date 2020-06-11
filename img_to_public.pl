@@ -1,8 +1,17 @@
 #!/bin/env perl
 # nbt, 2020-04-20
 
-# Create symlinks for a range film images in web.public
+# Create symlinks for ranges of film images in web.public
+# plus an overview page
 # (requires a checked.yaml file in the film directory)
+
+# TODO
+# - rename {image_name}.locked.txt {image_name}.access_locked.txt
+# - implement separate procedure with
+#   - evaluate {image_name}.access_locked.txt and meta.yaml with author_(name|id|qid), date, death_year
+#   - (re-)create {image_name}.lock files based on both
+# - check only the latter here
+# - update meta.en.md
 
 use strict;
 use warnings;
