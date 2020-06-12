@@ -5,6 +5,11 @@
 # .htaccess file, when access is to be denied, otherwise remove any existing
 # .htaccess file
 
+# TODO
+# - generate meta.yaml from document data (once)
+# - create sub evaluate_meta
+# - create sub for checking moving wall (factor out from evaluate_code)
+
 use strict;
 use warnings;
 
@@ -12,8 +17,14 @@ use Path::Tiny;
 use Readonly;
 
 Readonly my $HTACCESS_CONTENT => 'Require env PM20_INTERNAL';
+
+# these flags overide everything else!
 Readonly my $ACCESS_LOCKED_FN => 'access_locked.txt';
 Readonly my $ACCESS_FREE_FN   => 'access_free.txt';
+
+# document-specific metadata, especially authors death_year and publication_date
+# (overide codes from file name)
+Readonly my $META_FN => 'meta.yaml';
 
 # root directory for documents is required
 if ( not @ARGV ) {
@@ -25,12 +36,13 @@ if ( !$docroot->is_dir ) {
 }
 
 # recursivly visit all subdirectories
+# TODO replace with Path::Iterator::Rule for sorted directories
 $docroot->visit(
   sub {
     my ( $path, $state ) = @_;
     return if !$path->is_dir;
     return if !$path->child('PIC')->is_dir;
-    my $free_status = evalute_doc_path($path);
+    my $free_status = is_free($path);
 
     # remove existing .htaccess file
     my $htaccess              = $path->child('.htaccess');
@@ -56,7 +68,7 @@ $docroot->visit(
 
 #########################
 
-sub evalute_doc_path {
+sub is_free {
   my $path        = shift;
   my $free_status = 0;
 
@@ -70,6 +82,8 @@ sub evalute_doc_path {
     $free_status = 0;
   } elsif ( $path->child($ACCESS_FREE_FN)->is_file ) {
     $free_status = 1;
+  } elsif ( $path->child($META_FN)->is_file ) {
+    ## TODO evaluate_meta
   } else {
     ## use the first page of the document, hi res version
     my @files = sort $path->child('PIC')->children(qr/_A.JPG/);
