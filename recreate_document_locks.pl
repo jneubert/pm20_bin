@@ -13,8 +13,13 @@
 use strict;
 use warnings;
 
+use Log::Log4perl;
+use Log::Log4perl::Level;
 use Path::Tiny;
 use Readonly;
+##use ZBW::Logutil;
+
+use lib '../lib';
 
 Readonly my $HTACCESS_CONTENT => 'Require env PM20_INTERNAL';
 
@@ -26,6 +31,12 @@ Readonly my $ACCESS_FREE_FN   => 'access_free.txt';
 # (overide codes from file name)
 Readonly my $META_FN => 'meta.yaml';
 
+# logging
+#my $log = ZBW::Logutil->get_logger('parse_filenames.log.conf');
+Log::Log4perl::init("/disc1/pm20/etc/document_locks.logconf");
+my $log = Log::Log4perl->get_logger("root");
+$log->level($DEBUG);
+
 # root directory for documents is required
 if ( not @ARGV ) {
   die "Usage: $0 {root}\n";
@@ -34,6 +45,8 @@ my $docroot = path( $ARGV[0] );
 if ( !$docroot->is_dir ) {
   die "docroot '$docroot' is not a directory\n";
 }
+
+$log->info('Start run');
 
 # recursivly visit all subdirectories
 # TODO replace with Path::Iterator::Rule for sorted directories
