@@ -27,31 +27,37 @@ my %input = (
   sh => [qw/ DocAttribute_S.txt /],
   wa => [qw/ DocAttribute_W.txt /],
 );
+my %doc_stat;
 
 foreach my $collection ( keys %input ) {
 
   my %data;
-
   foreach my $fn ( @{ $input{$collection} } ) {
 
-    print "$fn\n";
+    print "Read $fn\n";
     my @lines = split( /\r\n/, $DOCATTRIB_ROOT->child($fn)->slurp );
 
-    foreach my $line (@lines) {
-      next if $line eq '';
+    foreach my $orig_line (@lines) {
+      next if $orig_line eq '';
       my %entry;
 
       # cleanup messy lines
-      $line = fix_line($line);
+      my $line = fix_line($orig_line);
 
-      my @parts = split( / \[\] */, $line );
-      warn "Wrong format1: $line\n" if scalar(@parts) eq 0;
+      my @parts = split( / *\[\] */, $line );
+      warn "Wrong format1: $orig_line\n" if scalar(@parts) eq 0;
 
-      # check first part
+      # check first part of the line
       my ( $folder_id, $doc_id, $date ) = split( / +/, $parts[0] );
       if ( not $doc_id or $doc_id eq '' ) {
-        warn "Wrong format2: $line\n";
+        warn "Wrong format2: $orig_line\n";
         next;
+      }
+      ## remove leading hash character
+      $doc_id =~ s/^#(.+)/$1/;
+
+      if ($date) {
+        $date =~ s/d=(.*)/$1/;
       }
       if ( $date and $date ne '' ) {
         $entry{d} = $date;
@@ -59,30 +65,34 @@ foreach my $collection ( keys %input ) {
         next if not( $parts[1] );
       }
 
-      # check second (optional) part
+      # check second (optional) part of the line
       if ( $parts[1] ) {
         my @fields = split( /\|/, $parts[1] );
-        warn "Wrong format3: $line\n" if scalar(@fields) eq 0;
+        warn "Wrong format3: $orig_line\n" if scalar(@fields) eq 0;
 
         foreach my $field (@fields) {
           my ( $code, $content );
-          if ( $field =~ m/([a-z])=(.+)/ ) {
-            $code         = $1;
-            $content      = $2;
-            $entry{$code} = $content;
+          if ( $field =~ m/([a-z])=(.*)/ ) {
+            $code    = $1;
+            $content = $2;
+            if ( $content ne '' ) {
+              $entry{$code} = $content;
+            }
           } else {
-            warn "Wrong format4: '$line'\n";
+            warn "Wrong format4: '$orig_line'\n";
           }
         }
       }
 
       # add entry for the document
       $data{$folder_id}{$doc_id} = \%entry;
-
+      $doc_stat{$collection}++;
     }
   }
 
   #print Dumper \%data;
+  my $out = $DOCDATA_ROOT->child( $collection . "_docattr.json" );
+  $out->spew( encode_json( \%data ) );
 
   my %code_stat;
   foreach my $fid ( keys %data ) {
@@ -94,6 +104,7 @@ foreach my $collection ( keys %input ) {
   }
   print Dumper \%code_stat;
 }
+print Dumper \%doc_stat;
 
 ##################
 
@@ -114,11 +125,21 @@ sub fix_line {
   $line =~ s/(.+ \[\] .+?); ([a-z]=.+)/$1|$2/;
   $line =~ s/(.+ \[\] .+?); ([a-z]=.+)/$1|$2/;
 
-  # individual errors
-  # uppercase code
-  $line =~ s/(.+ \[\] )T=(.+)/$1t=$2/;
+  # replace missing field delimiter with '|'
+  # (repeat for multiple occurances)
+  $line =~ s/(.+ \[\] .+?) +([a-z]=.+)/$1|$2/;
+  $line =~ s/(.+ \[\] .+?) +([a-z]=.+)/$1|$2/;
+  $line =~ s/(.+ \[\] .+?) +([a-z]=.+)/$1|$2/;
+  $line =~ s/(.+ \[\] .+?) +([a-z]=.+)/$1|$2/;
 
-  # missing code
+  # author fields
+  $line =~ s/(|x=)\((\d+)\)(.+)/$1$2$3/;
+  $line =~ s/(|v=)von\/by (.+)/$1$2/;
+
+  # individual errors
+  ## uppercase code
+  $line =~ s/(.+ \[\] )T=(.+)/$1t=$2/;
+  ## missing code
   $line =~ s/(.+ \[\])=(.+)/$1 t=$2/;
 
   return $line;
