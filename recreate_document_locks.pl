@@ -21,6 +21,12 @@ use Readonly;
 
 use lib '../lib';
 
+# logging
+#my $log = ZBW::Logutil->get_logger('parse_filenames.log.conf');
+Log::Log4perl::init("/disc1/pm20/etc/document_locks.logconf");
+my $log = Log::Log4perl->get_logger("root");
+$log->level($INFO);
+
 Readonly my $HTACCESS_CONTENT => 'Require env PM20_INTERNAL';
 
 # these flags overide everything else!
@@ -31,12 +37,6 @@ Readonly my $ACCESS_FREE_FN   => 'access_free.txt';
 # (overide codes from file name)
 Readonly my $META_FN => 'meta.yaml';
 
-# logging
-#my $log = ZBW::Logutil->get_logger('parse_filenames.log.conf');
-Log::Log4perl::init("/disc1/pm20/etc/document_locks.logconf");
-my $log = Log::Log4perl->get_logger("root");
-$log->level($DEBUG);
-
 # root directory for documents is required
 if ( not @ARGV ) {
   die "Usage: $0 {root}\n";
@@ -46,7 +46,7 @@ if ( !$docroot->is_dir ) {
   die "docroot '$docroot' is not a directory\n";
 }
 
-$log->info('Start run');
+$log->info("Start run $docroot");
 
 # recursivly visit all subdirectories
 # TODO replace with Path::Iterator::Rule for sorted directories
@@ -56,6 +56,7 @@ $docroot->visit(
     return if !$path->is_dir;
     return if !$path->child('PIC')->is_dir;
     my $free_status = is_free($path);
+    $log->debug("$free_status $path");
 
     # remove existing .htaccess file
     my $htaccess              = $path->child('.htaccess');
@@ -70,10 +71,10 @@ $docroot->visit(
 
     # logging
     if ( $free_status and $pre_existing_htaccess ) {
-      print "unblocked $path\n";
+      $log->info("unblocked $path");
     }
     if ( !$free_status and !$pre_existing_htaccess ) {
-      print "blocked $path\n";
+      $log->info("blocked $path")
     }
   },
   { recurse => 1, follow_symlinks => 1 }
@@ -98,12 +99,11 @@ sub is_free {
   } elsif ( $path->child($META_FN)->is_file ) {
     ## TODO evaluate_meta
   } else {
-    ## use the first page of the document, hi res version
+    ## extract code from the first page of the document, hi res version
     my @files = sort $path->child('PIC')->children(qr/_A.JPG/);
     $files[0]->basename =~ m/.{39}(.{3})/;
     my $code = $1;
     ($free_status) = evaluate_code($code);
-    ##print "$code => $free_status\n";
   }
   return $free_status;
 }
@@ -139,7 +139,7 @@ sub evaluate_code {
       $free_status = 0;
     }
   } else {
-    print "Strange code $code\n";
+    $log->warn("Strange code $code");
   }
   return $free_status, $free_after;
 }
