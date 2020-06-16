@@ -103,9 +103,13 @@ sub is_free {
   } else {
     ## extract code from the first page of the document, hi res version
     my @files = sort $path->child('PIC')->children(qr/_A.JPG/);
-    $files[0]->basename =~ m/.{39}(.{3})/;
-    my $code = $1;
-    ($free_status) = evaluate_code($code);
+    if ( scalar(@files) gt 0 ) {
+      $files[0]->basename =~ m/.{39}(.{3})/;
+      my $code = $1;
+      ($free_status) = evaluate_code($code);
+    } else {
+      $log->warn( "empty path " . $path->child('PIC') );
+    }
   }
   return $free_status;
 }
