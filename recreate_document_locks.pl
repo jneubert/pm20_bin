@@ -13,8 +13,10 @@
 use strict;
 use warnings;
 
+use Data::Dumper;
 use Log::Log4perl;
 use Log::Log4perl::Level;
+use Path::Iterator::Rule;
 use Path::Tiny;
 use Readonly;
 ##use ZBW::Logutil;
@@ -48,37 +50,37 @@ if ( !$docroot->is_dir ) {
 
 $log->info("Start run $docroot");
 
-# recursivly visit all subdirectories
-# TODO replace with Path::Iterator::Rule for sorted directories
-$docroot->visit(
-  sub {
-    my ( $path, $state ) = @_;
-    return if !$path->is_dir;
-    return if !$path->child('PIC')->is_dir;
-    my $free_status = is_free($path);
-    $log->debug("$free_status $path");
+# recursivly visit all subdirectories, which include a PIC subdirectory
+my $rule = Path::Iterator::Rule->new;
+$rule->and( sub { -d "$_/PIC" } );
+my %options = ();
+my $next    = $rule->iter( ($docroot), \%options );
+while ( defined( my $file = $next->() ) ) {
+  my $path        = path($file);
+  my $free_status = is_free($path);
+  $log->debug("free_status $free_status $path");
 
-    # remove existing .htaccess file
-    my $htaccess              = $path->child('.htaccess');
-    my $pre_existing_htaccess = 0;
-    if ( $htaccess->is_file ) {
-      $pre_existing_htaccess = 1;
-      $htaccess->remove;
-    }
-    if ( $free_status eq 0 ) {
-      $htaccess->spew($HTACCESS_CONTENT);
-    }
+  # remove existing .htaccess file
+  my $htaccess              = $path->child('.htaccess');
+  my $pre_existing_htaccess = 0;
+  if ( $htaccess->is_file ) {
+    $pre_existing_htaccess = 1;
+    $htaccess->remove;
+  }
+  if ( $free_status eq 0 ) {
+    $htaccess->spew($HTACCESS_CONTENT);
+  }
 
-    # logging
-    if ( $free_status and $pre_existing_htaccess ) {
-      $log->info("unblocked $path");
-    }
-    if ( !$free_status and !$pre_existing_htaccess ) {
-      $log->info("blocked $path")
-    }
-  },
-  { recurse => 1, follow_symlinks => 1 }
-);
+  # logging
+  if ( $free_status and $pre_existing_htaccess ) {
+    $log->info("unblocked $path");
+  }
+  if ( !$free_status and !$pre_existing_htaccess ) {
+    $log->info("blocked $path");
+  }
+}
+
+$log->info("End run $docroot");
 
 #########################
 
