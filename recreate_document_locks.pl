@@ -14,19 +14,18 @@ use strict;
 use warnings;
 
 use Data::Dumper;
-use Log::Log4perl;
 use Log::Log4perl::Level;
 use Path::Iterator::Rule;
 use Path::Tiny;
 use Readonly;
-##use ZBW::Logutil;
+use ZBW::Logutil;
 
 use lib '../lib';
 
 # logging
-#my $log = ZBW::Logutil->get_logger('parse_filenames.log.conf');
-Log::Log4perl::init("/disc1/pm20/etc/document_locks.logconf");
-my $log = Log::Log4perl->get_logger("root");
+##Log::Log4perl::init("/disc1/pm20/etc/document_locks.logconf");
+##my $log = Log::Log4perl->get_logger("root");
+my $log = ZBW::Logutil->get_logger('/disc1/pm20/etc/document_locks.logconf');
 $log->level($INFO);
 
 Readonly my $HTACCESS_CONTENT => 'Require env PM20_INTERNAL';
@@ -85,7 +84,8 @@ $log->info("End run $docroot");
 #########################
 
 sub is_free {
-  my $path        = shift;
+  my $path = shift;
+
   my $free_status = 0;
 
   # text files can be used to override permissions
@@ -106,7 +106,7 @@ sub is_free {
     if ( scalar(@files) gt 0 ) {
       $files[0]->basename =~ m/.{39}(.{3})/;
       my $code = $1;
-      ($free_status) = evaluate_code($code);
+      ($free_status) = evaluate_code( $code, $path );
     } else {
       $log->warn( "empty path " . $path->child('PIC') );
     }
@@ -115,8 +115,11 @@ sub is_free {
 }
 
 sub evaluate_code {
-  my $code = shift or die "param \$code missing\n";
-  my ( $free_status, $free_after );
+  my $code = shift or die "param missing";
+  my $path = shift or die "param missing";
+
+  my $free_status = 0;
+  my $free_after;
 
   if ( $code eq "000" ) {
     $free_status = 1;
@@ -145,7 +148,7 @@ sub evaluate_code {
       $free_status = 0;
     }
   } else {
-    $log->warn("Strange code $code");
+    $log->warn("Strange code $code in $path");
   }
   return $free_status, $free_after;
 }
