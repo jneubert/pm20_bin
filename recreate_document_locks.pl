@@ -28,6 +28,7 @@ use lib '../lib';
 my $log = ZBW::Logutil->get_logger('/disc1/pm20/etc/document_locks.logconf');
 $log->level($INFO);
 
+Readonly my $COPYRIGHT_TERM   => 70;
 Readonly my $HTACCESS_CONTENT => 'Require env PM20_INTERNAL';
 
 # these flags overide everything else!
@@ -98,8 +99,8 @@ sub is_free {
     $free_status = 0;
   } elsif ( $path->child($ACCESS_FREE_FN)->is_file ) {
     $free_status = 1;
-  } elsif ( $path->child($META_FN)->is_file ) {
-    ## TODO evaluate_meta
+  } elsif ( $path->child($META_FN)->is_file and evaluate_meta_free($path) ) {
+    $free_status = 1;
   } else {
     ## extract code from the first page of the document, hi res version
     my @files = sort $path->child('PIC')->children(qr/_A.JPG/);
@@ -119,7 +120,6 @@ sub evaluate_code {
   my $path = shift or die "param missing";
 
   my $free_status = 0;
-  my $free_after;
 
   if ( $code eq "000" ) {
     $free_status = 1;
@@ -134,22 +134,37 @@ sub evaluate_code {
 
     # set proper free year for moving wall
     # (2005 was the last year from which articles were added)
+    my $year;
     if ( $yy > 5 ) {
-      $free_after = 1900 + 70 + $yy;
+      $year = 1900 + $yy;
     } else {
-      $free_after = 2000 + 70 + $yy;
+      $year = 2000 + $yy;
     }
-
-    # compute status from moving wall
-    my $current_year = 1900 + (localtime)[5];
-    if ( $current_year > $free_after ) {
-      $free_status = 1;
-    } else {
-      $free_status = 0;
-    }
+    $free_status = compute_current_status($year);
   } else {
     $log->warn("Strange code $code in $path");
   }
-  return $free_status, $free_after;
+  return $free_status;
 }
 
+sub evaluate_meta_free {
+  my $path = shift or die "param missing";
+
+  my $free_status = 0;
+
+  return $free_status;
+}
+
+sub compute_current_status {
+  my $year = shift or die "param missing";
+
+  # compute status from year (moving wall)
+  my $current_year = 1900 + (localtime)[5];
+  my $free_status;
+  if ( $current_year > $year + $COPYRIGHT_TERM ) {
+    $free_status = 1;
+  } else {
+    $free_status = 0;
+  }
+  return $free_status;
+}
