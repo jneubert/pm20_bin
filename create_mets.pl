@@ -4,6 +4,15 @@
 # traverses folder roots in order to create internal and external
 # DFG-Viewer-suitable METS/MODS files per folder
 
+# can be invoked either by
+# - a folder id (e.g., pe/000012)
+# - a collection id (e.g., pe)
+# - 'ALL' (to (re-) create all collections)
+
+# TODO
+# - extend to english
+# - extend to internal and external
+
 use strict;
 use warnings;
 
@@ -13,18 +22,20 @@ use HTML::Entities;
 use HTML::Template;
 use JSON;
 use Path::Tiny;
+use Readonly;
 
 $Data::Dumper::Sortkeys = 1;
 
-my $folder_root_uri = 'http://purl.org/pressemappe20/folder/';
-my $pdf_root_uri    = 'http://zbw.eu/beta/pm20pdf/';
-my $mets_root       = path('../var/mets/');
-my $imagedata_root  = path('../var/imagedata');
-my $docdata_root    = path('../var/docdata');
-my $folderdata_root = path('../var/folderdata');
-my $urlalias_file   = path("$folderdata_root/urlalias.pm20mets.txt");
+Readonly my $FOLDER_ROOT_URI => 'http://purl.org/pressemappe20/folder/';
+Readonly my $PDF_ROOT_URI    => 'http://zbw.eu/beta/pm20pdf/';
+Readonly my $FOLDER_ROOT     => path('/disc1/pm20/folder');
+Readonly my $METS_ROOT       => path('../var/mets/');
+Readonly my $IMAGEDATA_ROOT  => path('../var/imagedata');
+Readonly my $DOCDATA_ROOT    => path('../var/docdata');
+Readonly my $FOLDERDATA_ROOT => path('../var/folderdata');
+Readonly my $URLALIAS_FILE   => path("$FOLDERDATA_ROOT/urlalias.pm20mets.txt");
 
-my %res_ext = (
+Readonly my %res_ext => (
   DEFAULT => '_B.JPG',
   MAX     => '_A.JPG',
   MIN     => '_C.JPG',
@@ -72,22 +83,43 @@ my %conf = (
 
 my $tmpl = HTML::Template->new( filename => '../etc/html_tmpl/mets.tmpl' );
 
+# check arguments
+if ( scalar(@ARGV) == 1 ) {
+  if ( $ARGV[0] =~ m:^(co|pe|wa|sh)$: ) {
+    my $collection = $1;
+    mk_collection($collection);
+  } elsif ( $ARGV[0] =~ m:^((co|pe)/\d{6}|(sh|wa)/\d{6},\d{6})$: ) {
+    my $folder_id = $1;
+
+    # TODO check existence of folder directory
+    mk_folder($folder_id);
+  } elsif ( $ARGV[0] eq 'ALL' ) {
+    mk_all();
+  } else {
+    &usage;
+  }
+} else {
+  &usage;
+}
+
+exit;
+
 my (
   $docdata_file, $imagedata_file, $folderdata_file,
   $docdata_ref,  $imagedata_ref,  $folderdata_ref
 );
 
 # remove old alias file
-open( my $url_fh, '>', $urlalias_file );
+open( my $url_fh, '>', $URLALIAS_FILE );
 
 foreach my $collection ( sort keys %conf ) {
 
   # load input files
-  $docdata_file    = $docdata_root->child("${holding_name}_docdata.json");
+  $docdata_file    = $DOCDATA_ROOT->child("${collection}_docdata.json");
   $docdata_ref     = decode_json( $docdata_file->slurp );
-  $imagedata_file  = $imagedata_root->child("${holding_name}_image.json");
+  $imagedata_file  = $IMAGEDATA_ROOT->child("${collection}_image.json");
   $imagedata_ref   = decode_json( $imagedata_file->slurp );
-  $folderdata_file = $folderdata_root->child("${holding_name}_label.json");
+  $folderdata_file = $FOLDERDATA_ROOT->child("${collection}_label.json");
   $folderdata_ref  = decode_json( $folderdata_file->slurp );
 
   foreach my $folder_id ( sort keys %{$docdata_ref} ) {
@@ -98,14 +130,14 @@ foreach my $collection ( sort keys %conf ) {
     my $label =
       get_folderlabel( $folder_id, $conf{$collection}{type_label} );
     my $pdf_url =
-        $pdf_root_uri
+        $PDF_ROOT_URI
       . "$collection/"
       . get_folder_relative_path($folder_id)
       . "/${folder_id}.pdf";
 
     my %tmpl_var = (
       pref_label    => $label,
-      uri           => "$folder_root_uri$conf{$collection}{prefix}$folder_id",
+      uri           => "$FOLDER_ROOT_URI$conf{$collection}{prefix}$folder_id",
       folder_id     => $folder_id,
       file_grp_loop => build_file_grp( $conf{$collection}, $folder_id ),
       phys_loop     => build_phys_struct($folder_id),
@@ -155,7 +187,7 @@ sub build_res_files {
 
   # create a flat list of files
   my @file_loop;
-  foreach my $doc_id ( sort keys $docdata{free} ) {
+  foreach my $doc_id ( sort keys @{ $docdata{free} } ) {
     my $page_no = 1;
     foreach my $page ( @{ $imagedata{docs}{$doc_id}{pg} } ) {
 
@@ -196,7 +228,7 @@ sub build_phys_struct {
 
   my @phys_loop;
   my $i = 1;
-  foreach my $doc_id ( sort keys $docdata{free} ) {
+  foreach my $doc_id ( sort keys @{ $docdata{free} } ) {
     my $page_no = 1;
     foreach my $page ( @{ $imagedata{docs}{$doc_id}{pg} } ) {
       my @size_loop;
@@ -226,7 +258,7 @@ sub build_log_struct {
   my %docdata = %{ $docdata_ref->{$folder_id} };
 
   my @log_loop;
-  foreach my $doc_id ( sort keys $docdata{free} ) {
+  foreach my $doc_id ( sort keys @{ $docdata{free} } ) {
     my %entry = (
       document_id => "doc$doc_id",
       label       => get_doclabel( $doc_id, $docdata{info}{$doc_id} ),
@@ -246,7 +278,7 @@ sub build_link {
   # duplicates logic from build_phys_struct()!
   my @link_loop;
   my $i = 1;
-  foreach my $doc_id ( sort keys $docdata{free} ) {
+  foreach my $doc_id ( sort keys @{ $docdata{free} } ) {
     foreach my $page ( @{ $imagedata{docs}{$doc_id}{pg} } ) {
       my %entry = (
         document_id => "doc$doc_id",
@@ -268,7 +300,7 @@ sub write_mets {
 
   my $relative_path = get_folder_relative_path($folder_id);
 
-  my $mets_dir = $mets_root->child($collection)->child($relative_path);
+  my $mets_dir = $METS_ROOT->child($collection)->child($relative_path);
   $mets_dir->mkpath;
   my $mets_file = $mets_dir->child("$folder_id\.xml");
   $mets_file->spew( $tmpl->output() );
@@ -363,3 +395,7 @@ sub get_folder_relative_path {
   return $folder_relative_path;
 }
 
+sub usage {
+  print "Usage: $0 {folder-id}|{collection}|ALL\n";
+  exit 1;
+}
