@@ -5,11 +5,6 @@
 # .htaccess file, when access is to be denied, otherwise remove any existing
 # .htaccess file
 
-# TODO
-# - generate meta.yaml from document data (once)
-# - create sub evaluate_meta
-# - create sub for checking moving wall (factor out from evaluate_code)
-
 use strict;
 use warnings;
 
@@ -99,6 +94,8 @@ sub is_free {
   } elsif ( $path->child($ACCESS_FREE_FN)->is_file ) {
     $free_status = 1;
   } elsif ( $path->child($META_FN)->is_file and evaluate_meta_free($path) ) {
+    ## when the document meta file evaluates to 'access free' according to
+    ## copyright term
     $free_status = 1;
   } else {
     ## extract code from the first page of the document, hi res version
