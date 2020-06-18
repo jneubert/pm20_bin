@@ -25,7 +25,6 @@ foreach my $hashed ( $root->children() ) {
       symlink( $person_meta, $document_meta )
         or die "Could not create $document_meta: $!\n";
       print "$document_meta\n";
-      exit;
     }
   }
 }
