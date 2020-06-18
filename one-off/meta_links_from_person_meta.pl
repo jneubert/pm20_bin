@@ -19,6 +19,7 @@ my $root = path( '/disc1/pm20/folder/' . $extended );
 
 foreach my $hashed ( $root->children() ) {
   foreach my $path ( $hashed->children() ) {
+    next unless $path->is_dir();
     if ( $path->child('.htaccess')->is_file ) {
       my $person_meta   = $root->child('folder_person_meta.yaml');
       my $document_meta = $path->child('meta.yaml');
