@@ -13,18 +13,17 @@
 use strict;
 use warnings;
 
+use lib '../lib';
+
 use Data::Dumper;
 use Log::Log4perl::Level;
 use Path::Iterator::Rule;
 use Path::Tiny;
 use Readonly;
+use YAML::Tiny;
 use ZBW::Logutil;
 
-use lib '../lib';
-
 # logging
-##Log::Log4perl::init("/disc1/pm20/etc/document_locks.logconf");
-##my $log = Log::Log4perl->get_logger("root");
 my $log = ZBW::Logutil->get_logger('/disc1/pm20/etc/document_locks.logconf');
 $log->level($INFO);
 
@@ -150,7 +149,12 @@ sub evaluate_code {
 sub evaluate_meta_free {
   my $path = shift or die "param missing";
 
+  # check yaml file for death year only
   my $free_status = 0;
+  my $meta_ref    = YAML::Tiny->read( $path->child($META_FN) );
+  if ( $meta_ref->[0]->{death_year} ) {
+    $free_status = compute_current_status( $meta_ref->[0]->{death_year} );
+  }
 
   return $free_status;
 }
