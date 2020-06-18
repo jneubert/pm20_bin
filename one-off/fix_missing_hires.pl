@@ -10,7 +10,9 @@ use warnings;
 
 use Path::Tiny;
 
-my $root = path('/disc1/pm20/folder/pe/0079xx/007921');
+my $folder_id = 'pe/007921');
+( my $extended = $folder_id ) =~ s|(pe)/(\d{4})(\d{2})|$1/$2xx/$2$3|;
+my $root = path( '/disc1/pm20/folder/' . $extended );
 
 foreach my $hashed ( '011xx', '012xx' ) {
   foreach my $path ( $root->child($hashed)->children() ) {
