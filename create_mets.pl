@@ -1,7 +1,8 @@
 #!/bin/perl
 # nbt, 31.1.2018
 
-# traverses image share and  folder roots
+# traverses folder roots in order to create internal and external
+# DFG-Viewer-suitable METS/MODS files per folder
 
 use strict;
 use warnings;
@@ -29,7 +30,7 @@ my %res_ext = (
   MIN     => '_C.JPG',
 );
 
-my %holding = (
+my %conf = (
 
   #  test => {
   #    prefix   => 'pe/',
@@ -79,7 +80,7 @@ my (
 # remove old alias file
 open( my $url_fh, '>', $urlalias_file );
 
-foreach my $holding_name ( sort keys %holding ) {
+foreach my $collection ( sort keys %conf ) {
 
   # load input files
   $docdata_file    = $docdata_root->child("${holding_name}_docdata.json");
@@ -95,18 +96,18 @@ foreach my $holding_name ( sort keys %holding ) {
     next unless exists $docdata_ref->{$folder_id}{free};
 
     my $label =
-      get_folderlabel( $folder_id, $holding{$holding_name}{type_label} );
+      get_folderlabel( $folder_id, $conf{$collection}{type_label} );
     my $pdf_url =
         $pdf_root_uri
-      . "$holding_name/"
+      . "$collection/"
       . get_folder_relative_path($folder_id)
       . "/${folder_id}.pdf";
 
     my %tmpl_var = (
-      pref_label => $label,
-      uri        => "$folder_root_uri$holding{$holding_name}{prefix}$folder_id",
-      folder_id  => $folder_id,
-      file_grp_loop => build_file_grp( $holding{$holding_name}, $folder_id ),
+      pref_label    => $label,
+      uri           => "$folder_root_uri$conf{$collection}{prefix}$folder_id",
+      folder_id     => $folder_id,
+      file_grp_loop => build_file_grp( $conf{$collection}, $folder_id ),
       phys_loop     => build_phys_struct($folder_id),
       log_loop      => build_log_struct($folder_id),
       link_loop     => build_link($folder_id),
@@ -115,10 +116,10 @@ foreach my $holding_name ( sort keys %holding ) {
     $tmpl->param( \%tmpl_var );
 
     # write mets file for the folder
-    write_mets( $holding_name, $folder_id, $tmpl );
+    write_mets( $collection, $folder_id, $tmpl );
 
     # create url aliases for awstats
-    print $url_fh "/beta/pm20mets/$holding_name/"
+    print $url_fh "/beta/pm20mets/$collection/"
       . get_folder_relative_path($folder_id)
       . "/${folder_id}.xml\t$label\n";
   }
@@ -129,15 +130,15 @@ close($url_fh);
 ####################
 
 sub build_file_grp {
-  my $holding_ref = shift || die "param missing";
-  my $folder_id   = shift || die "param missing";
+  my $collection_ref = shift || die "param missing";
+  my $folder_id      = shift || die "param missing";
 
   my @file_grp_loop;
 
   foreach my $res ( sort keys %res_ext ) {
     my %entry = (
       use       => $res,
-      file_loop => build_res_files( $holding_ref, $folder_id, $res ),
+      file_loop => build_res_files( $collection_ref, $folder_id, $res ),
     );
     push( @file_grp_loop, \%entry );
   }
@@ -145,9 +146,9 @@ sub build_file_grp {
 }
 
 sub build_res_files {
-  my $holding_ref = shift || die "param missing";
-  my $folder_id   = shift || die "param missing";
-  my $res         = shift || die "param missing";
+  my $collection_ref = shift || die "param missing";
+  my $folder_id      = shift || die "param missing";
+  my $res            = shift || die "param missing";
 
   my %imagedata = %{ $imagedata_ref->{$folder_id} };
   my %docdata   = %{ $docdata_ref->{$folder_id} };
@@ -163,7 +164,7 @@ sub build_res_files {
 
       # create url according to dir structure
       my $img_url =
-          $holding_ref->{url_stub}{ $imagedata{root} }
+          $collection_ref->{url_stub}{ $imagedata{root} }
         . $imagedata{docs}{$doc_id}{rp}
         . "/$page$res_ext{$res}";
 
@@ -259,15 +260,15 @@ sub build_link {
 }
 
 sub write_mets {
-  my $holding_name = shift || die "param missing";
-  my $folder_id    = shift || die "param missing";
-  my $tmpl         = shift || die "param missing";
+  my $collection = shift || die "param missing";
+  my $folder_id  = shift || die "param missing";
+  my $tmpl       = shift || die "param missing";
 
   my %docdata = %{ $docdata_ref->{$folder_id} };
 
   my $relative_path = get_folder_relative_path($folder_id);
 
-  my $mets_dir = $mets_root->child($holding_name)->child($relative_path);
+  my $mets_dir = $mets_root->child($collection)->child($relative_path);
   $mets_dir->mkpath;
   my $mets_file = $mets_dir->child("$folder_id\.xml");
   $mets_file->spew( $tmpl->output() );
