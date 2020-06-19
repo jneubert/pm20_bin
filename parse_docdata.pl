@@ -16,8 +16,14 @@ use warnings;
 
 use Data::Dumper;
 use JSON;
+use Log::Log4perl::Level;
 use Path::Tiny;
 use Readonly;
+use ZBW::Logutil;
+
+# logging
+my $log = ZBW::Logutil->get_logger('./log_conf/parse_docdata.conf');
+$log->level($INFO);
 
 $Data::Dumper::Sortkeys = 1;
 
@@ -32,9 +38,10 @@ Readonly my $BEACON_HEADER =>
 ##Readonly my @COLLECTIONS => qw/ co pe sh wa /;
 Readonly my @COLLECTIONS => qw/ pe /;
 
+$log->info('Start run');
 foreach my $collection (@COLLECTIONS) {
 
-  print "Starting $collection\n";
+  $log->info("Starting $collection");
 
   my %coll;
   $coll{cnt_doc_free} = 0;
@@ -42,6 +49,10 @@ foreach my $collection (@COLLECTIONS) {
   # read image data file
   my $img_ref =
     decode_json( $IMAGEDATA_ROOT->child("${collection}_image.json")->slurp );
+
+  # read doc attribute data file
+  my $docattr_ref =
+    decode_json( $DOCDATA_ROOT->child("${collection}_docattr.json")->slurp );
 
   my %docdata;
   foreach my $folder ( sort keys %{$img_ref} ) {
@@ -56,7 +67,7 @@ foreach my $collection (@COLLECTIONS) {
       # check for document diretory
       my $doc_dir = path( $root . '/' . $docs{$doc}{rp} )->parent;
       if ( not -d $doc_dir ) {
-        warn "Directory $doc_dir is missing\n";
+        $log->warn("  directory $doc_dir is missing");
         $coll{cnt_doc_skipped}++;
         next;
       }
@@ -71,8 +82,8 @@ foreach my $collection (@COLLECTIONS) {
 
       # document information from .txt file
       my $txt_field_ref = parse_txt_file( $folder, $doc, $doc_dir );
-      if ( scalar( %{$txt_field_ref} ) gt 0) {
-        $docdata{$folder}{txt}{$doc} = $txt_field_ref;
+      if ( scalar( %{$txt_field_ref} ) gt 0 ) {
+        $docdata{$folder}{info}{$doc}{_txt} = $txt_field_ref;
       } else {
         $coll{cnt_bad_txt}++;
       }
@@ -87,13 +98,14 @@ foreach my $collection (@COLLECTIONS) {
       parse_filename( $docs{$doc}{pg}->[0], \%field );
 
       # add data from doc attribute
+      $docdata{$folder}{info}{$doc}{_att} = $docattr_ref->{$folder}{$doc};
 
       # consolidated document information
-      $docdata{$folder}{info}{$doc} = \%field;
+      $docdata{$folder}{info}{$doc}{cons} = \%field;
     }
   }
 
-  # save folder data
+  # save data for collection
   $DOCDATA_ROOT->child("${collection}_docdata.json")
     ->spew( encode_json( \%docdata ) );
 
@@ -120,6 +132,7 @@ foreach my $collection (@COLLECTIONS) {
   $DOCDATA_ROOT->child("${collection}_stats.json")
     ->spew( encode_json( \%coll ) );
 }
+$log->info('End run');
 
 ################
 
@@ -152,11 +165,11 @@ sub parse_txt_file {
 
   my %txt_field;
   my @lines;
-  my @txt_files = $doc_dir->children(qr/\.txt$/);
+  my @txt_files = $doc_dir->children(qr/[AFPSW].*?\.txt$/);
   if ( scalar(@txt_files) lt 1 ) {
-    warn ".txt file missing in $doc_dir\n";
+    $log->warn("  .txt file missing in $doc_dir");
   } elsif ( scalar(@txt_files) > 1 ) {
-    warn "Multiple .txt files in $doc_dir\n";
+    $log->warn("  multiple .txt files in $doc_dir");
   } else {
 
     # parse the file
@@ -165,7 +178,7 @@ sub parse_txt_file {
     foreach my $line (@lines) {
       my ( $fieldname, $rest ) = split( /\t/, $line );
       if ( not $rest ) {
-        warn "Empty field $fieldname for folder $folder, doc $doc\n";
+        $log->warn("  empty field $fieldname for folder $folder, doc $doc");
         next;
       }
       $rest =~ s/\r\n//g;
