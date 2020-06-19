@@ -53,7 +53,7 @@ foreach my $collection (@COLLECTIONS) {
 
       $coll{cnt_doc_total}++;
 
-      # check for and read description file
+      # check for document diretory
       my $doc_dir = path( $root . '/' . $docs{$doc}{rp} )->parent;
       if ( not -d $doc_dir ) {
         warn "Directory $doc_dir is missing\n";
@@ -67,6 +67,18 @@ foreach my $collection (@COLLECTIONS) {
       } else {
         $coll{cnt_doc_hidden}++;
       }
+
+      # additional document information
+      my %field;
+
+      # number of pages
+      $field{pages} = scalar(@{$docs{$doc}{pg}});
+
+      # add  infos from file name of first page
+      parse_filename($docs{$doc}{pg}->[0], \%field);
+
+
+      $docdata{$folder}{info}{$doc} = \%field;
     }
   }
 
@@ -107,3 +119,18 @@ sub is_free {
 
   return $free_status;
 }
+
+sub parse_filename {
+  my $fn = shift or die "param missing";
+  my $field_ref = shift or die "param missing";
+
+  # subtopic id
+  $field_ref->{subtopic} = substr($fn, 13, 5);
+
+  # provenance code
+  $field_ref->{prov} = substr($fn, 42, 1);
+
+  # type code
+  $field_ref->{type} = substr($fn, 43, 1);
+}
+
