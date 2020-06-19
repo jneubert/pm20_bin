@@ -29,13 +29,13 @@ $Data::Dumper::Sortkeys = 1;
 Readonly my $FOLDER_ROOT_URI => 'http://purl.org/pressemappe20/folder/';
 Readonly my $PDF_ROOT_URI    => 'http://zbw.eu/beta/pm20pdf/';
 Readonly my $FOLDER_ROOT     => path('/disc1/pm20/folder');
-Readonly my $METS_ROOT       => path('../var/mets/');
-Readonly my $IMAGEDATA_ROOT  => path('../var/imagedata');
-Readonly my $DOCDATA_ROOT    => path('../var/docdata');
-Readonly my $FOLDERDATA_ROOT => path('../var/folderdata');
+Readonly my $METS_ROOT       => path('../web.public/mets/');
+Readonly my $IMAGEDATA_ROOT  => path('../data/imagedata');
+Readonly my $DOCDATA_ROOT    => path('../data/docdata');
+Readonly my $FOLDERDATA_ROOT => path('../data/folderdata');
 Readonly my $URLALIAS_FILE   => path("$FOLDERDATA_ROOT/urlalias.pm20mets.txt");
 
-Readonly my %res_ext => (
+Readonly my %RES_EXT => (
   DEFAULT => '_B.JPG',
   MAX     => '_A.JPG',
   MIN     => '_C.JPG',
@@ -54,7 +54,6 @@ my %conf = (
     prefix     => 'co/',
     url_stub   => {
       '/mnt/inst/F' => 'http://webopac.hwwa.de/DigiInst/F/',
-      '/mnt/fors/F' => 'http://webopac.hwwa.de/DigiInst2/F/',
       '/mnt/pers/A' => 'http://webopac.hwwa.de/DigiInst/A/',
     },
   },
@@ -62,7 +61,7 @@ my %conf = (
     type_label => 'Person',
     prefix     => 'pe/',
     url_stub   => {
-      '/mnt/digidata/P' => 'http://webopac.hwwa.de/DigiPerson/P/',
+      '/mnt/digidata/P' => 'https://pm20.zbw.eu/folder/pe/',
     },
   },
   sh => {
@@ -102,17 +101,29 @@ if ( scalar(@ARGV) == 1 ) {
   &usage;
 }
 
-exit;
-
 my (
   $docdata_file, $imagedata_file, $folderdata_file,
   $docdata_ref,  $imagedata_ref,  $folderdata_ref
 );
 
-# remove old alias file
-open( my $url_fh, '>', $URLALIAS_FILE );
+####################
 
-foreach my $collection ( sort keys %conf ) {
+sub mk_all {
+
+  # remove old alias file
+  open( my $url_fh, '>', $URLALIAS_FILE );
+
+  foreach my $collection ( sort keys %conf ) {
+
+    mk_collection( $collection, $url_fh );
+
+  }
+  close($url_fh);
+}
+
+sub mk_collection {
+  my $collection = shift or die "param missing";
+  my $url_fh     = shift;
 
   # load input files
   $docdata_file    = $DOCDATA_ROOT->child("${collection}_docdata.json");
@@ -151,13 +162,16 @@ foreach my $collection ( sort keys %conf ) {
     write_mets( $collection, $folder_id, $tmpl );
 
     # create url aliases for awstats
+    if ($url_fh) {
     print $url_fh "/beta/pm20mets/$collection/"
       . get_folder_relative_path($folder_id)
       . "/${folder_id}.xml\t$label\n";
+    }
   }
 }
 
-close($url_fh);
+sub mk_folder {
+}
 
 ####################
 
@@ -167,7 +181,7 @@ sub build_file_grp {
 
   my @file_grp_loop;
 
-  foreach my $res ( sort keys %res_ext ) {
+  foreach my $res ( sort keys %RES_EXT ) {
     my %entry = (
       use       => $res,
       file_loop => build_res_files( $collection_ref, $folder_id, $res ),
@@ -187,7 +201,7 @@ sub build_res_files {
 
   # create a flat list of files
   my @file_loop;
-  foreach my $doc_id ( sort keys @{ $docdata{free} } ) {
+  foreach my $doc_id ( sort keys %{ $docdata{free} } ) {
     my $page_no = 1;
     foreach my $page ( @{ $imagedata{docs}{$doc_id}{pg} } ) {
 
@@ -198,7 +212,7 @@ sub build_res_files {
       my $img_url =
           $collection_ref->{url_stub}{ $imagedata{root} }
         . $imagedata{docs}{$doc_id}{rp}
-        . "/$page$res_ext{$res}";
+        . "/$page$RES_EXT{$res}";
 
       my %entry = (
         img_id  => get_img_id( $folder_id, $doc_id, $page_no, $res ),
@@ -228,11 +242,11 @@ sub build_phys_struct {
 
   my @phys_loop;
   my $i = 1;
-  foreach my $doc_id ( sort keys @{ $docdata{free} } ) {
+  foreach my $doc_id ( sort keys %{ $docdata{free} } ) {
     my $page_no = 1;
     foreach my $page ( @{ $imagedata{docs}{$doc_id}{pg} } ) {
       my @size_loop;
-      foreach my $res ( sort keys %res_ext ) {
+      foreach my $res ( sort keys %RES_EXT ) {
         push( @size_loop,
           { img_id => get_img_id( $folder_id, $doc_id, $page_no, $res ) } );
       }
@@ -258,7 +272,7 @@ sub build_log_struct {
   my %docdata = %{ $docdata_ref->{$folder_id} };
 
   my @log_loop;
-  foreach my $doc_id ( sort keys @{ $docdata{free} } ) {
+  foreach my $doc_id ( sort keys %{ $docdata{free} } ) {
     my %entry = (
       document_id => "doc$doc_id",
       label       => get_doclabel( $doc_id, $docdata{info}{$doc_id} ),
@@ -278,7 +292,7 @@ sub build_link {
   # duplicates logic from build_phys_struct()!
   my @link_loop;
   my $i = 1;
-  foreach my $doc_id ( sort keys @{ $docdata{free} } ) {
+  foreach my $doc_id ( sort keys %{ $docdata{free} } ) {
     foreach my $page ( @{ $imagedata{docs}{$doc_id}{pg} } ) {
       my %entry = (
         document_id => "doc$doc_id",
@@ -298,11 +312,12 @@ sub write_mets {
 
   my %docdata = %{ $docdata_ref->{$folder_id} };
 
+  # TODO change logic for relative path - not save for sh/wa!!
   my $relative_path = get_folder_relative_path($folder_id);
 
-  my $mets_dir = $METS_ROOT->child($collection)->child($relative_path);
+  my $mets_dir = $METS_ROOT->child($collection)->child($relative_path)->child($folder_id);
   $mets_dir->mkpath;
-  my $mets_file = $mets_dir->child("$folder_id\.xml");
+  my $mets_file = $mets_dir->child("public.mets.de.xml");
   $mets_file->spew( $tmpl->output() );
 }
 
@@ -352,22 +367,22 @@ sub get_doclabel {
     }
   }
   if ( not $label ) {
-    if ( $field_ref->{ART} ) {
-      if ( $field_ref->{ART} =~ m/::.+/ ) {
-        $label = ( split( /::/, $field_ref->{ART} ) )[1] . ' ' . $doc_id;
+    if ( $field_ref->{type} ) {
+      if ( $field_ref->{type} =~ m/::.+/ ) {
+        $label = ( split( /::/, $field_ref->{type} ) )[1] . ' ' . $doc_id;
       } else {
-        $label = $field_ref->{ART} . ' ' . $doc_id;
+        $label = $field_ref->{type} . ' ' . $doc_id;
       }
     } else {
       $label = "Dok $doc_id";
     }
   }
-  if ( $field_ref->{PAG} ) {
-    if ( $field_ref->{PAG} > 1 ) {
-      $label .= " ($field_ref->{PAG} S.)";
+  if ( $field_ref->{pages} ) {
+    if ( $field_ref->{pages} > 1 ) {
+      $label .= " ($field_ref->{pages} S.)";
     }
   } else {
-    warn "Missing PAG for $doc_id: ", Dumper $field_ref;
+    warn "Missing pages for $doc_id: ", Dumper $field_ref;
   }
   return convert_label($label);
 }
@@ -399,3 +414,4 @@ sub usage {
   print "Usage: $0 {folder-id}|{collection}|ALL\n";
   exit 1;
 }
+
