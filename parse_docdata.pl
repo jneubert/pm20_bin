@@ -61,6 +61,7 @@ foreach my $collection (@COLLECTIONS) {
         next;
       }
 
+      # check if locked
       if ( is_free($doc_dir) ) {
         $docdata{$folder}{free}{$doc} = 1;
         $coll{cnt_doc_free}++;
@@ -68,16 +69,26 @@ foreach my $collection (@COLLECTIONS) {
         $coll{cnt_doc_hidden}++;
       }
 
-      # additional document information
+      # document information from .txt file
+      my $txt_field_ref = parse_txt_file( $folder, $doc, $doc_dir );
+      if ( scalar( %{$txt_field_ref} ) gt 0) {
+        $docdata{$folder}{txt}{$doc} = $txt_field_ref;
+      } else {
+        $coll{cnt_bad_txt}++;
+      }
+
+      # priority document information
       my %field;
 
       # number of pages
-      $field{pages} = scalar(@{$docs{$doc}{pg}});
+      $field{pages} = scalar( @{ $docs{$doc}{pg} } );
 
       # add  infos from file name of first page
-      parse_filename($docs{$doc}{pg}->[0], \%field);
+      parse_filename( $docs{$doc}{pg}->[0], \%field );
 
+      # add data from doc attribute
 
+      # consolidated document information
       $docdata{$folder}{info}{$doc} = \%field;
     }
   }
@@ -121,16 +132,45 @@ sub is_free {
 }
 
 sub parse_filename {
-  my $fn = shift or die "param missing";
+  my $fn        = shift or die "param missing";
   my $field_ref = shift or die "param missing";
 
   # subtopic id
-  $field_ref->{subtopic} = substr($fn, 13, 5);
+  $field_ref->{subtopic} = substr( $fn, 13, 5 );
 
   # provenance code
-  $field_ref->{prov} = substr($fn, 42, 1);
+  $field_ref->{prov} = substr( $fn, 42, 1 );
 
   # type code
-  $field_ref->{type} = substr($fn, 43, 1);
+  $field_ref->{type} = substr( $fn, 43, 1 );
 }
 
+sub parse_txt_file {
+  my $folder  = shift or die "param missing";
+  my $doc     = shift or die "param missing";
+  my $doc_dir = shift or die "param missing";
+
+  my %txt_field;
+  my @lines;
+  my @txt_files = $doc_dir->children(qr/\.txt$/);
+  if ( scalar(@txt_files) lt 1 ) {
+    warn ".txt file missing in $doc_dir\n";
+  } elsif ( scalar(@txt_files) > 1 ) {
+    warn "Multiple .txt files in $doc_dir\n";
+  } else {
+
+    # parse the file
+    @lines = $txt_files[0]->lines_raw;
+
+    foreach my $line (@lines) {
+      my ( $fieldname, $rest ) = split( /\t/, $line );
+      if ( not $rest ) {
+        warn "Empty field $fieldname for folder $folder, doc $doc\n";
+        next;
+      }
+      $rest =~ s/\r\n//g;
+      $txt_field{$fieldname} = $rest;
+    }
+  }
+  return \%txt_field;
+}
