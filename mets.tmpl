@@ -1,0 +1,96 @@
+<tmpl_if name='lang'></tmpl_if>
+<mets:mets xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xmlns:xlink="http://www.w3.org/1999/xlink" xmlns:mets="http://www.loc.gov/METS/"
+  xsi:schemaLocation="http://www.loc.gov/METS/ http://www.loc.gov/mets/mets.xsd">
+  <mets:dmdSec ID="md_<tmpl_var name='folder_id'>">
+    <mets:mdWrap MIMETYPE="text/xml" MDTYPE="MODS">
+      <mets:xmlData>
+        <mods:mods xmlns:mods="http://www.loc.gov/mods/v3" version="3.3"
+          xsi:schemaLocation="http://www.loc.gov/mods/v3 http://www.loc.gov/standards/mods/v3/mods-3-3.xsd">
+          <mods:identifier TYPE="uri"><tmpl_var name='uri'></mods:identifier>
+          <mods:titleInfo>
+            <mods:title><tmpl_var name='pref_label'></mods:title>
+          </mods:titleInfo>
+          <mods:name>
+            <mods:displayForm><tmpl_var name='name'></mods:displayForm>
+          </mods:name>
+          <mods:originInfo>
+            <mods:place>
+              <mods:placeTerm type="text"></mods:placeTerm>
+            </mods:place>
+            <mods:dateIssued></mods:dateIssued>
+          </mods:originInfo>
+        </mods:mods>
+      </mets:xmlData>
+    </mets:mdWrap>
+  </mets:dmdSec>
+  <mets:amdSec ID="amd_<tmpl_var name='folder_id'>">
+    <mets:rightsMD ID="rights_<tmpl_var name='folder_id'>">
+      <mets:mdWrap MIMETYPE="text/xml" MDTYPE="OTHER" OTHERMDTYPE="DVRIGHTS">
+        <mets:xmlData>
+          <dv:rights xmlns:dv="http://dfg-viewer.de/">
+            <dv:owner>ZBW</dv:owner>
+            <dv:ownerContact>mailto:j.neubert@zbw.eu</dv:ownerContact>
+            <dv:ownerLogo>http://zbw.eu/beta/p20/images/zbw_108x50.gif</dv:ownerLogo>
+            <dv:ownerSiteURL>http://webopac.hwwa.de/pressemappe20/</dv:ownerSiteURL>
+          </dv:rights>
+        </mets:xmlData>
+      </mets:mdWrap>
+    </mets:rightsMD>
+    <mets:digiprovMD ID="digiprov_<tmpl_var name='folder_id'>">
+      <mets:mdWrap MIMETYPE="text/xml" MDTYPE="OTHER" OTHERMDTYPE="DVLINKS">
+        <mets:xmlData>
+          <dv:links xmlns:dv="http://dfg-viewer.de/">
+            <dv:reference><tmpl_var name='uri'></dv:reference>
+            <dv:presentation><tmpl_var name='uri'></dv:presentation>
+          </dv:links>
+        </mets:xmlData>
+      </mets:mdWrap>
+    </mets:digiprovMD>
+  </mets:amdSec>
+  <mets:fileSec>
+
+    <mets:fileGrp USE="DOWNLOAD">
+      <mets:file ID="pdf_folder_download" MIMETYPE="application/pdf">
+        <mets:FLocat LOCTYPE="URL" xlink:href="<tmpl_var name='pdf_url'>"/>
+      </mets:file>
+    </mets:fileGrp>
+  <tmpl_loop name='file_grp_loop'>
+    <mets:fileGrp USE="<tmpl_var name='use'>">
+    <tmpl_loop name='file_loop'>
+      <mets:file ID="<tmpl_var name='img_id'>" MIMETYPE="image/jpeg">
+        <mets:FLocat LOCTYPE="URL" xlink:href="<tmpl_var name='img_url'>"/>
+      </mets:file>
+    </tmpl_loop>
+    </mets:fileGrp>
+  </tmpl_loop>
+  </mets:fileSec>
+  <mets:structMap TYPE="PHYSICAL">
+    <mets:div ID="phys_<tmpl_var name='folder_id'>" TYPE="physSequence">
+    <tmpl_loop name='phys_loop'>
+      <mets:div ID="<tmpl_var name='phys_id'>" ORDER="<tmpl_var name='i'>" TYPE="page" CONTENTIDS="<tmpl_var name='page_uri'>">
+      <tmpl_loop name='size_loop'>
+        <mets:fptr FILEID="<tmpl_var name='img_id'>"/><tmpl_if name='img_url'></tmpl_if>
+      </tmpl_loop>
+      </mets:div>
+    </tmpl_loop>
+    </mets:div>
+  </mets:structMap>
+  <mets:structMap TYPE="LOGICAL">
+    <mets:div ID="log_<tmpl_var name='folder_id'>" TYPE="<tmpl_var name='type'>" CONTENTIDS="<tmpl_var name='uri'>"
+      LABEL="<tmpl_var name='pref_label'>"
+      DMDID="md_<tmpl_var name='folder_id'>" ADMID="amd_<tmpl_var name='folder_id'>">
+
+      <mets:fptr FILEID="pdf_folder_download" />
+    <tmpl_loop name='log_loop'>
+      <mets:div ID="<tmpl_var name='document_id'>" TYPE="<tmpl_var name='type'>" <tmpl_if name='label'>LABEL="<tmpl_var name='label'>"</tmpl_if> />
+    </tmpl_loop>
+    </mets:div>
+  </mets:structMap>
+  <mets:structLink>
+    <mets:smLink xlink:from="log_<tmpl_var name='folder_id'>" xlink:to="phys_<tmpl_var name='folder_id'>"/>
+    <tmpl_loop name='link_loop'>
+      <mets:smLink xlink:from="<tmpl_var name='document_id'>" xlink:to="<tmpl_var name='phys_id'>"/>
+    </tmpl_loop>
+  </mets:structLink>
+</mets:mets>
