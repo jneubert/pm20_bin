@@ -19,7 +19,7 @@ use YAML::Tiny;
 use ZBW::Logutil;
 
 # logging
-my $log = ZBW::Logutil->get_logger('/disc1/pm20/etc/document_locks.logconf');
+my $log = ZBW::Logutil->get_logger('./log_conf/document_locks.logconf');
 $log->level($INFO);
 
 Readonly my $COPYRIGHT_TERM   => 70;
