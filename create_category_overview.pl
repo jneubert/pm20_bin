@@ -26,6 +26,45 @@ my %prov = (
   },
 );
 
+my %subheading = (
+  A => {
+    de => 'Europa',
+    en => 'Europe',
+  },
+  B => {
+    de => 'Asien',
+    en => 'Asia',
+  },
+  C => {
+    de => 'Afrika',
+    en => 'Africa',
+  },
+  D => {
+    de => 'Australien und Ozeanien',
+    en => 'Australia and Oceania',
+  },
+
+  E => {
+    de => 'Amerika',
+    en => 'America',
+  },
+
+  F => {
+    de => 'Polargebiete',
+    en => 'Polar regions',
+  },
+
+  G => {
+    de => 'Meere',
+    en => 'Seas',
+  },
+
+  H => {
+    de => 'Welt',
+    en => 'World',
+  },
+);
+
 my @languages = qw/ de en /;
 
 # TODO create and load external yaml
@@ -63,10 +102,20 @@ foreach my $lang (@languages) {
       $klassdata_root->child( $typedef_ref->{result_file} . ".$lang.json" );
     my @categories =
       @{ decode_json( $file->slurp )->{results}->{bindings} };
+
+    # main loop
+    my $firstletter_old = '';
     foreach my $category (@categories) {
 
       # skip result if no subject folders exist
       next unless exists $category->{shCountLabel};
+
+      # control break?
+      my $firstletter = substr( $category->{signature}->{value}, 0, 1 );
+      if ( $firstletter ne $firstletter_old ) {
+        push( @lines, '', "### $subheading{$firstletter}{$lang}", '' );
+        $firstletter_old = $firstletter;
+      }
 
       ##print Dumper $category; exit;
       my $line =
