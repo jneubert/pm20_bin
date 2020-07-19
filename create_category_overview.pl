@@ -6,6 +6,7 @@
 use strict;
 use warnings;
 use utf8;
+binmode( STDOUT, ":utf8" );
 
 use Data::Dumper;
 use JSON;
@@ -14,8 +15,9 @@ use Readonly;
 use Scalar::Util qw(looks_like_number);
 use YAML;
 
-my $web_root       = path('../web.public/category');
-my $klassdata_root = path('../data/klassdata');
+my $web_root        = path('../web.public/category');
+my $klassdata_root  = path('../data/klassdata');
+my $folderdata_root = path('../data/folderdata');
 
 my %prov = (
   hwwa => {
@@ -70,19 +72,30 @@ my @languages = qw/ de en /;
 # TODO create and load external yaml
 my $definitions_ref = YAML::Load(<<'EOF');
 geo:
-  title:
-    en: Country Category System
-    de: Ländersystematik
-  result_file: geo_by_signature
-  output_dir: ../category/geo
-  prov: hwwa
+  overview:
+    title:
+      en: Folder Overview by Country Category System
+      de: Mappen-Übersicht nach Ländersystematik
+    result_file: geo_by_signature
+    output_dir: ../category/geo
+    prov: hwwa
+    languages:
+      - de
+      - en
+  single:
+    result_file: subject_folders
+    output_dir: ../category/geo/i
+    prov: hwwa
+    languages:
+      - de
 EOF
 
-foreach my $lang (@languages) {
-  foreach my $category_type ( keys %{$definitions_ref} ) {
+# category overview pages
+foreach my $category_type ( keys %{$definitions_ref} ) {
+  my $typedef_ref = $definitions_ref->{$category_type}->{overview};
+  foreach my $lang ( @{ $typedef_ref->{languages} } ) {
     my @lines;
-    my $typedef_ref = $definitions_ref->{$category_type};
-    my $title       = $typedef_ref->{title}{$lang};
+    my $title = $typedef_ref->{title}{$lang};
 
     # some header information for the page
     push( @lines,
@@ -131,3 +144,75 @@ foreach my $lang (@languages) {
     $out->spew_utf8( join( "\n", @lines ) );
   }
 }
+
+# individual category pages
+foreach my $category_type ( keys %{$definitions_ref} ) {
+  my $typedef_ref = $definitions_ref->{$category_type}->{single};
+  foreach my $lang ( @{ $typedef_ref->{languages} } ) {
+
+    # read json input (all folders for all categories)
+    my $file =
+      $folderdata_root->child( $typedef_ref->{result_file} . ".$lang.json" );
+    my @entries =
+      @{ decode_json( $file->slurp )->{results}->{bindings} };
+
+    # main loop
+    my @lines;
+    my $id1_old         = '';
+    my $firstletter_old = '';
+    foreach my $entry (@entries) {
+      ##print Dumper $entry;exit;
+
+      # TODO improve query to get values more directly
+      $entry->{pm20}->{value} =~ m/(\d{6}),(\d{6})$/;
+      my $id1 = $1;
+      my $id2 = $2;
+      ## TODO look up signature form hash %signature (with ID as key)
+      my $signature = $entry->{subjectNta}->{value};
+      ( my $title, my $label ) = split( / : /, $entry->{pm20Label}->{value} );
+
+      # first level control break - new category page
+      if ( $id1_old ne '' and $id1 ne $id1_old ) {
+        my @output;
+        push( @output,
+          '---',
+          "title: \"$title\"",
+          "etr: category/$category_type/xxx",
+          '---', '' );
+        my $provenance = $prov{ $typedef_ref->{prov} }{name}{$lang};
+        push( @output, "## $provenance", '' );
+        push( @output, "# $title",       '' );
+        my $backlinktitle =
+          $lang eq 'en'
+          ? 'Back to Category Overview'
+          : 'Zurück zur Systematik-Übersicht';
+        push( @output, "[$backlinktitle](../..)", '' );
+        push( @output, @lines );
+        @lines = ();
+
+        push( @output, '', "[$backlinktitle](..)", '' );
+
+        my $out_dir = $web_root->child($category_type)->child('i')->child($id1);
+        $out_dir->mkpath;
+        my $out = $out_dir->child("about.$lang.md");
+        $out->spew_utf8( join( "\n", @output ) );
+        print join( "\n", @output, "\n" );
+      }
+      $id1_old = $id1;
+
+      # second level control break
+      my $firstletter = substr( $signature, 0, 1 );
+      if ( $firstletter ne $firstletter_old ) {
+        push( @lines, '', "### $label", '' );
+        $firstletter_old = $firstletter;
+      }
+
+      # main entry
+      my $line =
+          "- [$signature $label]"
+        . "($entry->{pm20}->{value}) ($entry->{docs}->{value})";
+      push( @lines, $line );
+    }
+  }
+}
+
