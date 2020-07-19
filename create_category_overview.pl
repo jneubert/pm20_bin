@@ -90,12 +90,16 @@ geo:
       - de
 EOF
 
+my %geo_lookup;
+my %subject_nta_lookup;
+
 # category overview pages
 foreach my $category_type ( keys %{$definitions_ref} ) {
   my $typedef_ref = $definitions_ref->{$category_type}->{overview};
   foreach my $lang ( @{ $typedef_ref->{languages} } ) {
     my @lines;
-    my $title = $typedef_ref->{title}{$lang};
+    my $title      = $typedef_ref->{title}{$lang};
+    my $provenance = $prov{ $typedef_ref->{prov} }{name}{$lang};
 
     # some header information for the page
     push( @lines,
@@ -103,7 +107,6 @@ foreach my $category_type ( keys %{$definitions_ref} ) {
       "title: \"$title\"",
       "etr: category_overview/$category_type",
       '---', '' );
-    my $provenance = $prov{ $typedef_ref->{prov} }{name}{$lang};
     push( @lines, "## $provenance" );
     push( @lines, "# $typedef_ref->{title}{$lang}", '' );
     my $backlinktitle =
@@ -131,11 +134,22 @@ foreach my $category_type ( keys %{$definitions_ref} ) {
       }
 
       ##print Dumper $category; exit;
+      ## TODO improve query with explicit id
+      $category->{country}->{value} =~ m/(\d{6})$/;
+      my $id        = $1;
+      my $signature = $category->{signature}->{value};
+      my $label     = $category->{countryLabel}->{value};
+      my $counter   = $category->{shCountLabel}->{value}
+        . ( $lang eq 'en' ? ' subject folders' : ' Sach-Mappen' );
+
+      # main entry
       my $line =
-        "- [$category->{signature}->{value} $category->{countryLabel}->{value}]"
-        . "($category->{country}->{value}) ($category->{shCountLabel}->{value})";
+        "- [$signature $label]" . "(i/$id/about.$lang.html) ($counter)";
       push( @lines, $line );
 
+      # lookup
+      $geo_lookup{$id}{signature} = $signature;
+      $geo_lookup{$id}{label}{$lang} = $label;
     }
 
     push( @lines, '', "[$backlinktitle](..)", '' );
@@ -149,12 +163,22 @@ foreach my $category_type ( keys %{$definitions_ref} ) {
 foreach my $category_type ( keys %{$definitions_ref} ) {
   my $typedef_ref = $definitions_ref->{$category_type}->{single};
   foreach my $lang ( @{ $typedef_ref->{languages} } ) {
+    my $provenance = $prov{ $typedef_ref->{prov} }{name}{$lang};
 
     # read json input (all folders for all categories)
     my $file =
       $folderdata_root->child( $typedef_ref->{result_file} . ".$lang.json" );
     my @entries =
       @{ decode_json( $file->slurp )->{results}->{bindings} };
+
+    # read subject categories and create lookup file
+    $file = $klassdata_root->child("subject_by_signature.$lang.json");
+    my @subject_categories =
+      @{ decode_json( $file->slurp )->{results}->{bindings} };
+    foreach my $subject_category (@subject_categories) {
+      $subject_nta_lookup{ $subject_category->{signature}->{value} } =
+        $subject_category->{categoryLabel}->{value};
+    }
 
     # main loop
     my @lines;
@@ -179,9 +203,10 @@ foreach my $category_type ( keys %{$definitions_ref} ) {
           "title: \"$title\"",
           "etr: category/$category_type/xxx",
           '---', '' );
-        my $provenance = $prov{ $typedef_ref->{prov} }{name}{$lang};
         push( @output, "## $provenance", '' );
-        push( @output, "# $title",       '' );
+        push( @output,
+"# $geo_lookup{$id1_old}{signature} $geo_lookup{$id1_old}{label}{$lang}",
+          '' );
         my $backlinktitle =
           $lang eq 'en'
           ? 'Back to Category Overview'
@@ -192,25 +217,31 @@ foreach my $category_type ( keys %{$definitions_ref} ) {
 
         push( @output, '', "[$backlinktitle](..)", '' );
 
-        my $out_dir = $web_root->child($category_type)->child('i')->child($id1);
+        my $out_dir =
+          $web_root->child($category_type)->child('i')->child($id1_old);
         $out_dir->mkpath;
         my $out = $out_dir->child("about.$lang.md");
         $out->spew_utf8( join( "\n", @output ) );
-        print join( "\n", @output, "\n" );
+        ## print join( "\n", @output, "\n" );
       }
       $id1_old = $id1;
 
       # second level control break
       my $firstletter = substr( $signature, 0, 1 );
       if ( $firstletter ne $firstletter_old ) {
-        push( @lines, '', "### $label", '' );
+
+        # mainheading
+        my $main_heading = $subject_nta_lookup{$firstletter};
+        $main_heading =~ s/, Allgemein//;
+        push( @lines, '', "### $main_heading", '' );
         $firstletter_old = $firstletter;
       }
 
       # main entry
+      my $counter = $entry->{docs}->{value}
+        . ( $lang eq 'en' ? ' documents' : ' Dokumente' );
       my $line =
-          "- [$signature $label]"
-        . "($entry->{pm20}->{value}) ($entry->{docs}->{value})";
+        "- [$signature $label]" . "($entry->{pm20}->{value}) ($counter)";
       push( @lines, $line );
     }
   }
