@@ -111,7 +111,8 @@ foreach my $category_type ( keys %{$definitions_ref} ) {
     push( @lines, "# $typedef_ref->{title}{$lang}", '' );
     my $backlinktitle =
       $lang eq 'en' ? 'Back to Category systems' : 'Zurück zu Systematiken';
-    push( @lines, "[$backlinktitle](..)", '' );
+    my $backlink = "[$backlinktitle](../about.$lang.html)";
+    push( @lines, $backlink, '' );
 
     # read json input
     my $file =
@@ -152,7 +153,7 @@ foreach my $category_type ( keys %{$definitions_ref} ) {
       $geo_lookup{$id}{label}{$lang} = $label;
     }
 
-    push( @lines, '', "[$backlinktitle](..)", '' );
+    push( @lines, '', $backlink, '' );
 
     my $out = $web_root->child($category_type)->child("about.$lang.md");
     $out->spew_utf8( join( "\n", @lines ) );
@@ -183,6 +184,7 @@ foreach my $category_type ( keys %{$definitions_ref} ) {
     # main loop
     my @lines;
     my $id1_old         = '';
+    my $title_old       = '';
     my $firstletter_old = '';
     foreach my $entry (@entries) {
       ##print Dumper $entry;exit;
@@ -200,7 +202,7 @@ foreach my $category_type ( keys %{$definitions_ref} ) {
         my @output;
         push( @output,
           '---',
-          "title: \"$title\"",
+          "title: \"$title_old\"",
           "etr: category/$category_type/xxx",
           '---', '' );
         push( @output, "## $provenance", '' );
@@ -211,11 +213,12 @@ foreach my $category_type ( keys %{$definitions_ref} ) {
           $lang eq 'en'
           ? 'Back to Category Overview'
           : 'Zurück zur Systematik-Übersicht';
-        push( @output, "[$backlinktitle](../..)", '' );
+        my $backlink = "[$backlinktitle](../../about.$lang.html)";
+        push( @output, $backlink, '', '' );
         push( @output, @lines );
+        push( @output, $backlink, '', '' );
         @lines = ();
 
-        push( @output, '', "[$backlinktitle](..)", '' );
 
         my $out_dir =
           $web_root->child($category_type)->child('i')->child($id1_old);
@@ -225,6 +228,7 @@ foreach my $category_type ( keys %{$definitions_ref} ) {
         ## print join( "\n", @output, "\n" );
       }
       $id1_old = $id1;
+      $title_old = $title;
 
       # second level control break
       my $firstletter = substr( $signature, 0, 1 );
