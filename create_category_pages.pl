@@ -180,7 +180,6 @@ foreach my $category_type ( keys %{$definitions_ref} ) {
 foreach my $category_type ( keys %{$definitions_ref} ) {
   my $typedef_ref = $definitions_ref->{$category_type}->{single};
   foreach my $lang (@languages) {
-    my $provenance = $prov{ $typedef_ref->{prov} }{name}{$lang};
 
     # read json input (all folders for all categories)
     my $file =
@@ -194,19 +193,22 @@ foreach my $category_type ( keys %{$definitions_ref} ) {
       @{ decode_json( $file->slurp )->{results}->{bindings} };
 
     # main loop
+    my %cat_meta = (
+      category_type        => $category_type,
+      provenance           => $prov{ $typedef_ref->{prov} }{name}{$lang},
+      folder_count_first   => 0,
+      document_count_first => 0,
+    );
     my @lines;
     my $id1_old         = '';
-    my $title_old       = '';
     my $firstletter_old = '';
-    my ( $sh_folder_count, $document_count );
     foreach my $entry (@entries) {
       ##print Dumper $entry;exit;
 
-      # TODO improve query to get values more directly
+      # TODO improve query to get values more directly?
       $entry->{pm20}->{value} =~ m/(\d{6}),(\d{6})$/;
       my $id1   = $1;
       my $id2   = $2;
-      my $title = "$geo{$id1}{notation} $geo{$id1}{prefLabel}{$lang}";
       my $label = "$subject{$id2}{notation} ";
       if ( $subject{$id2}{prefLabel}{$lang} ) {
         $label .= $subject{$id2}{prefLabel}{$lang};
@@ -218,54 +220,10 @@ foreach my $category_type ( keys %{$definitions_ref} ) {
 
       # first level control break - new category page
       if ( $id1_old ne '' and $id1 ne $id1_old ) {
-        my @output;
-        push( @output,
-          '---',
-          "title: \"$title_old\"",
-          "etr: category/$category_type/$geo{$id1_old}{notation}",
-          '---', '' );
-        push( @output, "## $provenance", '' );
-        push( @output, "# $title_old",   '' );
-        my $backlinktitle =
-          $lang eq 'en'
-          ? 'Back to Category Overview'
-          : 'Zurück zur Systematik-Übersicht';
-        my $backlink = "[$backlinktitle](../../about.$lang.html)";
-        push( @output, $backlink, '', '' );
-        if ( $geo{$id1_old}{scopeNote}{$lang} ) {
-          push( @output, "> Scope Note: $geo{$id1_old}{scopeNote}{$lang}", '' );
-        }
-
-        # output statistics
-        push(
-          @output,
-          (
-            $lang eq 'en'
-            ? "In total $sh_folder_count subject folders, $document_count documents."
-            : "Insgesamt $sh_folder_count Sach-Mappen, $document_count Dokumente."
-          ),
-          ''
-        );
-        $sh_folder_count = 0;
-        $document_count  = 0;
-
-        push( @output, @lines );
-        my $last_modified =
-          $modified{ag} ge $modified{je} ? $modified{ag} : $modified{je};
-        push( @output,
-          '', ( $lang eq 'en' ? 'As of ' : 'Stand: ' ) . $last_modified, '' );
-        push( @output, $backlink, '', '' );
+        output_category_page( $lang, \%cat_meta, $id1_old, \@lines );
         @lines = ();
-
-        my $out_dir =
-          $web_root->child($category_type)->child('i')->child($id1_old);
-        $out_dir->mkpath;
-        my $out = $out_dir->child("about.$lang.md");
-        $out->spew_utf8( join( "\n", @output ) );
-        ## print join( "\n", @output, "\n" );
       }
-      $id1_old   = $id1;
-      $title_old = $title;
+      $id1_old = $id1;
 
       # second level control break (label starts with signature)
       my $firstletter = substr( $label, 0, 1 );
@@ -287,9 +245,12 @@ foreach my $category_type ( keys %{$definitions_ref} ) {
       push( @lines, $line );
 
       # statistics
-      $sh_folder_count++;
-      $document_count += $entry->{docs}{value};
+      $cat_meta{folder_count_first}++;
+      $cat_meta{document_count_first} += $entry->{docs}{value};
     }
+
+    # output of last category
+    output_category_page( $lang, \%cat_meta, $id1_old, \@lines );
   }
 }
 
@@ -345,6 +306,65 @@ sub as_array {
     }
   }
   return @list;
+}
+
+sub output_category_page {
+  my $lang         = shift or die "param missing";
+  my $cat_meta_ref = shift or die "param missing";
+  my $id           = shift or die "param missing";
+  my $lines_ref    = shift or die "param missing";
+  my %cat_meta     = %{$cat_meta_ref};
+
+  my $title = "$geo{$id}{notation} $geo{$id}{prefLabel}{$lang}";
+  my @output;
+  push( @output,
+    '---',
+    "title: \"$title\"",
+    "etr: category/$cat_meta{category_type}/$geo{$id}{notation}",
+    '---', '' );
+  push( @output, "## $cat_meta{provenance}", '' );
+  push( @output, "# $title", '' );
+  my $backlinktitle =
+    $lang eq 'en'
+    ? 'Back to Category Overview'
+    : 'Zurück zur Systematik-Übersicht';
+  my $backlink = "[$backlinktitle](../../about.$lang.html)";
+  push( @output, $backlink, '', '' );
+
+  if ( $geo{$id}{scopeNote}{$lang} ) {
+    push( @output, "> Scope Note: $geo{$id}{scopeNote}{$lang}", '' );
+  }
+
+  # output statistics
+  push(
+    @output,
+    (
+      $lang eq 'en'
+      ? "In total $cat_meta{folder_count_first} subject folders,"
+        . " $cat_meta{document_count_first} documents."
+      : "Insgesamt $cat_meta{folder_count_first} Sach-Mappen,"
+        . " $cat_meta{document_count_first} Dokumente."
+    ),
+    ''
+  );
+  $cat_meta_ref->{folder_count_first}   = 0;
+  $cat_meta_ref->{document_count_first} = 0;
+
+  # the actual page content
+  push( @output, @{$lines_ref} );
+
+  my $last_modified =
+    $modified{ag} ge $modified{je} ? $modified{ag} : $modified{je};
+  push( @output,
+    '', ( $lang eq 'en' ? 'As of ' : 'Stand: ' ) . $last_modified, '' );
+  push( @output, $backlink, '', '' );
+
+  my $out_dir =
+    $web_root->child( $cat_meta{category_type} )->child('i')->child($id);
+  $out_dir->mkpath;
+  my $out = $out_dir->child("about.$lang.md");
+  $out->spew_utf8( join( "\n", @output ) );
+  ## print join( "\n", @output, "\n" );
 }
 
 sub get_subheadings {
