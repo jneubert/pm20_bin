@@ -87,6 +87,7 @@ geo:
     prov: hwwa
 EOF
 
+my %modified;
 my %geo                = get_vocab('ag');
 my %subject            = get_vocab('je');
 my %subheading_subject = get_subheadings( \%subject );
@@ -118,6 +119,24 @@ foreach my $category_type ( keys %{$definitions_ref} ) {
     my @categories =
       @{ decode_json( $file->slurp )->{results}->{bindings} };
 
+    # statistics collecting and output
+    my ( $category_count, $sh_folder_count );
+    foreach my $category (@categories) {
+      if ( $category->{shCountLabel} ) {
+        $category_count++;
+        $sh_folder_count += $category->{shCountLabel}->{value};
+      }
+    }
+    push(
+      @lines,
+      (
+        $lang eq 'en'
+        ? "In total $category_count categories, $sh_folder_count subject folders."
+        : "Insgesamt $category_count Systematikstellen, $sh_folder_count Sach-Mappen."
+      ),
+      ''
+    );
+
     # main loop
     my $firstletter_old = '';
     foreach my $category (@categories) {
@@ -146,6 +165,9 @@ foreach my $category_type ( keys %{$definitions_ref} ) {
         "- [$signature $label]" . "(i/$id/about.$lang.html) ($counter)";
       push( @lines, $line );
     }
+
+    push( @lines, '',
+      ( $lang eq 'en' ? 'As of ' : 'Stand: ' ) . $modified{ag} );
 
     push( @lines, '', $backlink, '' );
 
@@ -176,6 +198,7 @@ foreach my $category_type ( keys %{$definitions_ref} ) {
     my $id1_old         = '';
     my $title_old       = '';
     my $firstletter_old = '';
+    my ( $sh_folder_count, $document_count );
     foreach my $entry (@entries) {
       ##print Dumper $entry;exit;
 
@@ -209,7 +232,28 @@ foreach my $category_type ( keys %{$definitions_ref} ) {
           : 'Zurück zur Systematik-Übersicht';
         my $backlink = "[$backlinktitle](../../about.$lang.html)";
         push( @output, $backlink, '', '' );
+        if ( $geo{$id1_old}{scopeNote}{$lang} ) {
+          push( @output, "> Scope Note: $geo{$id1_old}{scopeNote}{$lang}", '' );
+        }
+
+        # output statistics
+        push(
+          @output,
+          (
+            $lang eq 'en'
+            ? "In total $sh_folder_count subject folders, $document_count documents."
+            : "Insgesamt $sh_folder_count Sach-Mappen, $document_count Dokumente."
+          ),
+          ''
+        );
+        $sh_folder_count = 0;
+        $document_count  = 0;
+
         push( @output, @lines );
+        my $last_modified =
+          $modified{ag} ge $modified{je} ? $modified{ag} : $modified{je};
+        push( @output,
+          '', ( $lang eq 'en' ? 'As of ' : 'Stand: ' ) . $last_modified, '' );
         push( @output, $backlink, '', '' );
         @lines = ();
 
@@ -241,6 +285,10 @@ foreach my $category_type ( keys %{$definitions_ref} ) {
         . ( $lang eq 'en' ? ' documents' : ' Dokumente' );
       my $line = "- [$label]" . "($entry->{pm20}->{value}) ($counter)";
       push( @lines, $line );
+
+      # statistics
+      $sh_folder_count++;
+      $document_count += $entry->{docs}{value};
     }
   }
 }
@@ -248,30 +296,37 @@ foreach my $category_type ( keys %{$definitions_ref} ) {
 ############
 
 sub get_vocab {
-  my $fn_stub = shift or die "param missing";
+  my $vocab = shift or die "param missing";
 
   my %cat;
   foreach my $lang (@languages) {
-    my $file = $rdf_root->child("$fn_stub.skos.jsonld");
+    my $file = $rdf_root->child("$vocab.skos.jsonld");
     my @categories =
       @{ decode_json( $file->slurp )->{'@graph'} };
 
     # read jsonld graph
     foreach my $category (@categories) {
 
-      # skip category scheme and orphan entries
-      next unless $category->{'@type'} eq 'skos:Concept';
-      next unless exists $category->{broader};
+      my $type = $category->{'@type'};
+      if ( $type eq 'skos:ConceptScheme' ) {
+        $modified{$vocab} = $category->{modified};
+      } elsif ( $type eq 'skos:Concept' ) {
 
-      my $id = $category->{identifier};
-      $cat{$id}{notation}     = $category->{notation};
-      $cat{$id}{notationLong} = $category->{notationLong};
+        # skip orphan entries
+        next unless exists $category->{broader};
 
-      foreach my $pref ( as_array( $category->{prefLabel} ) ) {
-        $cat{$id}{prefLabel}{ $pref->{'@language'} } = $pref->{'@value'};
-      }
-      foreach my $note ( as_array( $category->{scopeNote} ) ) {
-        $cat{$id}{scopeNote}{ $note->{'@language'} } = $note->{'@value'};
+        my $id = $category->{identifier};
+        $cat{$id}{notation}     = $category->{notation};
+        $cat{$id}{notationLong} = $category->{notationLong};
+
+        foreach my $pref ( as_array( $category->{prefLabel} ) ) {
+          $cat{$id}{prefLabel}{ $pref->{'@language'} } = $pref->{'@value'};
+        }
+        foreach my $note ( as_array( $category->{scopeNote} ) ) {
+          $cat{$id}{scopeNote}{ $note->{'@language'} } = $note->{'@value'};
+        }
+      } else {
+        die "Unexpectend type $type\n";
       }
     }
   }
@@ -300,9 +355,10 @@ sub get_subheadings {
     my $notation = $hash_ref->{$cat}{notation};
     next unless $notation =~ m/^[a-z]$/;
     foreach my $lang (@languages) {
-      $subheading{$notation}{$lang} =
-        $hash_ref->{$cat}{prefLabel}{$lang} || $hash_ref->{$cat}{prefLabel}{de};
+      $subheading{$notation}{$lang} = $hash_ref->{$cat}{prefLabel}{$lang}
+        || $hash_ref->{$cat}{prefLabel}{de};
     }
   }
   return %subheading;
 }
+
