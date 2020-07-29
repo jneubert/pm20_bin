@@ -253,12 +253,12 @@ foreach my $category_type ( keys %{$definitions_ref} ) {
       }
 
       # main entry
-      my $uri        = $entry->{pm20}->{value};
-      my $entry_note = '('
-        . $entry->{docs}->{value}
-        . ' <a href="'
+      my $uri = $entry->{pm20}->{value};
+      my $entry_note =
+          '(<a href="'
         . view_url($uri)
         . '" target="_blank">'
+        . $entry->{docs}->{value}
         . ( $lang eq 'en' ? ' documents' : ' Dokumente' ) . '</a>)';
       my $line = "- [$label]($uri) $entry_note";
       push( @lines, $line );
@@ -463,6 +463,7 @@ sub count_folders_per_category {
 sub view_url {
   my $folder_uri = shift or die "param missing";
 
+  # TODO use mets file from pm20 with pm20 image links
   my $viewer_stub =
     'https://dfg-viewer.de/show/?tx_dlf[id]=http://zbw.eu/beta/pm20mets';
 
