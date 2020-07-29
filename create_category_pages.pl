@@ -253,10 +253,14 @@ foreach my $category_type ( keys %{$definitions_ref} ) {
       }
 
       # main entry
+      my $uri        = $entry->{pm20}->{value};
       my $entry_note = '('
         . $entry->{docs}->{value}
-        . ( $lang eq 'en' ? ' documents' : ' Dokumente' ) . ')';
-      my $line = "- [$label]($entry->{pm20}->{value}) $entry_note";
+        . ' <a href="'
+        . view_url($uri)
+        . '" target="_blank">'
+        . ( $lang eq 'en' ? ' documents' : ' Dokumente' ) . '</a>)';
+      my $line = "- [$label]($uri) $entry_note";
       push( @lines, $line );
 
       # statistics
@@ -454,4 +458,27 @@ sub count_folders_per_category {
   }
   my $category_count = scalar( keys %count_data );
   return $category_count, $total_folder_count;
+}
+
+sub view_url {
+  my $folder_uri = shift or die "param missing";
+
+  my $viewer_stub =
+    'https://dfg-viewer.de/show/?tx_dlf[id]=http://zbw.eu/beta/pm20mets';
+
+  $folder_uri =~ m;/(pe|co|sh|wa)/(\d{6}),?(\d{6})?;;
+  my $type = $1;
+  my $id1  = $2;
+  my $id2  = $3;
+
+  my $view_url;
+  my $num_stub1 = substr( $id1, 0, 4 );
+  if ($id2) {
+    my $num_stub2 = substr( $id2, 0, 4 );
+    $view_url =
+      "$viewer_stub/$type/${num_stub1}xx/$id1/${num_stub2}xx/$id1,$id2.xml";
+  } else {
+    $view_url = "$viewer_stub/$type/${num_stub1}xx/$id1.xml";
+  }
+  return $view_url;
 }
