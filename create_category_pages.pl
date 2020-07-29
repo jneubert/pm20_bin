@@ -155,15 +155,27 @@ foreach my $category_type ( keys %{$definitions_ref} ) {
       ##print Dumper $category; exit;
       ## TODO improve query with explicit id
       $category->{country}->{value} =~ m/(\d{6})$/;
-      my $id        = $1;
-      my $signature = $category->{signature}->{value};
-      my $label     = $category->{countryLabel}->{value};
-      my $counter   = $geo{$id}{shFolderCount}
-        . ( $lang eq 'en' ? ' subject folders' : ' Sach-Mappen' );
+      my $id         = $1;
+      my $signature  = $category->{signature}->{value};
+      my $label      = $category->{countryLabel}->{value};
+      my $entry_note = (
+        defined $geo{$id}{geoCategoryType}
+        ? "$geo{$id}{geoCategoryType} "
+        : ''
+        )
+        . '('
+        . (
+        defined $geo{$id}{foldersComplete}
+          and $geo{$id}{foldersComplete} eq 'Y'
+        ? ( $lang eq 'en' ? 'complete, ' : 'komplett, ' )
+        : ''
+        )
+        . $geo{$id}{shFolderCount}
+        . ( $lang eq 'en' ? ' subject folders' : ' Sach-Mappen' ) . ')';
 
       # main entry
       my $line =
-        "- [$signature $label]" . "(i/$id/about.$lang.html) ($counter)";
+        "- [$signature $label]" . "(i/$id/about.$lang.html) $entry_note";
       push( @lines, $line );
     }
 
@@ -240,9 +252,10 @@ foreach my $category_type ( keys %{$definitions_ref} ) {
       }
 
       # main entry
-      my $counter = $entry->{docs}->{value}
-        . ( $lang eq 'en' ? ' documents' : ' Dokumente' );
-      my $line = "- [$label]" . "($entry->{pm20}->{value}) ($counter)";
+      my $entry_note = '('
+        . $entry->{docs}->{value}
+        . ( $lang eq 'en' ? ' documents' : ' Dokumente' ) . ')';
+      my $line = "- [$label]($entry->{pm20}->{value}) $entry_note";
       push( @lines, $line );
 
       # statistics
@@ -278,14 +291,20 @@ sub get_vocab {
         next unless exists $category->{broader};
 
         my $id = $category->{identifier};
-        $cat{$id}{notation}     = $category->{notation};
-        $cat{$id}{notationLong} = $category->{notationLong};
 
-        foreach my $pref ( as_array( $category->{prefLabel} ) ) {
-          $cat{$id}{prefLabel}{ $pref->{'@language'} } = $pref->{'@value'};
+        # map optional simple jsonld fields to hash entries
+        my @fields =
+          qw / notation notationLong foldersComplete geoCategoryType /;
+        foreach my $field (@fields) {
+          $cat{$id}{$field} = $category->{$field};
         }
-        foreach my $note ( as_array( $category->{scopeNote} ) ) {
-          $cat{$id}{scopeNote}{ $note->{'@language'} } = $note->{'@value'};
+
+        # map optional language-specifc jsonld fields to hash entries
+        @fields = qw / prefLabel scopeNote /;
+        foreach my $field (@fields) {
+          foreach my $ref ( as_array( $category->{$field} ) ) {
+            $cat{$id}{$field}{ $ref->{'@language'} } = $ref->{'@value'};
+          }
         }
       } else {
         die "Unexpectend type $type\n";
@@ -342,9 +361,25 @@ sub output_category_page {
     (
       $lang eq 'en'
       ? "In total $cat_meta{folder_count_first} subject folders,"
-        . " $cat_meta{document_count_first} documents."
+        . " $cat_meta{document_count_first} documents"
       : "Insgesamt $cat_meta{folder_count_first} Sach-Mappen,"
-        . " $cat_meta{document_count_first} Dokumente."
+        . " $cat_meta{document_count_first} Dokumente"
+    ),
+    (
+      defined $geo{$id}{foldersComplete}
+        and $geo{$id}{foldersComplete} eq 'Y'
+      ? ( $lang eq 'en' ? ' - complete.'   : ' - komplett.' )
+      : ( $lang eq 'en' ? ' - incomplete.' : ' - unvollständig.' )
+    ),
+    '',
+    (
+      not defined $geo{$id}{foldersComplete}
+        or $geo{$id}{foldersComplete} ne 'Y'
+      ? ( $lang eq 'en'
+        ? 'For material not published as folders, please check the [digitized films](/film/h1_sh) (in German).'
+        : 'Nicht als Mappe aufbereitetes Material finden Sie unter [digitalisierte Filme](/film/h1_sh).'
+        )
+      : ''
     ),
     ''
   );
