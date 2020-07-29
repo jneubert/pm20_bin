@@ -87,10 +87,15 @@ geo:
     prov: hwwa
 EOF
 
+# vocabulary data
 my %modified;
 my %geo                = get_vocab('ag');
 my %subject            = get_vocab('je');
 my %subheading_subject = get_subheadings( \%subject );
+
+# count folders and add to %geo
+my ( $geo_category_count, $total_sh_folder_count ) =
+  count_folders_per_category( 'sh', \%geo );
 
 # category overview pages
 foreach my $category_type ( keys %{$definitions_ref} ) {
@@ -106,12 +111,14 @@ foreach my $category_type ( keys %{$definitions_ref} ) {
       "title: \"$title\"",
       "etr: category_overview/$category_type",
       '---', '' );
+    my $backlinktitle =
+      $lang eq 'en'
+      ? 'back to Folders by Category system'
+      : 'zurück zu Mappen nach Systematik';
+    my $backlink = "[$backlinktitle](../about.$lang.html)";
+    push( @lines, $backlink,                        '' );
     push( @lines, "## $provenance" );
     push( @lines, "# $typedef_ref->{title}{$lang}", '' );
-    my $backlinktitle =
-      $lang eq 'en' ? 'Back to Category systems' : 'Zurück zu Systematiken';
-    my $backlink = "[$backlinktitle](../about.$lang.html)";
-    push( @lines, $backlink, '' );
 
     # read json input
     my $file =
@@ -120,19 +127,13 @@ foreach my $category_type ( keys %{$definitions_ref} ) {
       @{ decode_json( $file->slurp )->{results}->{bindings} };
 
     # statistics collecting and output
-    my ( $category_count, $sh_folder_count );
-    foreach my $category (@categories) {
-      if ( $category->{shCountLabel} ) {
-        $category_count++;
-        $sh_folder_count += $category->{shCountLabel}->{value};
-      }
-    }
+    my $category_count = $geo_category_count;
     push(
       @lines,
       (
         $lang eq 'en'
-        ? "In total $category_count categories, $sh_folder_count subject folders."
-        : "Insgesamt $category_count Systematikstellen, $sh_folder_count Sach-Mappen."
+        ? "In total $category_count categories, $total_sh_folder_count subject folders."
+        : "Insgesamt $category_count Systematikstellen, $total_sh_folder_count Sach-Mappen."
       ),
       ''
     );
@@ -157,7 +158,7 @@ foreach my $category_type ( keys %{$definitions_ref} ) {
       my $id        = $1;
       my $signature = $category->{signature}->{value};
       my $label     = $category->{countryLabel}->{value};
-      my $counter   = $category->{shCountLabel}->{value}
+      my $counter   = $geo{$id}{shFolderCount}
         . ( $lang eq 'en' ? ' subject folders' : ' Sach-Mappen' );
 
       # main entry
@@ -322,14 +323,14 @@ sub output_category_page {
     "title: \"$title\"",
     "etr: category/$cat_meta{category_type}/$geo{$id}{notation}",
     '---', '' );
-  push( @output, "## $cat_meta{provenance}", '' );
-  push( @output, "# $title", '' );
   my $backlinktitle =
     $lang eq 'en'
-    ? 'Back to Category Overview'
-    : 'Zurück zur Systematik-Übersicht';
+    ? 'back to Category Overview'
+    : 'zurück zur Systematik-Übersicht';
   my $backlink = "[$backlinktitle](../../about.$lang.html)";
   push( @output, $backlink, '', '' );
+  push( @output, "## $cat_meta{provenance}", '' );
+  push( @output, "# $title", '' );
 
   if ( $geo{$id}{scopeNote}{$lang} ) {
     push( @output, "> Scope Note: $geo{$id}{scopeNote}{$lang}", '' );
@@ -382,3 +383,30 @@ sub get_subheadings {
   return %subheading;
 }
 
+sub count_folders_per_category {
+  my $type    = shift or die "param missing";
+  my $cat_ref = shift or die "param missing";
+
+  my %count_data;
+  my $total_folder_count;
+
+  # subject folder data
+  # read json input (all folders for all categories)
+  my $file = $folderdata_root->child("subject_folders.de.json");
+  my @folders =
+    @{ decode_json( $file->slurp )->{results}->{bindings} };
+
+  foreach my $folder (@folders) {
+    $folder->{pm20}->{value} =~ m/(\d{6}),(\d{6})$/;
+    my $id1 = $1;
+    my $id2 = $2;
+    $count_data{$id1}{$id2}++;
+  }
+  foreach my $entry ( keys %count_data ) {
+    my $count = scalar( keys %{ $count_data{$entry} } );
+    $cat_ref->{$entry}{"${type}FolderCount"} = $count;
+    $total_folder_count += $count;
+  }
+  my $category_count = scalar( keys %count_data );
+  return $category_count, $total_folder_count;
+}
