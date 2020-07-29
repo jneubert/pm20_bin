@@ -116,7 +116,7 @@ foreach my $category_type ( keys %{$definitions_ref} ) {
       ? 'back to Folders by Category system'
       : 'zurück zu Mappen nach Systematik';
     my $backlink = "[$backlinktitle](../about.$lang.html)";
-    push( @lines, $backlink,                        '' );
+    push( @lines, '::: {.hint}', $backlink, ':::', '' );
     push( @lines, "## $provenance" );
     push( @lines, "# $typedef_ref->{title}{$lang}", '' );
 
@@ -179,10 +179,11 @@ foreach my $category_type ( keys %{$definitions_ref} ) {
       push( @lines, $line );
     }
 
-    push( @lines, '',
+    push( @lines,
+      '', '::: {.hint}',
       ( $lang eq 'en' ? 'As of ' : 'Stand: ' ) . $modified{ag} );
 
-    push( @lines, '', $backlink, '' );
+    push( @lines, '', $backlink, ':::', '' );
 
     my $out = $web_root->child($category_type)->child("about.$lang.md");
     $out->spew_utf8( join( "\n", @lines ) );
@@ -347,7 +348,7 @@ sub output_category_page {
     ? 'back to Category Overview'
     : 'zurück zur Systematik-Übersicht';
   my $backlink = "[$backlinktitle](../../about.$lang.html)";
-  push( @output, $backlink, '', '' );
+  push( @output, '::: {.hint}', $backlink, ':::', '' );
   push( @output, "## $cat_meta{provenance}", '' );
   push( @output, "# $title", '' );
 
@@ -368,14 +369,16 @@ sub output_category_page {
     (
       defined $geo{$id}{foldersComplete}
         and $geo{$id}{foldersComplete} eq 'Y'
-      ? ( $lang eq 'en' ? ' - complete.'   : ' - komplett.' )
-      : ( $lang eq 'en' ? ' - incomplete.' : ' - unvollständig.' )
+      ? ( $lang eq 'en' ? ' - folders complete.' : ' - Mappen komplett.' )
+      : (
+        $lang eq 'en' ? ' - folders incomplete.' : ' - Mappen unvollständig.' )
     ),
     '',
     (
       not defined $geo{$id}{foldersComplete}
         or $geo{$id}{foldersComplete} ne 'Y'
-      ? ( $lang eq 'en'
+      ? (
+        $lang eq 'en'
         ? 'For material not published as folders, please check the [digitized films](/film/h1_sh) (in German).'
         : 'Nicht als Mappe aufbereitetes Material finden Sie unter [digitalisierte Filme](/film/h1_sh).'
         )
@@ -389,11 +392,18 @@ sub output_category_page {
   # the actual page content
   push( @output, @{$lines_ref} );
 
+  if ( $lang eq 'en' ) {
+    push( @output,
+      '',
+      '_The translation of the German subject category labels is incomplete,'
+        . ' therefore some labels (in italics) are given in German._' );
+  }
   my $last_modified =
     $modified{ag} ge $modified{je} ? $modified{ag} : $modified{je};
   push( @output,
-    '', ( $lang eq 'en' ? 'As of ' : 'Stand: ' ) . $last_modified, '' );
-  push( @output, $backlink, '', '' );
+    '', '::: {.hint}',
+    ( $lang eq 'en' ? 'As of ' : 'Stand: ' ) . $last_modified, '' );
+  push( @output, $backlink, ':::', '' );
 
   my $out_dir =
     $web_root->child( $cat_meta{category_type} )->child('i')->child($id);
