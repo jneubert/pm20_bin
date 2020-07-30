@@ -96,10 +96,11 @@ foreach my $prov ( keys %page ) {
       '---',
       "title: \"$page_name: $title | ZBW Pressearchive\"",
       "etr: filmlist/$coll",
+      "backlink: ./about.de.html",
+      "backlink-title: Film-Überblick",
       '---', '' );
     push( @lines, "## $page{$prov}{name}",                   '' );
     push( @lines, "# $page{$prov}{list}{$page_name}{title}", '' );
-    push( @lines, "[zurück zum Film-Überblick](.)",        '' );
     push( @lines,
 'Aus urheberrechtlichen Gründen sind die digitalisierten Filme nur im ZBW-Lesesaal zugänglich. *Bitte überprüfen Sie eigenverantwortlich vor einer Vervielfältigung oder Veröffentlichung einzelner Artikel deren urheberrechtlichen Status* ([Hinweise](#urheberrecht)) und holen Sie ggf. die Rechte bei den Rechteinhabern ein.',
       '' );
@@ -145,7 +146,7 @@ foreach my $prov ( keys %page ) {
 
     # close table div
     push( @lines, '', ':::', '' );
-    push( @lines, "[zurück zum Film-Überblick](.)", '', $ip_hints );
+    push( @lines, $ip_hints );
 
     # write output to public
     my $out = $film_public_root->child( $page_name . '.de.md' );

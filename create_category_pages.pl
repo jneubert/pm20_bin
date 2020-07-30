@@ -93,6 +93,10 @@ my %geo                = get_vocab('ag');
 my %subject            = get_vocab('je');
 my %subheading_subject = get_subheadings( \%subject );
 
+# last modification of any vocbulary
+$modified{_last} =
+  $modified{ag} ge $modified{je} ? $modified{ag} : $modified{je};
+
 # count folders and add to %geo
 my ( $geo_category_count, $total_sh_folder_count ) =
   count_folders_per_category( 'sh', \%geo );
@@ -106,17 +110,19 @@ foreach my $category_type ( keys %{$definitions_ref} ) {
     my $provenance = $prov{ $typedef_ref->{prov} }{name}{$lang};
 
     # some header information for the page
+    my $backlinktitle =
+      $lang eq 'en'
+      ? 'Folders by Category system'
+      : 'Mappen nach Systematik';
     push( @lines,
       '---',
       "title: \"$title\"",
       "etr: category_overview/$category_type",
-      '---', '' );
-    my $backlinktitle =
-      $lang eq 'en'
-      ? 'back to Folders by Category system'
-      : 'zurück zu Mappen nach Systematik';
-    my $backlink = "[$backlinktitle](../about.$lang.html)";
-    push( @lines, '::: {.hint}', $backlink, ':::', '' );
+      "modified: $modified{_last}",
+      "backlink: ../about.$lang.html",
+      "backlink-title: \"$backlinktitle\"",
+      '---',
+      '' );
     push( @lines, "## $provenance" );
     push( @lines, "# $typedef_ref->{title}{$lang}", '' );
 
@@ -178,12 +184,6 @@ foreach my $category_type ( keys %{$definitions_ref} ) {
         "- [$signature $label]" . "(i/$id/about.$lang.html) $entry_note";
       push( @lines, $line );
     }
-
-    push( @lines,
-      '', '::: {.hint}',
-      ( $lang eq 'en' ? 'As of ' : 'Stand: ' ) . $modified{ag} );
-
-    push( @lines, '', $backlink, ':::', '' );
 
     my $out = $web_root->child($category_type)->child("about.$lang.md");
     $out->spew_utf8( join( "\n", @lines ) );
@@ -342,17 +342,19 @@ sub output_category_page {
 
   my $title = "$geo{$id}{notation} $geo{$id}{prefLabel}{$lang}";
   my @output;
+  my $backlinktitle =
+    $lang eq 'en'
+    ? 'Category Overview'
+    : 'Systematik-Übersicht';
   push( @output,
     '---',
     "title: \"$title\"",
     "etr: category/$cat_meta{category_type}/$geo{$id}{notation}",
-    '---', '' );
-  my $backlinktitle =
-    $lang eq 'en'
-    ? 'back to Category Overview'
-    : 'zurück zur Systematik-Übersicht';
-  my $backlink = "[$backlinktitle](../../about.$lang.html)";
-  push( @output, '::: {.hint}', $backlink, ':::', '' );
+    "modified: $modified{_last}",
+    "backlink: ../../about.$lang.html",
+    "backlink-title: \"$backlinktitle\"",
+    '---',
+    '' );
   push( @output, "## $cat_meta{provenance}", '' );
   push( @output, "# $title", '' );
 
@@ -402,12 +404,6 @@ sub output_category_page {
       '_The translation of the German subject category labels is incomplete,'
         . ' therefore some labels (in italics) are given in German._' );
   }
-  my $last_modified =
-    $modified{ag} ge $modified{je} ? $modified{ag} : $modified{je};
-  push( @output,
-    '', '::: {.hint}',
-    ( $lang eq 'en' ? 'As of ' : 'Stand: ' ) . $last_modified, '' );
-  push( @output, $backlink, ':::', '' );
 
   my $out_dir =
     $web_root->child( $cat_meta{category_type} )->child('i')->child($id);
