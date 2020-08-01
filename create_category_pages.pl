@@ -113,13 +113,13 @@ category system. The corresponding countries and regions - e.g. the Middle
 East, Japan, the former German colonies or Hamburg - are marked "complete" in
 the list below. However, many small and large countries such as Great Britain,
 China, India, France or the USA are missing at all or are only represented by a
-few folders originating from the "Forschungsstelle für das Übersee-Deutschum".
+few folders originating from the "Forschungsstelle für das Übersee-Deutschtum".
 
 All unprocessed material is accessible under [digitized
 films](/film/h1_sh.de.html) (in German), including material from the [second
 filming (until 1960)](/film/h2_sh.de.html) - for copyright reasons, however,
 unfortunately only in the ZBW reading room. The [complete country category
-system](https://pm20.zbw.eu/report/pm20_result.de.html?jsonFile=vocab/geo_by_signature.json&main_title=L%C3%A4ndersystematik)
+system](https://pm20.zbw.eu/report/pm20_result.de.html?jsonFile=vocab/geo_by_signature.en.json&main_title=Country+category+system)
 is available online.
   },
 );
@@ -160,7 +160,7 @@ foreach my $category_type ( keys %{$definitions_ref} ) {
       "backlink-title: \"$backlinktitle\"",
       '---',
       '' );
-    push( @lines, "## $provenance" );
+    push( @lines, "### $provenance" );
     push( @lines, "# $typedef_ref->{title}{$lang}", '' );
 
     # read json input
@@ -264,14 +264,12 @@ foreach my $category_type ( keys %{$definitions_ref} ) {
       $entry->{pm20}->{value} =~ m/(\d{6}),(\d{6})$/;
       my $id1   = $1;
       my $id2   = $2;
-      my $label = "$subject{$id2}{notation} ";
-      if ( $subject{$id2}{prefLabel}{$lang} ) {
-        $label .= $subject{$id2}{prefLabel}{$lang};
-      } else {
-
-        # temporary, German label in italics
-        $label .= "_$subject{$id2}{prefLabel}{de}_";
+      my $label = $subject{$id2}{prefLabel}{$lang};
+      ## mark unchecked translations
+      if ( substr( $label, 0, 2 ) eq '. ' ) {
+        $label = substr( $label, 2 ) . '<sup>*</sup>';
       }
+      $label = "$subject{$id2}{notation} $label";
 
       # first level control break - new category page
       if ( $id1_old ne '' and $id1 ne $id1_old ) {
@@ -396,7 +394,7 @@ sub output_category_page {
     "backlink-title: \"$backlinktitle\"",
     '---',
     '' );
-  push( @output, "## $cat_meta{provenance}", '' );
+  push( @output, "### $cat_meta{provenance}", '' );
   push( @output, "# $title", '' );
 
   if ( $geo{$id}{scopeNote}{$lang} ) {
@@ -431,7 +429,15 @@ sub output_category_page {
         )
       : ''
     ),
-    ''
+    '',
+    $lang eq 'en'
+    ? '_For direct access to the documents, click the "(xy documents)" link._'
+    : '_Klicken Sie den Link unter "(xy Dokumente)" für die Dokumentanzeige im DFG-Viewer._',
+    '',
+    $lang eq 'en'
+    ? '## Subject archives'
+    : '## Sacharchiv',
+    '',
   );
   $cat_meta_ref->{folder_count_first}   = 0;
   $cat_meta_ref->{document_count_first} = 0;
@@ -442,8 +448,8 @@ sub output_category_page {
   if ( $lang eq 'en' ) {
     push( @output,
       '',
-      '_The translation of the German subject category labels is incomplete,'
-        . ' therefore some labels (in italics) are given in German._' );
+'<em><sup>*</sup> The English category label is an unchecked automated  translation of the German label.</em>'
+    );
   }
 
   my $out_dir =
