@@ -242,7 +242,7 @@ foreach my $category_type ( keys %{$definitions_ref} ) {
     my @entries =
       @{ decode_json( $file->slurp )->{results}->{bindings} };
 
-    # read subject categories and create lookup file
+    # read subject categories
     $file = $klassdata_root->child("subject_by_signature.$lang.json");
     my @subject_categories =
       @{ decode_json( $file->slurp )->{results}->{bindings} };
@@ -256,6 +256,7 @@ foreach my $category_type ( keys %{$definitions_ref} ) {
     );
     my @lines;
     my $id1_old         = '';
+    my $id2_old         = '';
     my $firstletter_old = '';
     foreach my $entry (@entries) {
       ##print Dumper $entry;exit;
@@ -300,6 +301,17 @@ foreach my $category_type ( keys %{$definitions_ref} ) {
         . $entry->{docs}->{value}
         . ( $lang eq 'en' ? ' documents' : ' Dokumente' ) . '</a>)';
       my $line = "- [$label]($uri) $entry_note";
+
+      # additional indent for Sondermappen
+      # TODO implement properly - needs a hierarchical model of subject categories!
+      # Has also to deal with first element (e.g., n Economy)
+      ##if ($label =~ m/ Sm\d/ and $firstletter ne 'q') {
+      ##  if (get_firstsig($id2_old, \%subject) ne get_firstsig($id2, \%subject)) {
+      ##    ## insert non-linked intermediate item
+      ##    push(@lines, "- $subject{$id2_old}{notation} $subject{$id2_old}{prefLabel}{$lang}");
+      ##  }        $line = "  $line";
+      ##}
+      $id2_old = $id2;
       push( @lines, $line );
 
       # statistics
@@ -525,4 +537,14 @@ sub view_url {
     $view_url = "$viewer_stub/$type/${num_stub1}xx/$id1.xml";
   }
   return $view_url;
+}
+
+sub get_firstsig {
+  my $id = shift or die "param missing";
+  my $lookup_ref = shift or die "param missing";
+
+  my $signature = $lookup_ref->{$id}->{notation};
+  my $firstsig = (split(/ /, $signature))[0];
+
+  return $firstsig;
 }
