@@ -41,6 +41,7 @@ Readonly my %RES_EXT => (
   MIN     => '_C.JPG',
 );
 
+# url_stub mappings according to ??_image.json
 my %conf = (
 
   #  test => {
@@ -91,6 +92,7 @@ if ( scalar(@ARGV) == 1 ) {
     my $folder_id = $1;
 
     # TODO check existence of folder directory
+    # TODO (proc empty)
     mk_folder($folder_id);
   } elsif ( $ARGV[0] eq 'ALL' ) {
     mk_all();
@@ -163,9 +165,9 @@ sub mk_collection {
 
     # create url aliases for awstats
     if ($url_fh) {
-    print $url_fh "/beta/pm20mets/$collection/"
-      . get_folder_relative_path($folder_id)
-      . "/${folder_id}.xml\t$label\n";
+      print $url_fh "/beta/pm20mets/$collection/"
+        . get_folder_relative_path($folder_id)
+        . "/${folder_id}.xml\t$label\n";
     }
   }
 }
@@ -315,7 +317,8 @@ sub write_mets {
   # TODO change logic for relative path - not save for sh/wa!!
   my $relative_path = get_folder_relative_path($folder_id);
 
-  my $mets_dir = $METS_ROOT->child($collection)->child($relative_path)->child($folder_id);
+  my $mets_dir =
+    $METS_ROOT->child($collection)->child($relative_path)->child($folder_id);
   $mets_dir->mkpath;
   my $mets_file = $mets_dir->child("public.mets.de.xml");
   $mets_file->spew( $tmpl->output() );
