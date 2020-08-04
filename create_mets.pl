@@ -12,6 +12,7 @@
 # TODO
 # - extend to english
 # - extend to internal and external
+# - read data form aggregated folderdata and docdata
 
 use strict;
 use warnings;
@@ -70,6 +71,7 @@ my %conf = (
     prefix     => 'sa/',
     url_stub   => {
       '/mnt/sach/S' => 'http://webopac.hwwa.de/DigiSach/S/',
+      '/mnt/sach/S' => 'https://pm20.zbw.eu/folder/sh/',
     },
   },
   wa => {
@@ -81,6 +83,11 @@ my %conf = (
   },
 );
 
+my (
+  $docdata_file, $imagedata_file, $folderdata_file,
+  $docdata_ref,  $imagedata_ref,  $folderdata_ref
+);
+
 my $tmpl = HTML::Template->new( filename => '../etc/html_tmpl/mets.tmpl' );
 
 # check arguments
@@ -88,12 +95,18 @@ if ( scalar(@ARGV) == 1 ) {
   if ( $ARGV[0] =~ m:^(co|pe|wa|sh)$: ) {
     my $collection = $1;
     mk_collection($collection);
-  } elsif ( $ARGV[0] =~ m:^((co|pe)/\d{6}|(sh|wa)/\d{6},\d{6})$: ) {
-    my $folder_id = $1;
+  } elsif ( $ARGV[0] =~ m:^(co|pe)/(\d{6}): ) {
+    my $collection = $1;
+    my $folder_id  = $2;
 
     # TODO check existence of folder directory
-    # TODO (proc empty)
-    mk_folder($folder_id);
+    mk_folder( $collection, $folder_id );
+  } elsif ( $ARGV[0] =~ m:^(sh|wa)/(\d{6},\d{6})$: ) {
+    my $collection = $1;
+    my $folder_id  = $2;
+
+    # TODO check existence of folder directory
+    mk_folder( $collection, $folder_id );
   } elsif ( $ARGV[0] eq 'ALL' ) {
     mk_all();
   } else {
@@ -102,11 +115,6 @@ if ( scalar(@ARGV) == 1 ) {
 } else {
   &usage;
 }
-
-my (
-  $docdata_file, $imagedata_file, $folderdata_file,
-  $docdata_ref,  $imagedata_ref,  $folderdata_ref
-);
 
 ####################
 
@@ -128,54 +136,67 @@ sub mk_collection {
   my $url_fh     = shift;
 
   # load input files
+  load_files($collection);
+
+  foreach my $folder_id ( sort keys %{$docdata_ref} ) {
+    mk_folder( $collection, $folder_id, $url_fh );
+  }
+}
+
+sub mk_folder {
+  my $collection = shift || die "param missing";
+  my $folder_id  = shift || die "param missing";
+  my $url_fh     = shift;
+
+  # open files if necessary
+  # (check with arbitrary entry)
+  if ( not defined $imagedata_ref->{root} ) {
+    load_files($collection);
+  }
+
+  # skip if none of the folder's articles are free
+  return unless exists $docdata_ref->{$folder_id}{free};
+
+  my $label =
+    get_folderlabel( $folder_id, $conf{$collection}{type_label} );
+  my $pdf_url =
+      $PDF_ROOT_URI
+    . "$collection/"
+    . get_folder_relative_path($folder_id)
+    . "/${folder_id}.pdf";
+
+  my %tmpl_var = (
+    pref_label    => $label,
+    uri           => "$FOLDER_ROOT_URI$conf{$collection}{prefix}$folder_id",
+    folder_id     => $folder_id,
+    file_grp_loop => build_file_grp( $conf{$collection}, $folder_id ),
+    phys_loop     => build_phys_struct($folder_id),
+    log_loop      => build_log_struct($folder_id),
+    link_loop     => build_link($folder_id),
+    pdf_url       => $pdf_url,
+  );
+  $tmpl->param( \%tmpl_var );
+
+  # write mets file for the folder
+  write_mets( $collection, $folder_id, $tmpl );
+
+  # create url aliases for awstats
+  if ($url_fh) {
+    print $url_fh "/beta/pm20mets/$collection/"
+      . get_folder_relative_path($folder_id)
+      . "/${folder_id}.xml\t$label\n";
+  }
+}
+
+sub load_files {
+  my $collection = shift || die "param missing";
   $docdata_file    = $DOCDATA_ROOT->child("${collection}_docdata.json");
   $docdata_ref     = decode_json( $docdata_file->slurp );
   $imagedata_file  = $IMAGEDATA_ROOT->child("${collection}_image.json");
   $imagedata_ref   = decode_json( $imagedata_file->slurp );
   $folderdata_file = $FOLDERDATA_ROOT->child("${collection}_label.json");
   $folderdata_ref  = decode_json( $folderdata_file->slurp );
-
-  foreach my $folder_id ( sort keys %{$docdata_ref} ) {
-
-    # skip if none of the folder's articles are free
-    next unless exists $docdata_ref->{$folder_id}{free};
-
-    my $label =
-      get_folderlabel( $folder_id, $conf{$collection}{type_label} );
-    my $pdf_url =
-        $PDF_ROOT_URI
-      . "$collection/"
-      . get_folder_relative_path($folder_id)
-      . "/${folder_id}.pdf";
-
-    my %tmpl_var = (
-      pref_label    => $label,
-      uri           => "$FOLDER_ROOT_URI$conf{$collection}{prefix}$folder_id",
-      folder_id     => $folder_id,
-      file_grp_loop => build_file_grp( $conf{$collection}, $folder_id ),
-      phys_loop     => build_phys_struct($folder_id),
-      log_loop      => build_log_struct($folder_id),
-      link_loop     => build_link($folder_id),
-      pdf_url       => $pdf_url,
-    );
-    $tmpl->param( \%tmpl_var );
-
-    # write mets file for the folder
-    write_mets( $collection, $folder_id, $tmpl );
-
-    # create url aliases for awstats
-    if ($url_fh) {
-      print $url_fh "/beta/pm20mets/$collection/"
-        . get_folder_relative_path($folder_id)
-        . "/${folder_id}.xml\t$label\n";
-    }
-  }
 }
-
-sub mk_folder {
-}
-
-####################
 
 sub build_file_grp {
   my $collection_ref = shift || die "param missing";
