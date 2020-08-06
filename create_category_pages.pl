@@ -9,12 +9,15 @@ use warnings;
 use utf8;
 binmode( STDOUT, ":utf8" );
 
+use lib './lib';
+
 use Data::Dumper;
 use JSON;
 use Path::Tiny;
 use Readonly;
 use Scalar::Util qw(looks_like_number reftype);
 use YAML;
+use ZBW::PM20x::Vocab;
 
 my $web_root        = path('../web.public/category');
 my $klassdata_root  = path('../data/klassdata');
@@ -125,18 +128,18 @@ is available online.
 );
 
 # vocabulary data
-my %modified;
-my %geo                = get_vocab('ag');
-my %subject            = get_vocab('je');
-my %subheading_subject = get_subheadings( \%subject );
+my ( $geo_ref, $geo_siglookup_ref, $geo_modified ) =
+  ZBW::PM20x::Vocab::get_vocab( path("$rdf_root/ag.skos.jsonld") );
+my ( $subject_ref, $subject_siglookup_ref, $subject_modified ) =
+  ZBW::PM20x::Vocab::get_vocab( path("$rdf_root/je.skos.jsonld") );
+my %subheading_subject = get_subheadings($subject_ref);
 
 # last modification of any vocbulary
-$modified{_last} =
-  $modified{ag} ge $modified{je} ? $modified{ag} : $modified{je};
+my $last_modified = $geo_modified ge $subject_modified ? $geo_modified : $subject_modified;
 
 # count folders and add to %geo
 my ( $geo_category_count, $total_sh_folder_count ) =
-  count_folders_per_category( 'sh', \%geo );
+  count_folders_per_category( 'sh', $geo_ref );
 
 # category overview pages
 foreach my $category_type ( keys %{$definitions_ref} ) {
@@ -155,7 +158,7 @@ foreach my $category_type ( keys %{$definitions_ref} ) {
       '---',
       "title: \"$title\"",
       "etr: category_overview/$category_type",
-      "modified: $modified{_last}",
+      "modified: $last_modified",
       "backlink: ../about.$lang.html",
       "backlink-title: \"$backlinktitle\"",
       'fn-stub: about',
@@ -207,18 +210,18 @@ foreach my $category_type ( keys %{$definitions_ref} ) {
       my $signature  = $category->{signature}->{value};
       my $label      = $category->{countryLabel}->{value};
       my $entry_note = (
-        defined $geo{$id}{geoCategoryType}
-        ? "$geo{$id}{geoCategoryType} "
+        defined $geo_ref->{$id}{geoCategoryType}
+        ? "$geo_ref->{$id}{geoCategoryType} "
         : ''
         )
         . '('
         . (
-        defined $geo{$id}{foldersComplete}
-          and $geo{$id}{foldersComplete} eq 'Y'
+        defined $geo_ref->{$id}{foldersComplete}
+          and $geo_ref->{$id}{foldersComplete} eq 'Y'
         ? ( $lang eq 'en' ? 'complete, ' : 'komplett, ' )
         : ''
         )
-        . $geo{$id}{shFolderCount}
+        . $geo_ref->{$id}{shFolderCount}
         . ( $lang eq 'en' ? ' subject folders' : ' Sach-Mappen' ) . ')';
 
       # main entry
@@ -266,12 +269,12 @@ foreach my $category_type ( keys %{$definitions_ref} ) {
       $entry->{pm20}->{value} =~ m/(\d{6}),(\d{6})$/;
       my $id1   = $1;
       my $id2   = $2;
-      my $label = $subject{$id2}{prefLabel}{$lang};
+      my $label = $subject_ref->{$id2}{prefLabel}{$lang};
       ## mark unchecked translations
       if ( substr( $label, 0, 2 ) eq '. ' ) {
         $label = substr( $label, 2 ) . '<sup>*</sup>';
       }
-      $label = "$subject{$id2}{notation} $label";
+      $label = "$subject_ref->{$id2}{notation} $label";
 
       # first level control break - new category page
       if ( $id1_old ne '' and $id1 ne $id1_old ) {
@@ -303,13 +306,13 @@ foreach my $category_type ( keys %{$definitions_ref} ) {
         . ( $lang eq 'en' ? ' documents' : ' Dokumente' ) . '</a>)';
       my $line = "- [$label]($uri) $entry_note";
 
-      # additional indent for Sondermappen
-      # TODO implement properly - needs a hierarchical model of subject categories!
-      # Has also to deal with first element (e.g., n Economy)
+   # additional indent for Sondermappen
+   # TODO implement properly - needs a hierarchical model of subject categories!
+   # Has also to deal with first element (e.g., n Economy)
       ##if ($label =~ m/ Sm\d/ and $firstletter ne 'q') {
       ##  if (get_firstsig($id2_old, \%subject) ne get_firstsig($id2, \%subject)) {
       ##    ## insert non-linked intermediate item
-      ##    push(@lines, "- $subject{$id2_old}{notation} $subject{$id2_old}{prefLabel}{$lang}");
+      ##    push(@lines, "- $subject_ref->{$id2_old}{notation} $subject_ref->{$id2_old}{prefLabel}{$lang}");
       ##  }        $line = "  $line";
       ##}
       $id2_old = $id2;
@@ -327,64 +330,6 @@ foreach my $category_type ( keys %{$definitions_ref} ) {
 
 ############
 
-sub get_vocab {
-  my $vocab = shift or die "param missing";
-
-  my %cat;
-  foreach my $lang (@languages) {
-    my $file = $rdf_root->child("$vocab.skos.jsonld");
-    my @categories =
-      @{ decode_json( $file->slurp )->{'@graph'} };
-
-    # read jsonld graph
-    foreach my $category (@categories) {
-
-      my $type = $category->{'@type'};
-      if ( $type eq 'skos:ConceptScheme' ) {
-        $modified{$vocab} = $category->{modified};
-      } elsif ( $type eq 'skos:Concept' ) {
-
-        # skip orphan entries
-        next unless exists $category->{broader};
-
-        my $id = $category->{identifier};
-
-        # map optional simple jsonld fields to hash entries
-        my @fields =
-          qw / notation notationLong foldersComplete geoCategoryType /;
-        foreach my $field (@fields) {
-          $cat{$id}{$field} = $category->{$field};
-        }
-
-        # map optional language-specifc jsonld fields to hash entries
-        @fields = qw / prefLabel scopeNote /;
-        foreach my $field (@fields) {
-          foreach my $ref ( as_array( $category->{$field} ) ) {
-            $cat{$id}{$field}{ $ref->{'@language'} } = $ref->{'@value'};
-          }
-        }
-      } else {
-        die "Unexpectend type $type\n";
-      }
-    }
-  }
-  return %cat;
-}
-
-sub as_array {
-  my $ref = shift;
-
-  my @list = ();
-  if ($ref) {
-    if ( reftype($ref) eq 'ARRAY' ) {
-      @list = @{$ref};
-    } else {
-      @list = ($ref);
-    }
-  }
-  return @list;
-}
-
 sub output_category_page {
   my $lang         = shift or die "param missing";
   my $cat_meta_ref = shift or die "param missing";
@@ -392,7 +337,7 @@ sub output_category_page {
   my $lines_ref    = shift or die "param missing";
   my %cat_meta     = %{$cat_meta_ref};
 
-  my $title = "$geo{$id}{notation} $geo{$id}{prefLabel}{$lang}";
+  my $title = "$geo_ref->{$id}{notation} $geo_ref->{$id}{prefLabel}{$lang}";
   my @output;
   my $backlinktitle =
     $lang eq 'en'
@@ -401,8 +346,8 @@ sub output_category_page {
   push( @output,
     '---',
     "title: \"$title\"",
-    "etr: category/$cat_meta{category_type}/$geo{$id}{notation}",
-    "modified: $modified{_last}",
+    "etr: category/$cat_meta{category_type}/$geo_ref->{$id}{notation}",
+    "modified: $last_modified",
     "backlink: ../../about.$lang.html",
     "backlink-title: \"$backlinktitle\"",
     'fn-stub: about',
@@ -411,8 +356,8 @@ sub output_category_page {
   push( @output, "### $cat_meta{provenance}", '' );
   push( @output, "# $title", '' );
 
-  if ( $geo{$id}{scopeNote}{$lang} ) {
-    push( @output, "> Scope Note: $geo{$id}{scopeNote}{$lang}", '' );
+  if ( $geo_ref->{$id}{scopeNote}{$lang} ) {
+    push( @output, "> Scope Note: $geo_ref->{$id}{scopeNote}{$lang}", '' );
   }
 
   # output statistics
@@ -426,16 +371,16 @@ sub output_category_page {
         . " $cat_meta{document_count_first} Dokumente"
     ),
     (
-      defined $geo{$id}{foldersComplete}
-        and $geo{$id}{foldersComplete} eq 'Y'
+      defined $geo_ref->{$id}{foldersComplete}
+        and $geo_ref->{$id}{foldersComplete} eq 'Y'
       ? ( $lang eq 'en' ? ' - folders complete.' : ' - Mappen komplett.' )
       : (
         $lang eq 'en' ? ' - folders incomplete.' : ' - Mappen unvollständig.' )
     ),
     '',
     (
-      not defined $geo{$id}{foldersComplete}
-        or $geo{$id}{foldersComplete} ne 'Y'
+      not defined $geo_ref->{$id}{foldersComplete}
+        or $geo_ref->{$id}{foldersComplete} ne 'Y'
       ? (
         $lang eq 'en'
         ? 'For material not published as folders, please check the [digitized films](/film/h1_sh) (in German).'
@@ -542,11 +487,11 @@ sub view_url {
 }
 
 sub get_firstsig {
-  my $id = shift or die "param missing";
+  my $id         = shift or die "param missing";
   my $lookup_ref = shift or die "param missing";
 
   my $signature = $lookup_ref->{$id}->{notation};
-  my $firstsig = (split(/ /, $signature))[0];
+  my $firstsig  = ( split( / /, $signature ) )[0];
 
   return $firstsig;
 }
