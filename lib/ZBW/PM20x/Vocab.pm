@@ -74,6 +74,18 @@ sub get_vocab {
       }
     }
   }
+  # get the broader id for SM entries from first part of signature
+  foreach my $id (keys %cat) {
+    next unless $cat{$id}{notation} =~ m/ Sm\d/;
+    my ($firstsig) = split(/ /, $cat{$id}{notation});
+
+    # special case with artificially introduced x0 level
+    if ($firstsig =~ m/^([a-z])0$/) {
+      $firstsig = $1;
+    }
+    $cat{$id}{broader} = $lookup{$firstsig} or die "missing signature $firstsig\n";
+  }
+
   return \%cat, \%lookup, $modified;
 }
 

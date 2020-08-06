@@ -135,7 +135,8 @@ my ( $subject_ref, $subject_siglookup_ref, $subject_modified ) =
 my %subheading_subject = get_subheadings($subject_ref);
 
 # last modification of any vocbulary
-my $last_modified = $geo_modified ge $subject_modified ? $geo_modified : $subject_modified;
+my $last_modified =
+  $geo_modified ge $subject_modified ? $geo_modified : $subject_modified;
 
 # count folders and add to %geo
 my ( $geo_category_count, $total_sh_folder_count ) =
@@ -270,11 +271,9 @@ foreach my $category_type ( keys %{$definitions_ref} ) {
       my $id1   = $1;
       my $id2   = $2;
       my $label = $subject_ref->{$id2}{prefLabel}{$lang};
-      ## mark unchecked translations
-      if ( substr( $label, 0, 2 ) eq '. ' ) {
-        $label = substr( $label, 2 ) . '<sup>*</sup>';
-      }
-      $label = "$subject_ref->{$id2}{notation} $label";
+      $label = mark_unchecked_translation($label);
+      my $notation = $subject_ref->{$id2}{notation};
+      $label = "$notation $label";
 
       # first level control break - new category page
       if ( $id1_old ne '' and $id1 ne $id1_old ) {
@@ -306,15 +305,21 @@ foreach my $category_type ( keys %{$definitions_ref} ) {
         . ( $lang eq 'en' ? ' documents' : ' Dokumente' ) . '</a>)';
       my $line = "- [$label]($uri) $entry_note";
 
-   # additional indent for Sondermappen
-   # TODO implement properly - needs a hierarchical model of subject categories!
-   # Has also to deal with first element (e.g., n Economy)
-      ##if ($label =~ m/ Sm\d/ and $firstletter ne 'q') {
-      ##  if (get_firstsig($id2_old, \%subject) ne get_firstsig($id2, \%subject)) {
-      ##    ## insert non-linked intermediate item
-      ##    push(@lines, "- $subject_ref->{$id2_old}{notation} $subject_ref->{$id2_old}{prefLabel}{$lang}");
-      ##  }        $line = "  $line";
-      ##}
+      # additional indent for Sondermappen
+      # Has also to deal with first element (e.g., n Economy)
+      if ( $notation =~ m/ Sm\d/ and $firstletter ne 'q' ) {
+        if ( get_firstsig( $id2_old, $subject_ref ) ne
+          get_firstsig( $id2, $subject_ref ) and not $notation =~ m/^[a-z]0/ )
+        {
+          ## insert non-linked intermediate item
+          my $id_broader = $subject_ref->{$id2}{broader};
+          my $label      = mark_unchecked_translation(
+            $subject_ref->{$id_broader}{prefLabel}{$lang} );
+          push( @lines,
+            "- [$subject_ref->{$id_broader}{notation} $label]{.gray}" );
+        }
+        $line = "  $line";
+      }
       $id2_old = $id2;
       push( @lines, $line );
 
@@ -407,8 +412,8 @@ sub output_category_page {
   if ( $lang eq 'en' ) {
     push( @output,
       '',
-'<em><sup>*</sup> The English category label is an unchecked automated  translation of the German label.</em>'
-    );
+      '<em><sup>*</sup> The English category label is an unchecked '
+        . 'automated translation of the German label.</em>' );
   }
 
   my $out_dir =
@@ -494,4 +499,14 @@ sub get_firstsig {
   my $firstsig  = ( split( / /, $signature ) )[0];
 
   return $firstsig;
+}
+
+sub mark_unchecked_translation {
+  my $label = shift or die "param missing";
+
+  # mark unchecked translations
+  if ( substr( $label, 0, 2 ) eq '. ' ) {
+    $label = substr( $label, 2 ) . '<sup>*</sup>';
+  }
+  return $label;
 }
