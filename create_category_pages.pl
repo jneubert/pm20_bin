@@ -158,6 +158,7 @@ foreach my $category_type ( keys %{$definitions_ref} ) {
       "modified: $modified{_last}",
       "backlink: ../about.$lang.html",
       "backlink-title: \"$backlinktitle\"",
+      'fn-stub: about',
       '---',
       '' );
     push( @lines, "### $provenance" );
@@ -404,6 +405,7 @@ sub output_category_page {
     "modified: $modified{_last}",
     "backlink: ../../about.$lang.html",
     "backlink-title: \"$backlinktitle\"",
+    'fn-stub: about',
     '---',
     '' );
   push( @output, "### $cat_meta{provenance}", '' );
