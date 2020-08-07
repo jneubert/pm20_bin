@@ -42,6 +42,8 @@ Readonly my %RES_EXT => (
   MIN     => '_C.JPG',
 );
 
+Readonly my @LANGUAGES => qw/ en de /;
+
 # url_stub mappings according to ??_image.json
 my %conf = (
 
@@ -52,7 +54,10 @@ my %conf = (
   #    },
   #  },
   co => {
-    type_label => 'Firma',
+    type_label => {
+      de => 'Firma',
+      en => 'Company',
+    },
     prefix     => 'co/',
     url_stub   => {
       '/mnt/inst/F' => 'http://webopac.hwwa.de/DigiInst/F/',
@@ -60,22 +65,30 @@ my %conf = (
     },
   },
   pe => {
-    type_label => 'Person',
+    type_label => {
+      de => 'Person',
+      en => 'Person',
+    },
     prefix     => 'pe/',
     url_stub   => {
       '/mnt/digidata/P' => 'https://pm20.zbw.eu/folder/pe/',
     },
   },
   sh => {
-    type_label => 'Sach',
+    type_label => {
+      de => 'Sach',
+      en => 'Subject',
+    },
     prefix     => 'sa/',
     url_stub   => {
-      '/mnt/sach/S' => 'http://webopac.hwwa.de/DigiSach/S/',
       '/mnt/sach/S' => 'https://pm20.zbw.eu/folder/sh/',
     },
   },
   wa => {
-    type_label => 'Ware',
+    type_label => {
+      de => 'Ware',
+      en => 'Ware',
+    },
     prefix     => 'wa/',
     url_stub   => {
       '/mnt/ware/W' => 'http://webopac.hwwa.de/DigiWare/W/',
@@ -157,34 +170,37 @@ sub mk_folder {
   # skip if none of the folder's articles are free
   return unless exists $docdata_ref->{$folder_id}{free};
 
-  my $label =
-    get_folderlabel( $folder_id, $conf{$collection}{type_label} );
   my $pdf_url =
       $PDF_ROOT_URI
     . "$collection/"
     . get_folder_relative_path($folder_id)
     . "/${folder_id}.pdf";
 
-  my %tmpl_var = (
-    pref_label    => $label,
-    uri           => "$FOLDER_ROOT_URI$conf{$collection}{prefix}$folder_id",
-    folder_id     => $folder_id,
-    file_grp_loop => build_file_grp( $conf{$collection}, $folder_id ),
-    phys_loop     => build_phys_struct($folder_id),
-    log_loop      => build_log_struct($folder_id),
-    link_loop     => build_link($folder_id),
-    pdf_url       => $pdf_url,
-  );
-  $tmpl->param( \%tmpl_var );
+  foreach my $lang (@LANGUAGES) {
+    my $label =
+      get_folderlabel( $lang, $folder_id, $conf{$collection}{type_label}{$lang} );
 
-  # write mets file for the folder
-  write_mets( $collection, $folder_id, $tmpl );
+    my %tmpl_var = (
+      pref_label    => $label,
+      uri           => "$FOLDER_ROOT_URI$conf{$collection}{prefix}$folder_id",
+      folder_id     => $folder_id,
+      file_grp_loop => build_file_grp( $conf{$collection}, $folder_id ),
+      phys_loop     => build_phys_struct($folder_id),
+      log_loop      => build_log_struct($folder_id),
+      link_loop     => build_link($folder_id),
+      pdf_url       => $pdf_url,
+    );
+    $tmpl->param( \%tmpl_var );
 
-  # create url aliases for awstats
-  if ($url_fh) {
-    print $url_fh "/beta/pm20mets/$collection/"
-      . get_folder_relative_path($folder_id)
-      . "/${folder_id}.xml\t$label\n";
+    # write mets file for the folder
+    write_mets( $lang, $collection, $folder_id, $tmpl );
+
+    # create url aliases for awstats
+    if ( $url_fh and $lang eq 'de' ) {
+      print $url_fh "/beta/pm20mets/$collection/"
+        . get_folder_relative_path($folder_id)
+        . "/${folder_id}.xml\t$label\n";
+    }
   }
 }
 
@@ -329,6 +345,7 @@ sub build_link {
 }
 
 sub write_mets {
+  my $lang       = shift || die "param missing";
   my $collection = shift || die "param missing";
   my $folder_id  = shift || die "param missing";
   my $tmpl       = shift || die "param missing";
@@ -341,11 +358,12 @@ sub write_mets {
   my $mets_dir =
     $METS_ROOT->child($collection)->child($relative_path)->child($folder_id);
   $mets_dir->mkpath;
-  my $mets_file = $mets_dir->child("public.mets.de.xml");
+  my $mets_file = $mets_dir->child("public.mets.$lang.xml");
   $mets_file->spew( $tmpl->output() );
 }
 
 sub get_folderlabel {
+  my $lang       = shift || die "param missing";
   my $folder_id  = shift || die "param missing";
   my $type_label = shift || die "param missing";
 
@@ -406,7 +424,7 @@ sub get_doclabel {
       $label .= " ($field_ref->{pages} S.)";
     }
   } else {
-    warn "Missing pages for $doc_id: ", Dumper $field_ref;
+    ##warn "Missing pages for $doc_id: ", Dumper $field_ref;
   }
   return convert_label($label);
 }
