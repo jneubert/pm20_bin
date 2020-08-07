@@ -7,7 +7,10 @@ use warnings;
 
 use JSON;
 use Path::Tiny;
+use Readonly;
 use Scalar::Util qw(looks_like_number reftype);
+
+Readonly my $RDF_ROOT => path('../data/rdf');
 
 =head1 NAME
 
@@ -32,9 +35,10 @@ Read a SKOS vocabluary in JSONLD format into perl datastructures
 =cut
 
 sub get_vocab {
-  my $file = shift or die "param missing";
+  my $vocab = shift or die "param missing";
 
   my ( %cat, %lookup, $modified );
+  my $file = path("$RDF_ROOT/$vocab.skos.jsonld");
   foreach my $lang (qw/ en de /) {
     my @categories =
       @{ decode_json( $file->slurp )->{'@graph'} };

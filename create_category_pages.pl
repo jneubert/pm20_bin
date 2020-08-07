@@ -22,7 +22,6 @@ use ZBW::PM20x::Vocab;
 my $web_root        = path('../web.public/category');
 my $klassdata_root  = path('../data/klassdata');
 my $folderdata_root = path('../data/folderdata');
-my $rdf_root        = path('../data/rdf');
 
 my %prov = (
   hwwa => {
@@ -129,9 +128,9 @@ is available online.
 
 # vocabulary data
 my ( $geo_ref, $geo_siglookup_ref, $geo_modified ) =
-  ZBW::PM20x::Vocab::get_vocab( path("$rdf_root/ag.skos.jsonld") );
+  ZBW::PM20x::Vocab::get_vocab('ag');
 my ( $subject_ref, $subject_siglookup_ref, $subject_modified ) =
-  ZBW::PM20x::Vocab::get_vocab( path("$rdf_root/je.skos.jsonld") );
+  ZBW::PM20x::Vocab::get_vocab('je');
 my %subheading_subject = get_subheadings($subject_ref);
 
 # last modification of any vocbulary
