@@ -5,7 +5,7 @@
 # DFG-Viewer-suitable METS/MODS files per folder
 
 # can be invoked either by
-# - a folder id (e.g., pe/000012)
+# - an extended folder id (e.g., pe/000012)
 # - a collection id (e.g., pe)
 # - 'ALL' (to (re-) create all collections)
 
@@ -17,6 +17,8 @@
 use strict;
 use warnings;
 
+use lib './lib';
+
 use Data::Dumper;
 use Encode;
 use HTML::Entities;
@@ -24,6 +26,7 @@ use HTML::Template;
 use JSON;
 use Path::Tiny;
 use Readonly;
+use ZBW::PM20x::Folder;
 
 $Data::Dumper::Sortkeys = 1;
 
@@ -177,8 +180,8 @@ sub mk_folder {
     . "/${folder_id}.pdf";
 
   foreach my $lang (@LANGUAGES) {
-    my $label =
-      get_folderlabel( $lang, $folder_id, $conf{$collection}{type_label}{$lang} );
+    my $label = ZBW::PM20x::Folder::get_folderlabel( $lang, $collection, $folder_id );
+    $label = "$conf{$collection}{type_label}{$lang}: $label";
 
     my %tmpl_var = (
       pref_label    => $label,
@@ -362,30 +365,6 @@ sub write_mets {
   $mets_file->spew( $tmpl->output() );
 }
 
-sub get_folderlabel {
-  my $lang       = shift || die "param missing";
-  my $folder_id  = shift || die "param missing";
-  my $type_label = shift || die "param missing";
-
-  my %docdata = %{ $docdata_ref->{$folder_id} };
-
-  # preferably, get data from folder data
-  my $label;
-  if ( exists $folderdata_ref->{$folder_id} ) {
-    $label = $folderdata_ref->{$folder_id};
-  } elsif ( exists $docdata{info}{"00001"}{IPERS} ) {
-    $label = $docdata{info}{"00001"}{IPERS};
-  } elsif ( exists $docdata{info}{"00001"}{NFIRM}
-    and $docdata{info}{"00001"}{NFIRM} =~ m/::.+/ )
-  {
-    $label =
-      ( split( /::/, $docdata{info}{"00001"}{NFIRM} ) )[1];
-  } else {
-    $label = "$type_label $folder_id";
-  }
-  return convert_label($label);
-}
-
 sub get_doclabel {
   my $doc_id    = shift || die "param missing";
   my $field_ref = shift || die "param missing";
@@ -434,7 +413,6 @@ sub convert_label {
 
   $label = Encode::encode( 'utf-8', $label );
   $label = encode_entities( $label, '<>&"' );
-
   return $label;
 }
 
@@ -453,7 +431,7 @@ sub get_folder_relative_path {
 }
 
 sub usage {
-  print "Usage: $0 {folder-id}|{collection}|ALL\n";
+  print "Usage: $0 {extended-folder-id}|{collection}|ALL\n";
   exit 1;
 }
 
