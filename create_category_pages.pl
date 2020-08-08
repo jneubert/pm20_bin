@@ -17,6 +17,7 @@ use Path::Tiny;
 use Readonly;
 use Scalar::Util qw(looks_like_number reftype);
 use YAML;
+use ZBW::PM20x::Folder;
 use ZBW::PM20x::Vocab;
 
 my $web_root        = path('../web.public/category');
@@ -298,7 +299,7 @@ foreach my $category_type ( keys %{$definitions_ref} ) {
       my $uri = $entry->{pm20}->{value};
       my $entry_note =
           '(<a href="'
-        . view_url($uri)
+        . view_url( $lang, $uri )
         . '" target="_blank">'
         . $entry->{docs}->{value}
         . ( $lang eq 'en' ? ' documents' : ' Dokumente' ) . '</a>)';
@@ -467,26 +468,21 @@ sub count_folders_per_category {
 }
 
 sub view_url {
+  my $lang       = shift or die "param missing";
   my $folder_uri = shift or die "param missing";
 
-  # TODO use mets file from pm20 with pm20 image links
   my $viewer_stub =
-    'https://dfg-viewer.de/show/?tx_dlf[id]=http://zbw.eu/beta/pm20mets';
+    'https://dfg-viewer.de/show/?tx_dlf[id]=https://pm20.zbw.eu/mets/';
 
-  $folder_uri =~ m;/(pe|co|sh|wa)/(\d{6}),?(\d{6})?;;
-  my $type = $1;
-  my $id1  = $2;
-  my $id2  = $3;
+  $folder_uri =~ m;/(pe|co|sh|wa)/(\d{6}(,\d{6})?)$;;
+  my $collection = $1;
+  my $folder_id  = $2;
 
-  my $view_url;
-  my $num_stub1 = substr( $id1, 0, 4 );
-  if ($id2) {
-    my $num_stub2 = substr( $id2, 0, 4 );
-    $view_url =
-      "$viewer_stub/$type/${num_stub1}xx/$id1/${num_stub2}xx/$id1,$id2.xml";
-  } else {
-    $view_url = "$viewer_stub/$type/${num_stub1}xx/$id1.xml";
-  }
+  my $view_url =
+      $viewer_stub
+    . ZBW::PM20x::Folder::get_folder_hashed_path( $collection, $folder_id )
+    . "/public.mets.$lang.xml";
+
   return $view_url;
 }
 
