@@ -195,8 +195,8 @@ sub get_folder_hashed_path {
       or die "irregular folder_id: $folder_id for collection: $collection\n";
     my $id1   = $1;
     my $id2   = $2;
-    my $stub1 = substr( $id1, 0, 4 );
-    my $stub2 = substr( $id2, 0, 4 );
+    my $stub1 = substr( $id1, 0, 4 ) . 'xx';
+    my $stub2 = substr( $id2, 0, 4 ) . 'xx';
     $path = $path->child($stub1)->child($id1)->child($stub2)->child($id2);
   } else {
     die "wrong collection: $collection";
