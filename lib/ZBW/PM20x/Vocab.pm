@@ -12,6 +12,8 @@ use Scalar::Util qw(looks_like_number reftype);
 
 Readonly my $RDF_ROOT => path('../data/rdf');
 
+my %vocab_all;
+
 =head1 NAME
 
 ZBW::PM20x::Vocab - Functions for PM20 vocabularies
@@ -37,60 +39,71 @@ Read a SKOS vocabluary in JSONLD format into perl datastructures
 sub get_vocab {
   my $vocab = shift or die "param missing";
 
-  my ( %cat, %lookup, $modified );
-  my $file = path("$RDF_ROOT/$vocab.skos.jsonld");
-  foreach my $lang (qw/ en de /) {
-    my @categories =
-      @{ decode_json( $file->slurp )->{'@graph'} };
+  if ( not defined $vocab_all{$vocab} ) {
 
-    # read jsonld graph
-    foreach my $category (@categories) {
+    my ( %cat, %lookup, $modified );
+    my $file = path("$RDF_ROOT/$vocab.skos.jsonld");
+    foreach my $lang (qw/ en de /) {
+      my @categories =
+        @{ decode_json( $file->slurp )->{'@graph'} };
 
-      my $type = $category->{'@type'};
-      if ( $type eq 'skos:ConceptScheme' ) {
-        $modified = $category->{modified};
-      } elsif ( $type eq 'skos:Concept' ) {
+      # read jsonld graph
+      foreach my $category (@categories) {
 
-        # skip orphan entries
-        next unless exists $category->{broader};
+        my $type = $category->{'@type'};
+        if ( $type eq 'skos:ConceptScheme' ) {
+          $modified = $category->{modified};
+        } elsif ( $type eq 'skos:Concept' ) {
 
-        my $id = $category->{identifier};
+          # skip orphan entries
+          next unless exists $category->{broader};
 
-        # map optional simple jsonld fields to hash entries
-        my @fields =
-          qw / notation notationLong foldersComplete geoCategoryType /;
-        foreach my $field (@fields) {
-          $cat{$id}{$field} = $category->{$field};
-        }
+          my $id = $category->{identifier};
 
-        # map optional language-specifc jsonld fields to hash entries
-        @fields = qw / prefLabel scopeNote /;
-        foreach my $field (@fields) {
-          foreach my $ref ( as_array( $category->{$field} ) ) {
-            $cat{$id}{$field}{ $ref->{'@language'} } = $ref->{'@value'};
+          # map optional simple jsonld fields to hash entries
+          my @fields =
+            qw / notation notationLong foldersComplete geoCategoryType /;
+          foreach my $field (@fields) {
+            $cat{$id}{$field} = $category->{$field};
           }
-        }
 
-        # create lookup table for signatures
-        $lookup{ $cat{$id}{notation} } = $id;
-      } else {
-        die "Unexpectend type $type\n";
+          # map optional language-specifc jsonld fields to hash entries
+          @fields = qw / prefLabel scopeNote /;
+          foreach my $field (@fields) {
+            foreach my $ref ( as_array( $category->{$field} ) ) {
+              $cat{$id}{$field}{ $ref->{'@language'} } = $ref->{'@value'};
+            }
+          }
+
+          # create lookup table for signatures
+          $lookup{ $cat{$id}{notation} } = $id;
+        } else {
+          die "Unexpectend type $type\n";
+        }
       }
     }
-  }
-  # get the broader id for SM entries from first part of signature
-  foreach my $id (keys %cat) {
-    next unless $cat{$id}{notation} =~ m/ Sm\d/;
-    my ($firstsig) = split(/ /, $cat{$id}{notation});
 
-    # special case with artificially introduced x0 level
-    if ($firstsig =~ m/^([a-z])0$/) {
-      $firstsig = $1;
+    # get the broader id for SM entries from first part of signature
+    foreach my $id ( keys %cat ) {
+      next unless $cat{$id}{notation} =~ m/ Sm\d/;
+      my ($firstsig) = split( / /, $cat{$id}{notation} );
+
+      # special case with artificially introduced x0 level
+      if ( $firstsig =~ m/^([a-z])0$/ ) {
+        $firstsig = $1;
+      }
+      $cat{$id}{broader} = $lookup{$firstsig}
+        or die "missing signature $firstsig\n";
     }
-    $cat{$id}{broader} = $lookup{$firstsig} or die "missing signature $firstsig\n";
+
+    # save vocabs for later invocations
+    $vocab_all{$vocab}{id}       = \%cat;
+    $vocab_all{$vocab}{nta}      = \%lookup;
+    $vocab_all{$vocab}{modified} = $modified;
   }
 
-  return \%cat, \%lookup, $modified;
+  return $vocab_all{$vocab}{id}, $vocab_all{$vocab}{nta},
+    $vocab_all{$vocab}{modified};
 }
 
 sub as_array {
