@@ -109,7 +109,7 @@ sub get_folderlabel {
 
     # mark unchecked translated labels
     if ( $lang eq 'en' and $subject =~ m/^\. / ) {
-      $label =~ s/(.*?) : \. (.*)/$1 : $2<sup>*<\/sup>/;
+      $label =~ s/(.*?) : \. (.*)/$1 : $2 \*/;
     }
     return $label;
   }
