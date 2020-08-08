@@ -10,7 +10,8 @@
 # TODO
 # - extended filename parsing
 # - read meta.yaml files
-# - check authors
+# - check authors and publications
+# - create some RDF representation?
 
 use strict;
 use warnings;
@@ -21,6 +22,8 @@ use Log::Log4perl::Level;
 use Path::Tiny;
 use Readonly;
 use ZBW::Logutil;
+
+binmode( STDOUT, ":utf8" );
 
 # logging
 my $log = ZBW::Logutil->get_logger('./log_conf/parse_docdata.conf');
@@ -37,7 +40,7 @@ Readonly my $BEACON_HEADER =>
   "#FORMAT: BEACON\n#PREFIX: http://purl.org/pressemappe20/folder/\n\n";
 
 ##Readonly my @COLLECTIONS => qw/ co pe sh wa /;
-Readonly my @COLLECTIONS => qw/ pe /;
+Readonly my @COLLECTIONS => qw/ sh pe /;
 
 $log->info('Start run');
 foreach my $collection (@COLLECTIONS) {
@@ -97,6 +100,10 @@ foreach my $collection (@COLLECTIONS) {
         consolidate_info( $folder, $doc, $docdata{$folder}{info}{$doc},
         $docs{$doc} );
       $docdata{$folder}{info}{$doc}{con} = $field_ref;
+
+      ##if ($docdata{$folder}{info}{$doc}{_txt}{TIT}) {
+      ##  print Dumper $docdata{$folder}{info}{$doc};
+      ##}
     }
   }
 
@@ -176,7 +183,13 @@ sub parse_txt_file {
         $log->warn("  empty field $fieldname for folder $folder, doc $doc");
         next;
       }
+
+      # remove line endings
       $rest =~ s/\r\n//g;
+
+      # remove prepended field marks
+      $rest =~ s/^[vtib]=(.*)$/$1/;
+
       $txt_field{$fieldname} = $rest;
     }
   }
