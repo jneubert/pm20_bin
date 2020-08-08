@@ -179,7 +179,6 @@ sub mk_folder {
   foreach my $lang (@LANGUAGES) {
     my $label =
       ZBW::PM20x::Folder::get_folderlabel( $lang, $collection, $folder_id );
-    $label = "$conf{$collection}{type_label}{$lang}: $label";
 
     my %tmpl_var = (
       pref_label    => $label,
@@ -360,7 +359,7 @@ sub write_mets {
   $mets_dir->mkpath;
 
   my $mets_file = $mets_dir->child("public.mets.$lang.xml");
-  $mets_file->spew( $tmpl->output() );
+  $mets_file->spew_utf8( $tmpl->output() );
 }
 
 sub usage {
