@@ -28,7 +28,7 @@ use ZBW::PM20x::Folder;
 
 $Data::Dumper::Sortkeys = 1;
 
-Readonly my $FOLDER_ROOT_URI => 'http://purl.org/pressemappe20/folder/';
+Readonly my $FOLDER_ROOT_URI => 'https://purl.org/pressemappe20/folder/';
 Readonly my $PDF_ROOT_URI    => 'http://zbw.eu/beta/pm20pdf/';
 Readonly my $FOLDER_ROOT     => path('/disc1/pm20/folder');
 Readonly my $METS_ROOT       => path('../web.public/mets/');
