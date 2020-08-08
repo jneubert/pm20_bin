@@ -126,10 +126,12 @@ sub get_doclabel {
   my $doc_id    = shift || die "param missing";
   my $field_ref = shift || die "param missing";
 
-  my $label;
+  my $label = '';
   if ( $field_ref->{title} ) {
     if ( $field_ref->{author} ) {
       $label = "$field_ref->{author}: $label";
+    } else {
+      $label = $field_ref->{title};
     }
   }
   if ( $field_ref->{pub} ) {
