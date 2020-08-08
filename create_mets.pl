@@ -10,9 +10,7 @@
 # - 'ALL' (to (re-) create all collections)
 
 # TODO
-# - extend to english
 # - extend to internal and external
-# - read data form aggregated folderdata and docdata
 
 use strict;
 use warnings;
@@ -61,8 +59,8 @@ my %conf = (
       de => 'Firma',
       en => 'Company',
     },
-    prefix     => 'co/',
-    url_stub   => {
+    prefix   => 'co/',
+    url_stub => {
       '/mnt/inst/F' => 'http://webopac.hwwa.de/DigiInst/F/',
       '/mnt/pers/A' => 'http://webopac.hwwa.de/DigiInst/A/',
     },
@@ -72,8 +70,8 @@ my %conf = (
       de => 'Person',
       en => 'Person',
     },
-    prefix     => 'pe/',
-    url_stub   => {
+    prefix   => 'pe/',
+    url_stub => {
       '/mnt/digidata/P' => 'https://pm20.zbw.eu/folder/pe/',
     },
   },
@@ -82,8 +80,8 @@ my %conf = (
       de => 'Sach',
       en => 'Subject',
     },
-    prefix     => 'sa/',
-    url_stub   => {
+    prefix   => 'sa/',
+    url_stub => {
       '/mnt/sach/S' => 'https://pm20.zbw.eu/folder/sh/',
     },
   },
@@ -92,8 +90,8 @@ my %conf = (
       de => 'Ware',
       en => 'Ware',
     },
-    prefix     => 'wa/',
-    url_stub   => {
+    prefix   => 'wa/',
+    url_stub => {
       '/mnt/ware/W' => 'http://webopac.hwwa.de/DigiWare/W/',
     },
   },
@@ -175,12 +173,12 @@ sub mk_folder {
 
   my $pdf_url =
       $PDF_ROOT_URI
-    . "$collection/"
-    . get_folder_relative_path($folder_id)
+    . ZBW::PM20x::Folder::get_folder_hashed_path( $collection, $folder_id )
     . "/${folder_id}.pdf";
 
   foreach my $lang (@LANGUAGES) {
-    my $label = ZBW::PM20x::Folder::get_folderlabel( $lang, $collection, $folder_id );
+    my $label =
+      ZBW::PM20x::Folder::get_folderlabel( $lang, $collection, $folder_id );
     $label = "$conf{$collection}{type_label}{$lang}: $label";
 
     my %tmpl_var = (
@@ -189,7 +187,7 @@ sub mk_folder {
       folder_id     => $folder_id,
       file_grp_loop => build_file_grp( $conf{$collection}, $folder_id ),
       phys_loop     => build_phys_struct($folder_id),
-      log_loop      => build_log_struct($folder_id),
+      log_loop      => build_log_struct( $lang, $folder_id ),
       link_loop     => build_link($folder_id),
       pdf_url       => $pdf_url,
     );
@@ -199,10 +197,10 @@ sub mk_folder {
     write_mets( $lang, $collection, $folder_id, $tmpl );
 
     # create url aliases for awstats
-    if ( $url_fh and $lang eq 'de' ) {
-      print $url_fh "/beta/pm20mets/$collection/"
-        . get_folder_relative_path($folder_id)
-        . "/${folder_id}.xml\t$label\n";
+    if ($url_fh) {
+      print $url_fh '/mets/'
+        . ZBW::PM20x::Folder::get_folder_hashed_path( $collection, $folder_id )
+        . "/public.mets.$lang.xml\t$label\n";
     }
   }
 }
@@ -309,15 +307,18 @@ sub build_phys_struct {
 }
 
 sub build_log_struct {
+  my $lang      = shift || die "param missing";
   my $folder_id = shift || die "param missing";
 
   my %docdata = %{ $docdata_ref->{$folder_id} };
 
   my @log_loop;
   foreach my $doc_id ( sort keys %{ $docdata{free} } ) {
+    my $label = ZBW::PM20x::Folder::get_doclabel( $lang, $doc_id,
+      $docdata{info}{$doc_id}{con} );
     my %entry = (
       document_id => "doc$doc_id",
-      label       => get_doclabel( $doc_id, $docdata{info}{$doc_id} ),
+      label       => $label,
       type        => 'Document',
     );
     push( @log_loop, \%entry );
@@ -353,81 +354,13 @@ sub write_mets {
   my $folder_id  = shift || die "param missing";
   my $tmpl       = shift || die "param missing";
 
-  my %docdata = %{ $docdata_ref->{$folder_id} };
-
-  # TODO change logic for relative path - not save for sh/wa!!
-  my $relative_path = get_folder_relative_path($folder_id);
-
-  my $mets_dir =
-    $METS_ROOT->child($collection)->child($relative_path)->child($folder_id);
+  my $hashed_path =
+    ZBW::PM20x::Folder::get_folder_hashed_path( $collection, $folder_id );
+  my $mets_dir = $METS_ROOT->child($hashed_path);
   $mets_dir->mkpath;
+
   my $mets_file = $mets_dir->child("public.mets.$lang.xml");
   $mets_file->spew( $tmpl->output() );
-}
-
-sub get_doclabel {
-  my $doc_id    = shift || die "param missing";
-  my $field_ref = shift || die "param missing";
-
-  my $label;
-  if ( $field_ref->{TIT} ) {
-    ( $label = $field_ref->{TIT} ) =~ s/^t=//;
-    if ( $field_ref->{AUT} ) {
-      ( $label = $field_ref->{AUT} . ": " . $label ) =~ s/^v=//;
-    }
-  }
-  if ( $field_ref->{NQUE} ) {
-    my $src = $field_ref->{NQUE};
-    if ( $field_ref->{DATE} ) {
-      $src = "$src, $field_ref->{DATE}";
-    }
-    if ($label) {
-      $label = "$label ($src)";
-    } else {
-      $label = $src;
-    }
-  }
-  if ( not $label ) {
-    if ( $field_ref->{type} ) {
-      if ( $field_ref->{type} =~ m/::.+/ ) {
-        $label = ( split( /::/, $field_ref->{type} ) )[1] . ' ' . $doc_id;
-      } else {
-        $label = $field_ref->{type} . ' ' . $doc_id;
-      }
-    } else {
-      $label = "Dok $doc_id";
-    }
-  }
-  if ( $field_ref->{pages} ) {
-    if ( $field_ref->{pages} > 1 ) {
-      $label .= " ($field_ref->{pages} S.)";
-    }
-  } else {
-    ##warn "Missing pages for $doc_id: ", Dumper $field_ref;
-  }
-  return convert_label($label);
-}
-
-sub convert_label {
-  my $label = shift || die "param missing";
-
-  $label = Encode::encode( 'utf-8', $label );
-  $label = encode_entities( $label, '<>&"' );
-  return $label;
-}
-
-sub get_folder_relative_path {
-  my $folder_id = shift || die "param missing";
-
-  my %imagedata = %{ $imagedata_ref->{$folder_id} };
-
-  my $folder_relative_path;
-  foreach my $doc_id ( keys %{ $imagedata{docs} } ) {
-    my $doc_relative_path = path( $imagedata{docs}{$doc_id}{rp} );
-    $folder_relative_path = $doc_relative_path->parent(4);
-    last;
-  }
-  return $folder_relative_path;
 }
 
 sub usage {
