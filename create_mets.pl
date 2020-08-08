@@ -164,7 +164,7 @@ sub mk_folder {
 
   # open files if necessary
   # (check with arbitrary entry)
-  if ( not defined $imagedata_ref->{root} ) {
+  if ( not defined $imagedata_ref ) {
     load_files($collection);
   }
 
