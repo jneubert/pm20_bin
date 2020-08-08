@@ -115,6 +115,12 @@ sub get_folderlabel {
   }
 }
 
+=item get_doclabel ( $lang, $doc_id, $field_ref )
+
+Return a html-encoded, human-readable label for a document from consolidated document info.
+
+=cut
+
 sub get_doclabel {
   my $lang      = shift || die "param missing";
   my $doc_id    = shift || die "param missing";
@@ -170,5 +176,33 @@ sub get_doclabel {
   return $label;
 }
 
+=item get_folder_hashed_path ( $collection, $folder_id )
+
+Return a path fragment for a folder with intermediate (hashed) directories.
+
+=cut
+
+sub get_folder_hashed_path {
+  my $collection = shift or die 'param missing';
+  my $folder_id  = shift or die 'param missing';
+
+  my $path = path($collection);
+  if ( $collection eq 'pe' or $collection eq 'co' ) {
+    my $stub = substr( $folder_id, 0, 4 ) . 'xx';
+    $path = $path->child($stub)->child($folder_id);
+  } elsif ( $collection eq 'sh' or $collection eq 'wa' ) {
+    $folder_id =~ m/(\d{6}),(\d{6})/
+      or die "irregular folder_id: $folder_id for collection: $collection\n";
+    my $id1   = $1;
+    my $id2   = $2;
+    my $stub1 = substr( $id1, 0, 4 );
+    my $stub2 = substr( $id2, 0, 4 );
+    $path = $path->child($stub1)->child($id1)->child($stub2)->child($id2);
+  } else {
+    die "wrong collection: $collection";
+  }
+
+  return $path;
+}
 1;
 
