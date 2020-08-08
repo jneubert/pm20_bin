@@ -14,6 +14,49 @@ use ZBW::PM20x::Vocab;
 
 Readonly my $RDF_ROOT => path('../data/rdf');
 
+Readonly my %DOCTYPE => (
+  A => {
+    de => 'Aufsatz',
+    en => 'Article',
+  },
+  F => {
+    de => 'Festschrift',
+    en => 'Festschrift',
+  },
+  G => {
+    de => 'Geschäftsbericht',
+    en => 'Annual report',
+  },
+  H => {
+    de => 'Hinweis',
+    en => 'Hint',
+  },
+  M => {
+    de => 'Monographie',
+    en => 'Monograph',
+  },
+  P => {
+    de => 'Presseartikel',
+    en => 'Press article',
+  },
+  S => {
+    de => 'Amtsblatt',
+    en => 'Gazette',
+  },
+  T => {
+    de => 'Typoskript',
+    en => 'Typoscript',
+  },
+  U => {
+    de => 'Statut',
+    en => 'Statute',
+  },
+  Z => {
+    de => 'Sonstiges',
+    en => 'Other',
+  },
+);
+
 =head1 NAME
 
 ZBW::PM20x::Folder - Functions for PM20 folders
@@ -70,6 +113,61 @@ sub get_folderlabel {
     }
     return $label;
   }
+}
+
+sub get_doclabel {
+  my $lang      = shift || die "param missing";
+  my $doc_id    = shift || die "param missing";
+  my $field_ref = shift || die "param missing";
+
+  my $label;
+  if ( $field_ref->{title} ) {
+    if ( $field_ref->{author} ) {
+      $label = "$field_ref->{author}: $label";
+    }
+  }
+  if ( $field_ref->{pub} ) {
+    my $src = $field_ref->{pub};
+    if ( $field_ref->{date} ) {
+      $src = "$src, $field_ref->{date}";
+    }
+    if ($label) {
+      $label = "$label ($src)";
+    } else {
+      $label = $src;
+    }
+  }
+
+  # if necessary, set generic label
+  if ( not $label ) {
+
+    # ... with or without type
+    my $type = $field_ref->{type};
+    if ($type) {
+      if ( $DOCTYPE{$type} ) {
+        $label = "$DOCTYPE{$type}{$lang} $doc_id";
+      } else {
+        print "unknown $type\n";
+      }
+    } else {
+      $label = ( $lang eq 'en' ? 'Doc ' : 'Dok ' ) . $doc_id;
+    }
+  }
+
+  # add number of pages
+  if ( $field_ref->{pages} ) {
+    if ( $field_ref->{pages} > 1 ) {
+      my $p = $lang eq 'en' ? 'p.' : 'S.';
+      $label .= " ($field_ref->{pages} $p)";
+    }
+  } else {
+    warn "Missing pages for $doc_id: ", Dumper $field_ref;
+  }
+
+  # encode HTML entities
+  $label = encode_entities( $label, '<>&"' );
+
+  return $label;
 }
 
 1;
