@@ -9,7 +9,8 @@
 
 # TODO
 # - extended filename parsing
-# - use doc_attribute files
+# - read meta.yaml files
+# - check authors
 
 use strict;
 use warnings;
@@ -88,20 +89,14 @@ foreach my $collection (@COLLECTIONS) {
         $coll{cnt_bad_txt}++;
       }
 
-      # priority document information
-      my %field;
-
-      # number of pages
-      $field{pages} = scalar( @{ $docs{$doc}{pg} } );
-
-      # add  infos from file name of first page
-      parse_filename( $docs{$doc}{pg}->[0], \%field );
-
       # add data from doc attribute
       $docdata{$folder}{info}{$doc}{_att} = $docattr_ref->{$folder}{$doc};
 
       # consolidated document information
-      $docdata{$folder}{info}{$doc}{cons} = \%field;
+      my $field_ref =
+        consolidate_info( $folder, $doc, $docdata{$folder}{info}{$doc},
+        $docs{$doc} );
+      $docdata{$folder}{info}{$doc}{con} = $field_ref;
     }
   }
 
@@ -186,4 +181,55 @@ sub parse_txt_file {
     }
   }
   return \%txt_field;
+}
+
+sub consolidate_info {
+  my $folder      = shift or die "param missing";
+  my $doc         = shift or die "param missing";
+  my $docdata_ref = shift or die "param missing";
+  my $docs_ref    = shift or die "param missing";
+
+  # priority document information
+  my %field;
+
+  # add  infos from file name of first page
+  parse_filename( $docs_ref->{pg}->[0], \%field );
+
+  # mapping of field names from old sources
+  my %fieldname = (
+    date => {
+      _att => 'd',
+      _txt => 'DATE',
+    },
+    title => {
+      _att => 't',
+      _txt => 'TITLE',
+    },
+    pub => {
+      _att => 'q',
+      _txt => 'NQUE',
+    },
+    author => {
+      _att => 'v',
+      _txt => 'AUT',
+    },
+  );
+
+  # priority is
+  # - meta.yaml
+  # - doc_attributes
+  # - txt file
+
+  # TODO set pub and author from IDs, if given
+  foreach my $name ( keys %fieldname ) {
+    $field{$name} =
+         $docdata_ref->{_meta}{$name}
+      || $docdata_ref->{_att}{ $fieldname{$name}{_att} }
+      || $docdata_ref->{_txt}{ $fieldname{$name}{_txt} };
+  }
+
+  # number of pages - only source is file system scan
+  $field{pages} = scalar( @{ $docs_ref->{pg} } );
+
+  return \%field;
 }
