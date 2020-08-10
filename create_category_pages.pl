@@ -97,8 +97,9 @@ foreach my $category_type ( keys %{$definitions_ref} ) {
 
   foreach my $lang (@LANGUAGES) {
     my @lines;
-    my $title      = $typedef_ref->{title}{$lang};
-    my $provenance = $PROV{ $typedef_ref->{prov} }{name}{$lang};
+    my $title = $typedef_ref->{title}{$lang};
+    my $provenance =
+      $PROV{ $definitions_ref->{$category_type}{prov} }{name}{$lang};
 
     # some header information for the page
     my $backlinktitle =
@@ -169,7 +170,8 @@ foreach my $category_type ( keys %{$definitions_ref} ) {
     ## q & d: add lines as large variable
     $tmpl->param( lines => join( "\n", @lines ), );
 
-    my $out = $WEB_ROOT->child($category_type)->child("about.$lang.md");
+    ##my $out = $WEB_ROOT->child($category_type)->child("about.$lang.md");
+    my $out = path("/tmp/$category_type.about.$lang.md");
     $out->spew_utf8( $tmpl->output );
   }
 }
@@ -194,8 +196,9 @@ foreach my $category_type ( keys %{$definitions_ref} ) {
 
     # main loop
     my %cat_meta = (
-      category_type        => $category_type,
-      provenance           => $PROV{ $typedef_ref->{prov} }{name}{$lang},
+      category_type => $category_type,
+      provenance =>
+        $PROV{ $definitions_ref->{$category_type}{prov} }{name}{$lang},
       folder_count_first   => 0,
       document_count_first => 0,
     );
@@ -395,15 +398,15 @@ sub mark_unchecked_translation {
 sub set_last_modified {
 
   foreach my $category_type ( keys %{$definitions_ref} ) {
-    my %def = %{ $definitions_ref->{$category_type} };
-    if ( $vocab_all{ $def{overview}{vocab} }{modified}
-      ge $vocab_all{ $def{detail}{vocab} }{modified} )
+    my $def_ref = $definitions_ref->{$category_type};
+    if ( $vocab_all{ $def_ref->{overview}{vocab} }{modified}
+      ge $vocab_all{ $def_ref->{detail}{vocab} }{modified} )
     {
-      $definitions_ref->{last_modified} =
-        $vocab_all{ $def{overview}{vocab} }{modified};
+      $def_ref->{last_modified} =
+        $vocab_all{ $def_ref->{overview}{vocab} }{modified};
     } else {
-      $definitions_ref->{last_modified} =
-        $vocab_all{ $def{detail}{vocab} }{modified};
+      $def_ref->{last_modified} =
+        $vocab_all{ $def_ref->{detail}{vocab} }{modified};
     }
   }
 }
