@@ -10,7 +10,8 @@ use Path::Tiny;
 use Readonly;
 use Scalar::Util qw(looks_like_number reftype);
 
-Readonly my $RDF_ROOT => path('../data/rdf');
+Readonly my $RDF_ROOT  => path('../data/rdf');
+Readonly my @LANGUAGES => qw/ en de /;
 
 my %vocab_all;
 
@@ -27,8 +28,31 @@ ZBW::PM20x::Vocab - Functions for PM20 vocabularies
 =head1 DESCRIPTION
 
 
+=cut
+
+=item get_vocab_all ()
+
+Read all vocabularies into a data structure, organized as:
+
+  {$vocab}          e.g., 'ag'
+    id              by identifier (main term entry)
+      {$id}         hash with everything from database
+    modified        last modification of the vocabulary
+    nta             by signature
+      {$signature}  points to id
+    subhead         subheadings for lists
+      {$first}      first letter of signature
 
 =cut
+
+sub get_vocab_all {
+
+  foreach my $vocab (qw/ ag je /) {
+    get_vocab($vocab);
+    add_subheadings($vocab);
+  }
+  return \%vocab_all;
+}
 
 =item get_vocab ($vocab)
 
@@ -145,6 +169,69 @@ sub get_termlabel {
   }
 
   return $label;
+}
+
+############ internal
+
+sub add_subheadings {
+  my $vocab = shift or die "param missing";
+
+  my $subheading_ref;
+
+  if ( $vocab eq 'ag' ) {
+    $subheading_ref = {
+      A => {
+        de => 'Europa',
+        en => 'Europe',
+      },
+      B => {
+        de => 'Asien',
+        en => 'Asia',
+      },
+      C => {
+        de => 'Afrika',
+        en => 'Africa',
+      },
+      D => {
+        de => 'Australien und Ozeanien',
+        en => 'Australia and Oceania',
+      },
+
+      E => {
+        de => 'Amerika',
+        en => 'America',
+      },
+
+      F => {
+        de => 'Polargebiete',
+        en => 'Polar regions',
+      },
+
+      G => {
+        de => 'Meere',
+        en => 'Seas',
+      },
+
+      H => {
+        de => 'Welt',
+        en => 'World',
+      },
+    };
+  } else {
+    foreach my $id ( keys %{ $vocab_all{$vocab}{id} } ) {
+      my %terminfo = %{ $vocab_all{$vocab}{id}{$id} };
+      my $notation = $terminfo{notation};
+      next unless $notation =~ m/^[a-z]$/;
+      foreach my $lang (@LANGUAGES) {
+        $subheading_ref->{$notation}{$lang} = $terminfo{prefLabel}{$lang}
+          || $terminfo{prefLabel}{de};
+      }
+    }
+  }
+
+  $vocab_all{$vocab}{subhead} = $subheading_ref;
+
+  return $subheading_ref;
 }
 
 1;

@@ -21,12 +21,12 @@ use YAML;
 use ZBW::PM20x::Folder;
 use ZBW::PM20x::Vocab;
 
-my $web_root        = path('../web.public/category');
-my $klassdata_root  = path('../data/klassdata');
-my $folderdata_root = path('../data/folderdata');
-my $template_root   = path('../etc/html_tmpl');
+Readonly my $WEB_ROOT        => path('../web.public/category');
+Readonly my $KLASSDATA_ROOT  => path('../data/klassdata');
+Readonly my $FOLDERDATA_ROOT => path('../data/folderdata');
+Readonly my $TEMPLATE_ROOT   => path('../etc/html_tmpl');
 
-my %prov = (
+my %PROV = (
   hwwa => {
     name => {
       en => 'Hamburgisches Welt-Wirtschafts-Archiv (HWWA)',
@@ -35,73 +35,57 @@ my %prov = (
   },
 );
 
-my %subheading_geo = (
-  A => {
-    de => 'Europa',
-    en => 'Europe',
-  },
-  B => {
-    de => 'Asien',
-    en => 'Asia',
-  },
-  C => {
-    de => 'Afrika',
-    en => 'Africa',
-  },
-  D => {
-    de => 'Australien und Ozeanien',
-    en => 'Australia and Oceania',
-  },
-
-  E => {
-    de => 'Amerika',
-    en => 'America',
-  },
-
-  F => {
-    de => 'Polargebiete',
-    en => 'Polar regions',
-  },
-
-  G => {
-    de => 'Meere',
-    en => 'Seas',
-  },
-
-  H => {
-    de => 'Welt',
-    en => 'World',
-  },
-);
-
-my @languages = qw/ de en /;
+my @LANGUAGES = qw/ de en /;
 
 # TODO create and load external yaml
+# TODO use prov as the first level?
 my $definitions_ref = YAML::Load(<<'EOF');
 geo:
+  prov: hwwa
   overview:
     title:
       en: Folders by Country Category System
       de: Mappen nach Ländersystematik
     result_file: geo_by_signature
     output_dir: ../category/geo
-    prov: hwwa
-  single:
+    vocab: ag
+  detail:
     result_file: subject_folders
     output_dir: ../category/geo/i
-    prov: hwwa
+    vocab: je
+  detail2:
+    result_file: ware_folders
+    output_dir: ../category/geo/i
+    vocab: ip
+subject:
+  prov: hwwa
+  overview:
+    title:
+      en: Folders by Subject Category System
+      de: Mappen nach Sachsystematik
+    result_file: subject_by_signature
+    output_dir: ../category/subject
+    vocab: je
+  detail:
+    result_file: subject_folders
+    output_dir: ../category/subject/i
+    vocab: ag
 EOF
+
+my %vocab_all = %{ ZBW::PM20x::Vocab::get_vocab_all() };
+
+# set last_modified entries for all category types
+set_last_modified();
 
 # vocabulary data
 my ( $geo_ref, $geo_siglookup_ref, $geo_modified ) =
   ZBW::PM20x::Vocab::get_vocab('ag');
 my ( $subject_ref, $subject_siglookup_ref, $subject_modified ) =
   ZBW::PM20x::Vocab::get_vocab('je');
-my %subheading_subject = get_subheadings($subject_ref);
 
-# last modification of any vocbulary
-my $last_modified =
-  $geo_modified ge $subject_modified ? $geo_modified : $subject_modified;
+# Add subheadings to vocabs, according to first letter of signature
+my %subheading_subject = %{ $vocab_all{'je'}{subhead} };
+my %subheading_geo     = %{ $vocab_all{'ag'}{subhead} };
 
 # count folders and add to %geo
 my ( $geo_category_count, $total_sh_folder_count ) =
@@ -110,10 +94,11 @@ my ( $geo_category_count, $total_sh_folder_count ) =
 # category overview pages
 foreach my $category_type ( keys %{$definitions_ref} ) {
   my $typedef_ref = $definitions_ref->{$category_type}->{overview};
-  foreach my $lang (@languages) {
+
+  foreach my $lang (@LANGUAGES) {
     my @lines;
     my $title      = $typedef_ref->{title}{$lang};
-    my $provenance = $prov{ $typedef_ref->{prov} }{name}{$lang};
+    my $provenance = $PROV{ $typedef_ref->{prov} }{name}{$lang};
 
     # some header information for the page
     my $backlinktitle =
@@ -124,7 +109,7 @@ foreach my $category_type ( keys %{$definitions_ref} ) {
       "is_$lang"     => 1,
       title          => $title,
       etr            => "category_overview/$category_type",
-      modified       => $last_modified,
+      modified       => $definitions_ref->{$category_type}{last_modified},
       backlink       => "../about.$lang.html",
       backlink_title => $backlinktitle,
       provenance     => $provenance,
@@ -134,7 +119,7 @@ foreach my $category_type ( keys %{$definitions_ref} ) {
 
     # read json input
     my $file =
-      $klassdata_root->child( $typedef_ref->{result_file} . ".$lang.json" );
+      $KLASSDATA_ROOT->child( $typedef_ref->{result_file} . ".$lang.json" );
     my @categories =
       @{ decode_json( $file->slurp )->{results}->{bindings} };
 
@@ -177,38 +162,40 @@ foreach my $category_type ( keys %{$definitions_ref} ) {
     }
 
     my $tmpl = HTML::Template->new(
-      filename => $template_root->child('category_overview.md.tmpl'),
+      filename => $TEMPLATE_ROOT->child('category_overview.md.tmpl'),
       utf8     => 1
     );
     $tmpl->param( \%tmpl_var );
     ## q & d: add lines as large variable
     $tmpl->param( lines => join( "\n", @lines ), );
 
-    my $out = $web_root->child($category_type)->child("about.$lang.md");
+    my $out = $WEB_ROOT->child($category_type)->child("about.$lang.md");
     $out->spew_utf8( $tmpl->output );
   }
 }
+exit;
 
 # individual category pages
 foreach my $category_type ( keys %{$definitions_ref} ) {
-  my $typedef_ref = $definitions_ref->{$category_type}->{single};
-  foreach my $lang (@languages) {
+  my $typedef_ref = $definitions_ref->{$category_type}->{detail};
+
+  foreach my $lang (@LANGUAGES) {
 
     # read json input (all folders for all categories)
     my $file =
-      $folderdata_root->child( $typedef_ref->{result_file} . ".$lang.json" );
+      $FOLDERDATA_ROOT->child( $typedef_ref->{result_file} . ".$lang.json" );
     my @entries =
       @{ decode_json( $file->slurp )->{results}->{bindings} };
 
     # read subject categories
-    $file = $klassdata_root->child("subject_by_signature.$lang.json");
+    $file = $KLASSDATA_ROOT->child("subject_by_signature.$lang.json");
     my @subject_categories =
       @{ decode_json( $file->slurp )->{results}->{bindings} };
 
     # main loop
     my %cat_meta = (
       category_type        => $category_type,
-      provenance           => $prov{ $typedef_ref->{prov} }{name}{$lang},
+      provenance           => $PROV{ $typedef_ref->{prov} }{name}{$lang},
       folder_count_first   => 0,
       document_count_first => 0,
     );
@@ -304,7 +291,7 @@ sub output_category_page {
     "is_$lang" => 1,
     title      => $title,
     etr        => "category/$cat_meta{category_type}/$geo_ref->{$id}{notation}",
-    modified   => $last_modified,
+    modified   => $definitions_ref->{ $cat_meta{category_type} }{last_modified},
     backlink   => "../../about.$lang.html",
     backlink_title  => $backlinktitle,
     provenance      => $cat_meta{provenance},
@@ -322,7 +309,7 @@ sub output_category_page {
   $cat_meta_ref->{document_count_first} = 0;
 
   my $tmpl = HTML::Template->new(
-    filename => $template_root->child('category.md.tmpl'),
+    filename => $TEMPLATE_ROOT->child('category.md.tmpl'),
     utf8     => 1
   );
   $tmpl->param( \%tmpl_var );
@@ -330,25 +317,10 @@ sub output_category_page {
   $tmpl->param( lines => join( "\n", @{$lines_ref} ), );
 
   my $out_dir =
-    $web_root->child( $cat_meta{category_type} )->child('i')->child($id);
+    $WEB_ROOT->child( $cat_meta{category_type} )->child('i')->child($id);
   $out_dir->mkpath;
   my $out = $out_dir->child("about.$lang.md");
   $out->spew_utf8( $tmpl->output );
-}
-
-sub get_subheadings {
-  my $hash_ref = shift or die "param missing";
-
-  my %subheading;
-  foreach my $cat ( keys %{$hash_ref} ) {
-    my $notation = $hash_ref->{$cat}{notation};
-    next unless $notation =~ m/^[a-z]$/;
-    foreach my $lang (@languages) {
-      $subheading{$notation}{$lang} = $hash_ref->{$cat}{prefLabel}{$lang}
-        || $hash_ref->{$cat}{prefLabel}{de};
-    }
-  }
-  return %subheading;
 }
 
 sub count_folders_per_category {
@@ -360,7 +332,7 @@ sub count_folders_per_category {
 
   # subject folder data
   # read json input (all folders for all categories)
-  my $file = $folderdata_root->child("subject_folders.de.json");
+  my $file = $FOLDERDATA_ROOT->child("subject_folders.de.json");
   my @folders =
     @{ decode_json( $file->slurp )->{results}->{bindings} };
 
@@ -416,4 +388,22 @@ sub mark_unchecked_translation {
     $label = substr( $label, 2 ) . '<sup>*</sup>';
   }
   return $label;
+}
+
+# set last modification of all category types
+# to the maximum of the modification dates of the underlying vocabs
+sub set_last_modified {
+
+  foreach my $category_type ( keys %{$definitions_ref} ) {
+    my %def = %{ $definitions_ref->{$category_type} };
+    if ( $vocab_all{ $def{overview}{vocab} }{modified}
+      ge $vocab_all{ $def{detail}{vocab} }{modified} )
+    {
+      $definitions_ref->{last_modified} =
+        $vocab_all{ $def{overview}{vocab} }{modified};
+    } else {
+      $definitions_ref->{last_modified} =
+        $vocab_all{ $def{detail}{vocab} }{modified};
+    }
+  }
 }
