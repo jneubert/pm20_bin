@@ -177,17 +177,17 @@ foreach my $category_type ( keys %{$definitions_ref} ) {
     }
 
     my $tmpl = HTML::Template->new(
-      filename => $template_root->child('category_overview.md.tmpl') );
+      filename => $template_root->child('category_overview.md.tmpl'),
+      utf8     => 1
+    );
     $tmpl->param( \%tmpl_var );
-
-    ## q & d: add lines as variable
+    ## q & d: add lines as large variable
     $tmpl->param( lines => join( "\n", @lines ), );
-    ##my $out = $web_root->child($category_type)->child("about.$lang.md");
-    my $out = path('/tmp')->child("about.$lang.md");
+
+    my $out = $web_root->child($category_type)->child("about.$lang.md");
     $out->spew_utf8( $tmpl->output );
   }
 }
-exit;
 
 # individual category pages
 foreach my $category_type ( keys %{$definitions_ref} ) {
@@ -223,10 +223,8 @@ foreach my $category_type ( keys %{$definitions_ref} ) {
       $entry->{pm20}->{value} =~ m/(\d{6}),(\d{6})$/;
       my $id1   = $1;
       my $id2   = $2;
-      my $label = $subject_ref->{$id2}{prefLabel}{$lang};
+      my $label = ZBW::PM20x::Vocab::get_termlabel( $lang, 'je', $id2, 1 );
       $label = mark_unchecked_translation($label);
-      my $notation = $subject_ref->{$id2}{notation};
-      $label = "$notation $label";
 
       # first level control break - new category page
       if ( $id1_old ne '' and $id1 ne $id1_old ) {
@@ -259,10 +257,11 @@ foreach my $category_type ( keys %{$definitions_ref} ) {
       my $line = "- [$label]($uri) $entry_note";
 
       # additional indent for Sondermappen
-      # Has also to deal with first element (e.g., n Economy)
-      if ( $notation =~ m/ Sm\d/ and $firstletter ne 'q' ) {
+      # (label starts with notation - has also to deal with first element,
+      # e.g., n Economy)
+      if ( $label =~ m/ Sm\d/ and $firstletter ne 'q' ) {
         if ( get_firstsig( $id2_old, $subject_ref ) ne
-          get_firstsig( $id2, $subject_ref ) and not $notation =~ m/^[a-z]0/ )
+          get_firstsig( $id2, $subject_ref ) and not $label =~ m/^[a-z]0/ )
         {
           ## insert non-linked intermediate item
           my $id_broader = $subject_ref->{$id2}{broader};
@@ -295,86 +294,46 @@ sub output_category_page {
   my $lines_ref    = shift or die "param missing";
   my %cat_meta     = %{$cat_meta_ref};
 
-  my $title = "$geo_ref->{$id}{notation} $geo_ref->{$id}{prefLabel}{$lang}";
+  my $title = ZBW::PM20x::Vocab::get_termlabel( $lang, 'ag', $id, 1 );
   my @output;
   my $backlinktitle =
     $lang eq 'en'
     ? 'Category Overview'
     : 'Systematik-Übersicht';
-  push( @output,
-    '---',
-    "title: \"$title\"",
-    "etr: category/$cat_meta{category_type}/$geo_ref->{$id}{notation}",
-    "modified: $last_modified",
-    "backlink: ../../about.$lang.html",
-    "backlink-title: \"$backlinktitle\"",
-    'fn-stub: about',
-    '---',
-    '' );
-  push( @output, "### $cat_meta{provenance}", '' );
-  push( @output, "# $title", '' );
-
-  if ( $geo_ref->{$id}{scopeNote}{$lang} ) {
-    push( @output, "> Scope Note: $geo_ref->{$id}{scopeNote}{$lang}", '' );
-  }
-
-  # output statistics
-  push(
-    @output,
-    (
-      $lang eq 'en'
-      ? "In total $cat_meta{folder_count_first} subject folders,"
-        . " $cat_meta{document_count_first} documents"
-      : "Insgesamt $cat_meta{folder_count_first} Sach-Mappen,"
-        . " $cat_meta{document_count_first} Dokumente"
-    ),
-    (
-      defined $geo_ref->{$id}{foldersComplete}
-        and $geo_ref->{$id}{foldersComplete} eq 'Y'
-      ? ( $lang eq 'en' ? ' - folders complete.' : ' - Mappen komplett.' )
-      : (
-        $lang eq 'en' ? ' - folders incomplete.' : ' - Mappen unvollständig.' )
-    ),
-    '',
-    (
-      not defined $geo_ref->{$id}{foldersComplete}
-        or $geo_ref->{$id}{foldersComplete} ne 'Y'
-      ? (
-        $lang eq 'en'
-        ? 'For material not published as folders, please check the [digitized films](/film/h1_sh) (in German).'
-        : 'Nicht als Mappe aufbereitetes Material finden Sie unter [digitalisierte Filme](/film/h1_sh).'
-        )
-      : ''
-    ),
-    '',
-    $lang eq 'en'
-    ? '_For direct access to the documents, click the "(xy documents)" link._'
-    : '_Klicken Sie den Link unter "(xy Dokumente)" für die Dokumentanzeige im DFG-Viewer._',
-    '',
-    $lang eq 'en'
-    ? '## Subject archives'
-    : '## Sacharchiv',
-    '',
+  my %tmpl_var = (
+    "is_$lang" => 1,
+    title      => $title,
+    etr        => "category/$cat_meta{category_type}/$geo_ref->{$id}{notation}",
+    modified   => $last_modified,
+    backlink   => "../../about.$lang.html",
+    backlink_title  => $backlinktitle,
+    provenance      => $cat_meta{provenance},
+    folder_count1   => $cat_meta{folder_count_first},
+    document_count1 => $cat_meta{document_count_first},
+    scope_note      => $geo_ref->{$id}{scopeNote}{$lang},
   );
+
+  if ( defined $geo_ref->{$id}{foldersComplete}
+    and $geo_ref->{$id}{foldersComplete} eq 'Y' )
+  {
+    $tmpl_var{complete} = 1;
+  }
   $cat_meta_ref->{folder_count_first}   = 0;
   $cat_meta_ref->{document_count_first} = 0;
 
-  # the actual page content
-  push( @output, @{$lines_ref} );
-
-  if ( $lang eq 'en' ) {
-    push( @output,
-      '',
-      '<em><sup>*</sup> The English category label is an unchecked '
-        . 'automated translation of the German label.</em>' );
-  }
+  my $tmpl = HTML::Template->new(
+    filename => $template_root->child('category.md.tmpl'),
+    utf8     => 1
+  );
+  $tmpl->param( \%tmpl_var );
+  ## q & d: add lines as large variable
+  $tmpl->param( lines => join( "\n", @{$lines_ref} ), );
 
   my $out_dir =
     $web_root->child( $cat_meta{category_type} )->child('i')->child($id);
   $out_dir->mkpath;
   my $out = $out_dir->child("about.$lang.md");
-  $out->spew_utf8( join( "\n", @output ) );
-  ## print join( "\n", @output, "\n" );
+  $out->spew_utf8( $tmpl->output );
 }
 
 sub get_subheadings {

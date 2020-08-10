@@ -133,9 +133,17 @@ sub get_termlabel {
   my $with_signature = shift;
 
   my $label = $vocab_all{$vocab}{id}{$term_id}{prefLabel}{$lang};
+
+  # mark unchecked translated labels
+  if ( $lang eq 'en' and $label =~ m/^\. / ) {
+    $label =~ s/\. (.*)/$1 \*/;
+  }
+
+  # optionally, prepend with signature
   if ($with_signature) {
     $label = "$vocab_all{$vocab}{id}{$term_id}{notation} $label";
   }
+
   return $label;
 }
 
