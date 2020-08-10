@@ -128,6 +128,8 @@ foreach my $category_type ( keys %{$definitions_ref} ) {
       backlink       => "../about.$lang.html",
       backlink_title => $backlinktitle,
       provenance     => $provenance,
+      category_count => $geo_category_count,
+      folder_count   => $total_sh_folder_count,
     );
 
     # read json input
@@ -135,11 +137,6 @@ foreach my $category_type ( keys %{$definitions_ref} ) {
       $klassdata_root->child( $typedef_ref->{result_file} . ".$lang.json" );
     my @categories =
       @{ decode_json( $file->slurp )->{results}->{bindings} };
-
-    # statistics collecting and output
-    my $category_count = $geo_category_count;
-    $tmpl_var{category_count} = $geo_category_count;
-    $tmpl_var{folder_count}   = $total_sh_folder_count;
 
     # main loop
     my $firstletter_old = '';
@@ -156,11 +153,9 @@ foreach my $category_type ( keys %{$definitions_ref} ) {
       }
 
       ##print Dumper $category; exit;
-      ## TODO improve query with explicit id
       $category->{country}->{value} =~ m/(\d{6})$/;
       my $id         = $1;
-      my $signature  = $category->{signature}->{value};
-      my $label      = $category->{countryLabel}->{value};
+      my $label      = ZBW::PM20x::Vocab::get_termlabel( $lang, 'ag', $id, 1 );
       my $entry_note = (
         defined $geo_ref->{$id}{geoCategoryType}
         ? "$geo_ref->{$id}{geoCategoryType} "
@@ -177,14 +172,16 @@ foreach my $category_type ( keys %{$definitions_ref} ) {
         . ( $lang eq 'en' ? ' subject folders' : ' Sach-Mappen' ) . ')';
 
       # main entry
-      my $line =
-        "- [$signature $label]" . "(i/$id/about.$lang.html) $entry_note";
+      my $line = "- [$label](i/$id/about.$lang.html) $entry_note";
       push( @lines, $line );
     }
 
     my $tmpl = HTML::Template->new(
       filename => $template_root->child('category_overview.md.tmpl') );
     $tmpl->param( \%tmpl_var );
+
+    ## q & d: add lines as variable
+    $tmpl->param( lines => join( "\n", @lines ), );
     ##my $out = $web_root->child($category_type)->child("about.$lang.md");
     my $out = path('/tmp')->child("about.$lang.md");
     $out->spew_utf8( $tmpl->output );

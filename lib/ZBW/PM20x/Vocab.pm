@@ -22,7 +22,7 @@ ZBW::PM20x::Vocab - Functions for PM20 vocabularies
 =head1 SYNOPSIS
 
   use ZBW::PM20x::Vocab;
-	my ($category_ref, $sig_lookup_ref, $modified_date) = get_vocab($vocab_file);
+	my ($category_ref, $sig_lookup_ref, $modified_date) = get_vocab('ag');
 
 =head1 DESCRIPTION
 
@@ -30,7 +30,7 @@ ZBW::PM20x::Vocab - Functions for PM20 vocabularies
 
 =cut
 
-=item get_vocab ($vocab_file)
+=item get_vocab ($vocab)
 
 Read a SKOS vocabluary in JSONLD format into perl datastructures
 
@@ -118,6 +118,25 @@ sub as_array {
     }
   }
   return @list;
+}
+
+=item get_termlabel ( $lang, $vocab, $term_id, $with_signature )
+
+Return the label for a term, optionally prepended by signature.
+
+=cut
+
+sub get_termlabel {
+  my $lang    = shift or die "param missing";
+  my $vocab   = shift or die "param missing";
+  my $term_id = shift or die "param missing";
+  my $with_signature = shift;
+
+  my $label = $vocab_all{$vocab}{id}{$term_id}{prefLabel}{$lang};
+  if ($with_signature) {
+    $label = "$vocab_all{$vocab}{id}{$term_id}{notation} $label";
+  }
+  return $label;
 }
 
 1;
