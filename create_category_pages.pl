@@ -107,15 +107,16 @@ foreach my $category_type ( keys %{$definitions_ref} ) {
       ? 'Folders by Category system'
       : 'Mappen nach Systematik';
     my %tmpl_var = (
-      "is_$lang"     => 1,
-      title          => $title,
-      etr            => "category_overview/$category_type",
-      modified       => $definitions_ref->{$category_type}{last_modified},
-      backlink       => "../about.$lang.html",
-      backlink_title => $backlinktitle,
-      provenance     => $provenance,
-      category_count => $geo_category_count,
-      folder_count   => $total_sh_folder_count,
+      "is_$lang"          => 1,
+      "is_$category_type" => 1,
+      title               => $title,
+      etr                 => "category_overview/$category_type",
+      modified            => $definitions_ref->{$category_type}{last_modified},
+      backlink            => "../about.$lang.html",
+      backlink_title      => $backlinktitle,
+      provenance          => $provenance,
+      category_count      => $geo_category_count,
+      folder_count        => $total_sh_folder_count,
     );
 
     # read json input
