@@ -12,6 +12,7 @@ binmode( STDOUT, ":utf8" );
 use lib './lib';
 
 use Data::Dumper;
+use HTML::Template;
 use JSON;
 use Path::Tiny;
 use Readonly;
@@ -23,6 +24,7 @@ use ZBW::PM20x::Vocab;
 my $web_root        = path('../web.public/category');
 my $klassdata_root  = path('../data/klassdata');
 my $folderdata_root = path('../data/folderdata');
+my $template_root   = path('../etc/html_tmpl');
 
 my %prov = (
   hwwa => {
@@ -90,43 +92,6 @@ geo:
     prov: hwwa
 EOF
 
-# general introduction text
-my %about_text = (
-  de => q{
-Nur grob geschätzt ein Fünftel des digitalisierten Bestandes des
-Länder-/Sacharchivs bis 1949 ist in Mappen erschlossen und über diese
-Systematik zugänglich. Die entsprechenden Länder und Regionen - z.B. der Nahe
-Osten, Japan, die ehemaligen deutschen Kolonien oder Hamburg - sind unten mit
-"komplett" gekennzeichnet. Viele kleine und große Länder wie Großbritannien,
-China, Indien, Frankreich oder die USA fehlen jedoch ganz oder sind nur mit
-einzelnen, aus der "Forschungsstelle für das Übersee-Deutschtum" übernommenen
-Mappen vertreten.
-
-Alles nicht aufbereitete Material ist unter [digitalisierte
-Filme](/film/h1_sh.de.html) zugänglich, auch solches aus der [2. Verfilmung
-(bis 1960)](/film/h2_sh.de.html) - aus urheberrechtlichen Gründen allerdings
-leider nur im ZBW-Lesesaal. Die
-[vollständige Ländersystematik](https://pm20.zbw.eu/report/pm20_result.de.html?jsonFile=vocab/geo_by_signature.json&main_title=L%C3%A4ndersystematik)
-ist online verfügbar.
-  },
-  en => q{
-Of the PM20 Länder-/Sacharchiv up to 1949, only a rough estimate of one-fifth
-of the digitized holdings are indexed in folders and accessible via this
-category system. The corresponding countries and regions - e.g. the Middle
-East, Japan, the former German colonies or Hamburg - are marked "complete" in
-the list below. However, many small and large countries such as Great Britain,
-China, India, France or the USA are missing at all or are only represented by a
-few folders originating from the "Forschungsstelle für das Übersee-Deutschtum".
-
-All unprocessed material is accessible under [digitized
-films](/film/h1_sh.de.html) (in German), including material from the [second
-filming (until 1960)](/film/h2_sh.de.html) - for copyright reasons, however,
-unfortunately only in the ZBW reading room. The [complete country category
-system](https://pm20.zbw.eu/report/pm20_result.de.html?jsonFile=vocab/geo_by_signature.en.json&main_title=Country+category+system)
-is available online.
-  },
-);
-
 # vocabulary data
 my ( $geo_ref, $geo_siglookup_ref, $geo_modified ) =
   ZBW::PM20x::Vocab::get_vocab('ag');
@@ -155,18 +120,15 @@ foreach my $category_type ( keys %{$definitions_ref} ) {
       $lang eq 'en'
       ? 'Folders by Category system'
       : 'Mappen nach Systematik';
-    push( @lines,
-      '---',
-      "title: \"$title\"",
-      "etr: category_overview/$category_type",
-      "modified: $last_modified",
-      "backlink: ../about.$lang.html",
-      "backlink-title: \"$backlinktitle\"",
-      'fn-stub: about',
-      '---',
-      '' );
-    push( @lines, "### $provenance" );
-    push( @lines, "# $typedef_ref->{title}{$lang}", '' );
+    my %tmpl_var = (
+      "is_$lang"     => 1,
+      title          => $title,
+      etr            => "category_overview/$category_type",
+      modified       => $last_modified,
+      backlink       => "../about.$lang.html",
+      backlink_title => $backlinktitle,
+      provenance     => $provenance,
+    );
 
     # read json input
     my $file =
@@ -176,19 +138,8 @@ foreach my $category_type ( keys %{$definitions_ref} ) {
 
     # statistics collecting and output
     my $category_count = $geo_category_count;
-    push(
-      @lines,
-      (
-        $lang eq 'en'
-        ? "In total $category_count categories, $total_sh_folder_count subject folders."
-        : "Insgesamt $category_count Systematikstellen, $total_sh_folder_count Sach-Mappen."
-      ),
-      ''
-    );
-
-    if ( defined $about_text{$lang} ) {
-      push( @lines, $about_text{$lang}, '' );
-    }
+    $tmpl_var{category_count} = $geo_category_count;
+    $tmpl_var{folder_count}   = $total_sh_folder_count;
 
     # main loop
     my $firstletter_old = '';
@@ -231,10 +182,15 @@ foreach my $category_type ( keys %{$definitions_ref} ) {
       push( @lines, $line );
     }
 
-    my $out = $web_root->child($category_type)->child("about.$lang.md");
-    $out->spew_utf8( join( "\n", @lines ) );
+    my $tmpl = HTML::Template->new(
+      filename => $template_root->child('category_overview.md.tmpl') );
+    $tmpl->param( \%tmpl_var );
+    ##my $out = $web_root->child($category_type)->child("about.$lang.md");
+    my $out = path('/tmp')->child("about.$lang.md");
+    $out->spew_utf8( $tmpl->output );
   }
 }
+exit;
 
 # individual category pages
 foreach my $category_type ( keys %{$definitions_ref} ) {
