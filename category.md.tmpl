@@ -1,0 +1,40 @@
+---
+title: "<tmpl_var title>"
+etr: <tmpl_var etr>
+modified: <tmpl_var modified>
+backlink: <tmpl_var backlink>
+backlink-title: "<tmpl_var backlink_title>"
+fn-stub: about
+---
+
+### <tmpl_var provenance>
+# <tmpl_var title>
+
+<tmpl_if scope_note>
+> Scope Note: <tmpl_var scope_note>
+</tmpl_if>
+
+<tmpl_if is_de>
+Insgesamt <tmpl_var folder_count1> Sach-Mappen, <tmpl_var document_count1> Dokumente - Mappen <tmpl_if complete>komplett<tmpl_else>unvollständig</tmpl_if>.
+
+Nicht als Mappe aufbereitetes Material finden Sie unter [digitalisierte Filme](/film/h1_sh).
+
+_Klicken Sie den Link unter "(xy Dokumente)" für die Dokumentanzeige im DFG-Viewer._
+
+## Sacharchiv
+</tmpl_if>
+<tmpl_if is_en>
+In total <tmpl_var folder_count1> subject folders, <tmpl_var document_count1> documents - folders <tmpl_if complete>complete<tmpl_else>incomplete</tmpl_if>.
+
+For material not published as folders, please check the [digitized films](/film/h1_sh) (in German).
+
+_For direct access to the documents, click the "(xy documents)" link._
+
+## Subject archives
+</tmpl_if>
+
+<tmpl_var lines>
+
+<tmpl_if is_en>
+_* The English category label is an unchecked automated translation of the German label._
+</tmpl_if>
