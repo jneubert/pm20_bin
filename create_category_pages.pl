@@ -51,13 +51,12 @@ geo:
     vocab: ag
     uri_field: country
   detail:
-    output_dir: ../category/geo/i
-    category: subject
-    result_file: subject_folders
-    vocab: je
-    category2: ware
-    result_file2: ware_folders
-    vocab2: ip
+    subject:
+      result_file: subject_folders
+      vocab: je
+#    ware
+#      result_file: ware_folders
+#      vocab: ip
 subject:
   prov: hwwa
   overview:
@@ -69,10 +68,9 @@ subject:
     vocab: je
     uri_field: category
   detail:
-    output_dir: ../category/subject/i
-    category: geo
-    result_file: subject_folders
-    vocab: ag
+    geo:
+      result_file: subject_folders
+      vocab: ag
 EOF
 
 # data for all vocabularies
@@ -83,106 +81,119 @@ set_last_modified();
 
 # category overview pages
 my ( $master_ref, $detail_ref );
+
+# loop over category types
 foreach my $category_type ( keys %{$definitions_ref} ) {
   my $typedef_ref = $definitions_ref->{$category_type}->{overview};
 
   # vocabulary references
   my $master_vocab = $definitions_ref->{$category_type}{overview}{vocab};
   $master_ref = $vocab_all{$master_vocab};
-  my $detail_vocab = $definitions_ref->{$category_type}{detail}{vocab};
-  $detail_ref = $vocab_all{$detail_vocab};
 
-  # count folders and add to ???
-  my ( $category_count, $total_folder_count ) =
-    count_folders_per_category(
-    $definitions_ref->{$category_type}{detail}{category}, $master_ref );
+  # loop over detail types
+  foreach
+    my $detail_type ( keys %{ $definitions_ref->{$category_type}{detail} } )
+  {
+    my $detail_vocab =
+      $definitions_ref->{$category_type}{detail}{$detail_type}{vocab};
+    $detail_ref = $vocab_all{$detail_vocab};
 
-  foreach my $lang (@LANGUAGES) {
-    my @lines;
-    my $title = $typedef_ref->{title}{$lang};
-    my $provenance =
-      $PROV{ $definitions_ref->{$category_type}{prov} }{name}{$lang};
+    # count folders and add to ???
+    my ( $category_count, $total_folder_count ) =
+      count_folders_per_category( $category_type, $detail_type, $master_ref );
 
-    # some header information for the page
-    my $backlinktitle =
-      $lang eq 'en'
-      ? 'Folders by Category system'
-      : 'Mappen nach Systematik';
-    my %tmpl_var = (
-      "is_$lang"          => 1,
-      "is_$category_type" => 1,
-      title               => $title,
-      etr                 => "category_overview/$category_type",
-      modified            => $definitions_ref->{$category_type}{last_modified},
-      backlink            => "../about.$lang.html",
-      backlink_title      => $backlinktitle,
-      provenance          => $provenance,
-      category_count      => $category_count,
-      folder_count        => $total_folder_count,
-    );
+    foreach my $lang (@LANGUAGES) {
+      my @lines;
+      my $title = $typedef_ref->{title}{$lang};
+      my $provenance =
+        $PROV{ $definitions_ref->{$category_type}{prov} }{name}{$lang};
 
-    # read json input
-    my $file =
-      $KLASSDATA_ROOT->child( $typedef_ref->{result_file} . ".$lang.json" );
-    my @categories =
-      @{ decode_json( $file->slurp )->{results}->{bindings} };
+      # some header information for the page
+      my $backlinktitle =
+        $lang eq 'en'
+        ? 'Folders by Category system'
+        : 'Mappen nach Systematik';
+      my %tmpl_var = (
+        "is_$lang"          => 1,
+        "is_$category_type" => 1,
+        title               => $title,
+        etr                 => "category_overview/$category_type",
+        modified       => $definitions_ref->{$category_type}{last_modified},
+        backlink       => "../about.$lang.html",
+        backlink_title => $backlinktitle,
+        provenance     => $provenance,
+        category_count => $category_count,
+        folder_count   => $total_folder_count,
+      );
 
-    # main loop
-    my $firstletter_old = '';
-    foreach my $category (@categories) {
+      # read json input
+      my $file =
+        $KLASSDATA_ROOT->child( $typedef_ref->{result_file} . ".$lang.json" );
+      my @categories =
+        @{ decode_json( $file->slurp )->{results}->{bindings} };
 
-      # skip result if no folders exist
-      next unless exists $category->{shCountLabel} or exists $category->{countLabel};
+      # main loop
+      my $firstletter_old = '';
+      foreach my $category (@categories) {
 
-      # control break?
-      my $firstletter = substr( $category->{signature}->{value}, 0, 1 );
-      if ( $firstletter ne $firstletter_old ) {
-        push( @lines,
-          '', "### $master_ref->{subhead}{$firstletter}{$lang}", '' );
-        $firstletter_old = $firstletter;
+        # skip result if no folders exist
+        next
+          unless exists $category->{shCountLabel}
+          or exists $category->{countLabel};
+
+        # control break?
+        my $firstletter = substr( $category->{signature}->{value}, 0, 1 );
+        if ( $firstletter ne $firstletter_old ) {
+          push( @lines,
+            '', "### $master_ref->{subhead}{$firstletter}{$lang}", '' );
+          $firstletter_old = $firstletter;
+        }
+
+        ##print Dumper $category; exit;
+        my $category_uri = $category->{ $typedef_ref->{uri_field} }{value};
+        $category_uri =~ m/(\d{6})$/;
+        my $id = $1;
+        my $label =
+          ZBW::PM20x::Vocab::get_termlabel( $lang, $typedef_ref->{vocab}, $id,
+          1 );
+        my $entry_note = (
+          defined $master_ref->{id}{$id}{geoCategoryType}
+          ? "$master_ref->{id}{$id}{geoCategoryType} "
+          : ''
+          )
+          . '('
+          . (
+          defined $master_ref->{id}{$id}{foldersComplete}
+            and $master_ref->{id}{$id}{foldersComplete} eq 'Y'
+          ? ( $lang eq 'en' ? 'complete, ' : 'komplett, ' )
+          : ''
+          )
+          . $master_ref->{id}{$id}{"${detail_type}FolderCount"}
+          . ( $lang eq 'en' ? ' subject folders' : ' Sach-Mappen' ) . ')';
+
+        # main entry
+        my $line = "- [$label](i/$id/about.$lang.html) $entry_note";
+        ## indent for Sondermappe
+        if ( $label =~ m/ Sm\d/ and $firstletter ne 'q' ) {
+          $line = "  $line";
+        }
+        push( @lines, $line );
       }
 
-      ##print Dumper $category; exit;
-      my $category_uri = $category->{ $typedef_ref->{uri_field} }{value};
-      print "$category_uri\n";
-      $category_uri =~ m/(\d{6})$/;
-      my $id         = $1;
-      my $label      = ZBW::PM20x::Vocab::get_termlabel( $lang, $typedef_ref->{vocab}, $id, 1 );
-      my $entry_note = (
-        defined $master_ref->{id}{$id}{geoCategoryType}
-        ? "$master_ref->{id}{$id}{geoCategoryType} "
-        : ''
-        )
-        . '('
-        . (
-        defined $master_ref->{id}{$id}{foldersComplete}
-          and $master_ref->{id}{$id}{foldersComplete} eq 'Y'
-        ? ( $lang eq 'en' ? 'complete, ' : 'komplett, ' )
-        : ''
-        )
-        . $master_ref->{id}{$id}{subjectFolderCount}
-        . ( $lang eq 'en' ? ' subject folders' : ' Sach-Mappen' ) . ')';
+      # TODO for multiple details on one category page, this have to move one
+      # level higher
+      my $tmpl = HTML::Template->new(
+        filename => $TEMPLATE_ROOT->child('category_overview.md.tmpl'),
+        utf8     => 1
+      );
+      $tmpl->param( \%tmpl_var );
+      ## q & d: add lines as large variable
+      $tmpl->param( lines => join( "\n", @lines ), );
 
-      # main entry
-      my $line = "- [$label](i/$id/about.$lang.html) $entry_note";
-      ## indent for Sondermappe
-      if ( $label =~ m/ Sm\d/ and $firstletter ne 'q' ) {
-        $line = "  $line";
-      }
-      push( @lines, $line );
+      my $out = $WEB_ROOT->child($category_type)->child("about.$lang.md");
+      ##my $out = path("/tmp/$category_type.about.$lang.md");
+      $out->spew_utf8( $tmpl->output );
     }
-
-    my $tmpl = HTML::Template->new(
-      filename => $TEMPLATE_ROOT->child('category_overview.md.tmpl'),
-      utf8     => 1
-    );
-    $tmpl->param( \%tmpl_var );
-    ## q & d: add lines as large variable
-    $tmpl->param( lines => join( "\n", @lines ), );
-
-    ##my $out = $WEB_ROOT->child($category_type)->child("about.$lang.md");
-    my $out = path("/tmp/$category_type.about.$lang.md");
-    $out->spew_utf8( $tmpl->output );
   }
 }
 exit;
@@ -334,16 +345,20 @@ sub output_category_page {
   $out->spew_utf8( $tmpl->output );
 }
 
+# should work for subject, ware and geo
 sub count_folders_per_category {
-  my $type    = shift or die "param missing";
-  my $cat_ref = shift or die "param missing";
+  my $category_type = shift or die "param missing";
+  my $detail_type   = shift or die "param missing";
+  my $master_ref    = shift or die "param missing";
 
   my %count_data;
   my $total_folder_count;
 
   # subject folder data
   # read json input (all folders for all categories)
-  my $file = $FOLDERDATA_ROOT->child("subject_folders.de.json");
+  my $file = $FOLDERDATA_ROOT->child(
+"$definitions_ref->{$category_type}{detail}{$detail_type}{result_file}.de.json"
+  );
   my @folders =
     @{ decode_json( $file->slurp )->{results}->{bindings} };
 
@@ -351,11 +366,20 @@ sub count_folders_per_category {
     $folder->{pm20}->{value} =~ m/(\d{6}),(\d{6})$/;
     my $id1 = $1;
     my $id2 = $2;
-    $count_data{$id1}{$id2}++;
+
+    if ( $category_type eq 'geo' and $detail_type eq 'subject' ) {
+      $count_data{$id1}{$id2}++;
+    } elsif ( $category_type eq 'subject' and $detail_type eq 'geo' ) {
+      $count_data{$id2}{$id1}++;
+    } else {
+      die
+"combination of category: $category_type and detail: $detail_type not defined";
+    }
+
   }
-  foreach my $entry ( keys %count_data ) {
-    my $count = scalar( keys %{ $count_data{$entry} } );
-    $cat_ref->{id}{$entry}{"${type}FolderCount"} = $count;
+  foreach my $id ( keys %count_data ) {
+    my $count = scalar( keys %{ $count_data{$id} } );
+    $master_ref->{id}{$id}{"${detail_type}FolderCount"} = $count;
     $total_folder_count += $count;
   }
   my $category_count = scalar( keys %count_data );
@@ -407,14 +431,19 @@ sub set_last_modified {
 
   foreach my $category_type ( keys %{$definitions_ref} ) {
     my $def_ref = $definitions_ref->{$category_type};
-    if ( $vocab_all{ $def_ref->{overview}{vocab} }{modified}
-      ge $vocab_all{ $def_ref->{detail}{vocab} }{modified} )
-    {
-      $def_ref->{last_modified} =
-        $vocab_all{ $def_ref->{overview}{vocab} }{modified};
-    } else {
-      $def_ref->{last_modified} =
-        $vocab_all{ $def_ref->{detail}{vocab} }{modified};
+
+    # modification daté of the master
+    my $last_modified = $vocab_all{ $def_ref->{overview}{vocab} }{modified};
+
+    # iterate over details and replace date if later
+    foreach my $detail_type ( keys %{ $def_ref->{detail} } ) {
+      if ( $vocab_all{ $def_ref->{detail}{$detail_type}{vocab} }{modified}
+        gt $last_modified )
+      {
+        $last_modified =
+          $vocab_all{ $def_ref->{detail}{$detail_type}{vocab} }{modified};
+      }
     }
+    $def_ref->{last_modified} = $last_modified;
   }
 }
