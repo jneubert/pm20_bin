@@ -49,14 +49,15 @@ geo:
     result_file: geo_by_signature
     output_dir: ../category/geo
     vocab: ag
+    uri_field: country
   detail:
+    output_dir: ../category/geo/i
+    category: subject
     result_file: subject_folders
-    output_dir: ../category/geo/i
     vocab: je
-  detail2:
-    result_file: ware_folders
-    output_dir: ../category/geo/i
-    vocab: ip
+    category2: ware
+    result_file2: ware_folders
+    vocab2: ip
 subject:
   prov: hwwa
   overview:
@@ -66,34 +67,35 @@ subject:
     result_file: subject_by_signature
     output_dir: ../category/subject
     vocab: je
+    uri_field: category
   detail:
-    result_file: subject_folders
     output_dir: ../category/subject/i
+    category: geo
+    result_file: subject_folders
     vocab: ag
 EOF
 
+# data for all vocabularies
 my %vocab_all = %{ ZBW::PM20x::Vocab::get_vocab_all() };
 
 # set last_modified entries for all category types
 set_last_modified();
 
-# vocabulary data
-my ( $geo_ref, $geo_siglookup_ref, $geo_modified ) =
-  ZBW::PM20x::Vocab::get_vocab('ag');
-my ( $subject_ref, $subject_siglookup_ref, $subject_modified ) =
-  ZBW::PM20x::Vocab::get_vocab('je');
-
-# Add subheadings to vocabs, according to first letter of signature
-my %subheading_subject = %{ $vocab_all{'je'}{subhead} };
-my %subheading_geo     = %{ $vocab_all{'ag'}{subhead} };
-
-# count folders and add to %geo
-my ( $geo_category_count, $total_sh_folder_count ) =
-  count_folders_per_category( 'sh', $geo_ref );
-
 # category overview pages
+my ( $master_ref, $detail_ref );
 foreach my $category_type ( keys %{$definitions_ref} ) {
   my $typedef_ref = $definitions_ref->{$category_type}->{overview};
+
+  # vocabulary references
+  my $master_vocab = $definitions_ref->{$category_type}{overview}{vocab};
+  $master_ref = $vocab_all{$master_vocab};
+  my $detail_vocab = $definitions_ref->{$category_type}{detail}{vocab};
+  $detail_ref = $vocab_all{$detail_vocab};
+
+  # count folders and add to ???
+  my ( $category_count, $total_folder_count ) =
+    count_folders_per_category(
+    $definitions_ref->{$category_type}{detail}{category}, $master_ref );
 
   foreach my $lang (@LANGUAGES) {
     my @lines;
@@ -115,8 +117,8 @@ foreach my $category_type ( keys %{$definitions_ref} ) {
       backlink            => "../about.$lang.html",
       backlink_title      => $backlinktitle,
       provenance          => $provenance,
-      category_count      => $geo_category_count,
-      folder_count        => $total_sh_folder_count,
+      category_count      => $category_count,
+      folder_count        => $total_folder_count,
     );
 
     # read json input
@@ -129,37 +131,44 @@ foreach my $category_type ( keys %{$definitions_ref} ) {
     my $firstletter_old = '';
     foreach my $category (@categories) {
 
-      # skip result if no subject folders exist
-      next unless exists $category->{shCountLabel};
+      # skip result if no folders exist
+      next unless exists $category->{shCountLabel} or exists $category->{countLabel};
 
       # control break?
       my $firstletter = substr( $category->{signature}->{value}, 0, 1 );
       if ( $firstletter ne $firstletter_old ) {
-        push( @lines, '', "### $subheading_geo{$firstletter}{$lang}", '' );
+        push( @lines,
+          '', "### $master_ref->{subhead}{$firstletter}{$lang}", '' );
         $firstletter_old = $firstletter;
       }
 
       ##print Dumper $category; exit;
-      $category->{country}->{value} =~ m/(\d{6})$/;
+      my $category_uri = $category->{ $typedef_ref->{uri_field} }{value};
+      print "$category_uri\n";
+      $category_uri =~ m/(\d{6})$/;
       my $id         = $1;
-      my $label      = ZBW::PM20x::Vocab::get_termlabel( $lang, 'ag', $id, 1 );
+      my $label      = ZBW::PM20x::Vocab::get_termlabel( $lang, $typedef_ref->{vocab}, $id, 1 );
       my $entry_note = (
-        defined $geo_ref->{$id}{geoCategoryType}
-        ? "$geo_ref->{$id}{geoCategoryType} "
+        defined $master_ref->{id}{$id}{geoCategoryType}
+        ? "$master_ref->{id}{$id}{geoCategoryType} "
         : ''
         )
         . '('
         . (
-        defined $geo_ref->{$id}{foldersComplete}
-          and $geo_ref->{$id}{foldersComplete} eq 'Y'
+        defined $master_ref->{id}{$id}{foldersComplete}
+          and $master_ref->{id}{$id}{foldersComplete} eq 'Y'
         ? ( $lang eq 'en' ? 'complete, ' : 'komplett, ' )
         : ''
         )
-        . $geo_ref->{$id}{shFolderCount}
+        . $master_ref->{id}{$id}{subjectFolderCount}
         . ( $lang eq 'en' ? ' subject folders' : ' Sach-Mappen' ) . ')';
 
       # main entry
       my $line = "- [$label](i/$id/about.$lang.html) $entry_note";
+      ## indent for Sondermappe
+      if ( $label =~ m/ Sm\d/ and $firstletter ne 'q' ) {
+        $line = "  $line";
+      }
       push( @lines, $line );
     }
 
@@ -229,10 +238,8 @@ foreach my $category_type ( keys %{$definitions_ref} ) {
       if ( $firstletter ne $firstletter_old ) {
 
         # subheading
-        my $subheading = $subheading_subject{$firstletter}{$lang}
-          || $subheading_subject{$firstletter}{de};
-        $subheading =~ s/, Allgemein$//i;
-        $subheading =~ s/, General$//i;
+        my $subheading = $detail_ref->{subhead}{$firstletter}{$lang}
+          || $detail_ref->{subhead}{$firstletter}{de};
         push( @lines, '', "### $subheading", '' );
         $firstletter_old = $firstletter;
       }
@@ -251,15 +258,15 @@ foreach my $category_type ( keys %{$definitions_ref} ) {
       # (label starts with notation - has also to deal with first element,
       # e.g., n Economy)
       if ( $label =~ m/ Sm\d/ and $firstletter ne 'q' ) {
-        if ( get_firstsig( $id2_old, $subject_ref ) ne
-          get_firstsig( $id2, $subject_ref ) and not $label =~ m/^[a-z]0/ )
+        if ( get_firstsig( $id2_old, $detail_ref ) ne
+          get_firstsig( $id2, $detail_ref ) and not $label =~ m/^[a-z]0/ )
         {
           ## insert non-linked intermediate item
-          my $id_broader = $subject_ref->{$id2}{broader};
+          my $id_broader = $detail_ref->{$id2}{broader};
           my $label      = mark_unchecked_translation(
-            $subject_ref->{$id_broader}{prefLabel}{$lang} );
+            $detail_ref->{$id_broader}{prefLabel}{$lang} );
           push( @lines,
-            "- [$subject_ref->{$id_broader}{notation} $label]{.gray}" );
+            "- [$detail_ref->{$id_broader}{notation} $label]{.gray}" );
         }
         $line = "  $line";
       }
@@ -294,18 +301,18 @@ sub output_category_page {
   my %tmpl_var = (
     "is_$lang" => 1,
     title      => $title,
-    etr        => "category/$cat_meta{category_type}/$geo_ref->{$id}{notation}",
-    modified   => $definitions_ref->{ $cat_meta{category_type} }{last_modified},
-    backlink   => "../../about.$lang.html",
+    etr => "category/$cat_meta{category_type}/$master_ref->{id}{$id}{notation}",
+    modified => $definitions_ref->{ $cat_meta{category_type} }{last_modified},
+    backlink => "../../about.$lang.html",
     backlink_title  => $backlinktitle,
     provenance      => $cat_meta{provenance},
     folder_count1   => $cat_meta{folder_count_first},
     document_count1 => $cat_meta{document_count_first},
-    scope_note      => $geo_ref->{$id}{scopeNote}{$lang},
+    scope_note      => $master_ref->{id}{$id}{scopeNote}{$lang},
   );
 
-  if ( defined $geo_ref->{$id}{foldersComplete}
-    and $geo_ref->{$id}{foldersComplete} eq 'Y' )
+  if ( defined $master_ref->{id}{$id}{foldersComplete}
+    and $master_ref->{id}{$id}{foldersComplete} eq 'Y' )
   {
     $tmpl_var{complete} = 1;
   }
@@ -348,7 +355,7 @@ sub count_folders_per_category {
   }
   foreach my $entry ( keys %count_data ) {
     my $count = scalar( keys %{ $count_data{$entry} } );
-    $cat_ref->{$entry}{"${type}FolderCount"} = $count;
+    $cat_ref->{id}{$entry}{"${type}FolderCount"} = $count;
     $total_folder_count += $count;
   }
   my $category_count = scalar( keys %count_data );

@@ -5,6 +5,7 @@ package ZBW::PM20x::Vocab;
 use strict;
 use warnings;
 
+use Data::Dumper;
 use JSON;
 use Path::Tiny;
 use Readonly;
@@ -217,14 +218,19 @@ sub add_subheadings {
         en => 'World',
       },
     };
-  } else {
+  } elsif ($vocab eq 'je') {
     foreach my $id ( keys %{ $vocab_all{$vocab}{id} } ) {
       my %terminfo = %{ $vocab_all{$vocab}{id}{$id} };
-      my $notation = $terminfo{notation};
-      next unless $notation =~ m/^[a-z]$/;
+      my $signature = $terminfo{notation};
+      next unless $signature =~ m/^[a-z]$/;
       foreach my $lang (@LANGUAGES) {
-        $subheading_ref->{$notation}{$lang} = $terminfo{prefLabel}{$lang}
-          || $terminfo{prefLabel}{de};
+        my $label = $terminfo{prefLabel}{$lang};
+
+        # remove generalizing phrases
+        $label =~ s/, Allgemein$//i;
+        $label =~ s/, General$//i;
+
+        $subheading_ref->{$signature}{$lang} = $label;
       }
     }
   }
