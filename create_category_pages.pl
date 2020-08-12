@@ -42,14 +42,12 @@ my @LANGUAGES = qw/ de en /;
 my $definitions_ref = YAML::Load(<<'EOF');
 geo:
   prov: hwwa
-  overview:
-    title:
-      en: Folders by Country Category System
-      de: Mappen nach Ländersystematik
-    result_file: geo_by_signature
-    output_dir: ../category/geo
-    vocab: ag
-    uri_field: country
+  title:
+    en: Folders by Country Category System
+    de: Mappen nach Ländersystematik
+  result_file: geo_by_signature
+  vocab: ag
+  uri_field: country
   detail:
     subject:
       result_file: subject_folders
@@ -59,14 +57,12 @@ geo:
 #      vocab: ip
 subject:
   prov: hwwa
-  overview:
-    title:
-      en: Folders by Subject Category System
-      de: Mappen nach Sachsystematik
-    result_file: subject_by_signature
-    output_dir: ../category/subject
-    vocab: je
-    uri_field: category
+  title:
+    en: Folders by Subject Category System
+    de: Mappen nach Sachsystematik
+  result_file: subject_by_signature
+  vocab: je
+  uri_field: category
   detail:
     geo:
       result_file: subject_folders
@@ -84,29 +80,27 @@ my ( $master_ref, $detail_ref );
 
 # loop over category types
 foreach my $category_type ( keys %{$definitions_ref} ) {
-  my $typedef_ref = $definitions_ref->{$category_type}->{overview};
+  my $def_ref = $definitions_ref->{$category_type};
 
   # vocabulary references
-  my $master_vocab = $definitions_ref->{$category_type}{overview}{vocab};
+  my $master_vocab = $def_ref->{vocab};
   $master_ref = $vocab_all{$master_vocab};
 
   # loop over detail types
-  foreach
-    my $detail_type ( keys %{ $definitions_ref->{$category_type}{detail} } )
-  {
+  foreach my $detail_type ( keys %{ $def_ref->{detail} } ) {
     my $detail_vocab =
-      $definitions_ref->{$category_type}{detail}{$detail_type}{vocab};
+      $def_ref->{detail}{$detail_type}{vocab};
     $detail_ref = $vocab_all{$detail_vocab};
 
-    # count folders and add to ???
+    # count folders and add to master
     my ( $category_count, $total_folder_count ) =
       count_folders_per_category( $category_type, $detail_type, $master_ref );
 
     foreach my $lang (@LANGUAGES) {
       my @lines;
-      my $title = $typedef_ref->{title}{$lang};
+      my $title = $def_ref->{title}{$lang};
       my $provenance =
-        $PROV{ $definitions_ref->{$category_type}{prov} }{name}{$lang};
+        $PROV{ $def_ref->{prov} }{name}{$lang};
 
       # some header information for the page
       my $backlinktitle =
@@ -118,17 +112,17 @@ foreach my $category_type ( keys %{$definitions_ref} ) {
         "is_$category_type" => 1,
         title               => $title,
         etr                 => "category_overview/$category_type",
-        modified       => $definitions_ref->{$category_type}{last_modified},
-        backlink       => "../about.$lang.html",
-        backlink_title => $backlinktitle,
-        provenance     => $provenance,
-        category_count => $category_count,
-        folder_count   => $total_folder_count,
+        modified            => $def_ref->{last_modified},
+        backlink            => "../about.$lang.html",
+        backlink_title      => $backlinktitle,
+        provenance          => $provenance,
+        category_count      => $category_count,
+        folder_count        => $total_folder_count,
       );
 
       # read json input
       my $file =
-        $KLASSDATA_ROOT->child( $typedef_ref->{result_file} . ".$lang.json" );
+        $KLASSDATA_ROOT->child( $def_ref->{result_file} . ".$lang.json" );
       my @categories =
         @{ decode_json( $file->slurp )->{results}->{bindings} };
 
@@ -150,11 +144,11 @@ foreach my $category_type ( keys %{$definitions_ref} ) {
         }
 
         ##print Dumper $category; exit;
-        my $category_uri = $category->{ $typedef_ref->{uri_field} }{value};
+        my $category_uri = $category->{ $def_ref->{uri_field} }{value};
         $category_uri =~ m/(\d{6})$/;
         my $id = $1;
         my $label =
-          ZBW::PM20x::Vocab::get_termlabel( $lang, $typedef_ref->{vocab}, $id,
+          ZBW::PM20x::Vocab::get_termlabel( $lang, $def_ref->{vocab}, $id,
           1 );
         my $entry_note = (
           defined $master_ref->{id}{$id}{geoCategoryType}
@@ -190,8 +184,8 @@ foreach my $category_type ( keys %{$definitions_ref} ) {
       ## q & d: add lines as large variable
       $tmpl->param( lines => join( "\n", @lines ), );
 
-      my $out = $WEB_ROOT->child($category_type)->child("about.$lang.md");
-      ##my $out = path("/tmp/$category_type.about.$lang.md");
+      ##my $out = $WEB_ROOT->child($category_type)->child("about.$lang.md");
+      my $out = path("/tmp/$category_type.about.$lang.md");
       $out->spew_utf8( $tmpl->output );
     }
   }
@@ -200,97 +194,103 @@ exit;
 
 # individual category pages
 foreach my $category_type ( keys %{$definitions_ref} ) {
-  my $typedef_ref = $definitions_ref->{$category_type}->{detail};
 
-  foreach my $lang (@LANGUAGES) {
+  # loop over detail types
+  foreach
+    my $detail_type ( keys %{ $definitions_ref->{$category_type}{detail} } )
+  {
+    my $def_ref =
+      $definitions_ref->{$category_type}->{detail}{$detail_type};
+    foreach my $lang (@LANGUAGES) {
 
-    # read json input (all folders for all categories)
-    my $file =
-      $FOLDERDATA_ROOT->child( $typedef_ref->{result_file} . ".$lang.json" );
-    my @entries =
-      @{ decode_json( $file->slurp )->{results}->{bindings} };
+      # read json input (all folders for all categories)
+      my $file =
+        $FOLDERDATA_ROOT->child( $def_ref->{result_file} . ".$lang.json" );
+      my @entries =
+        @{ decode_json( $file->slurp )->{results}->{bindings} };
 
-    # read subject categories
-    $file = $KLASSDATA_ROOT->child("subject_by_signature.$lang.json");
-    my @subject_categories =
-      @{ decode_json( $file->slurp )->{results}->{bindings} };
+      # read subject categories
+      $file = $KLASSDATA_ROOT->child("subject_by_signature.$lang.json");
+      my @subject_categories =
+        @{ decode_json( $file->slurp )->{results}->{bindings} };
 
-    # main loop
-    my %cat_meta = (
-      category_type => $category_type,
-      provenance =>
-        $PROV{ $definitions_ref->{$category_type}{prov} }{name}{$lang},
-      folder_count_first   => 0,
-      document_count_first => 0,
-    );
-    my @lines;
-    my $id1_old         = '';
-    my $id2_old         = '';
-    my $firstletter_old = '';
-    foreach my $entry (@entries) {
-      ##print Dumper $entry;exit;
+      # main loop
+      my %cat_meta = (
+        category_type => $category_type,
+        provenance =>
+          $PROV{ $definitions_ref->{$category_type}{prov} }{name}{$lang},
+        folder_count_first   => 0,
+        document_count_first => 0,
+      );
+      my @lines;
+      my $id1_old         = '';
+      my $id2_old         = '';
+      my $firstletter_old = '';
+      foreach my $entry (@entries) {
+        ##print Dumper $entry;exit;
 
-      # TODO improve query to get values more directly?
-      $entry->{pm20}->{value} =~ m/(\d{6}),(\d{6})$/;
-      my $id1   = $1;
-      my $id2   = $2;
-      my $label = ZBW::PM20x::Vocab::get_termlabel( $lang, 'je', $id2, 1 );
-      $label = mark_unchecked_translation($label);
+        # TODO improve query to get values more directly?
+        $entry->{pm20}->{value} =~ m/(\d{6}),(\d{6})$/;
+        my $id1   = $1;
+        my $id2   = $2;
+        my $label = ZBW::PM20x::Vocab::get_termlabel( $lang, 'je', $id2, 1 );
+        $label = mark_unchecked_translation($label);
 
-      # first level control break - new category page
-      if ( $id1_old ne '' and $id1 ne $id1_old ) {
-        output_category_page( $lang, \%cat_meta, $id1_old, \@lines );
-        @lines = ();
-      }
-      $id1_old = $id1;
-
-      # second level control break (label starts with signature)
-      my $firstletter = substr( $label, 0, 1 );
-      if ( $firstletter ne $firstletter_old ) {
-
-        # subheading
-        my $subheading = $detail_ref->{subhead}{$firstletter}{$lang}
-          || $detail_ref->{subhead}{$firstletter}{de};
-        push( @lines, '', "### $subheading", '' );
-        $firstletter_old = $firstletter;
-      }
-
-      # main entry
-      my $uri = $entry->{pm20}->{value};
-      my $entry_note =
-          '(<a href="'
-        . view_url( $lang, $uri )
-        . '" target="_blank">'
-        . $entry->{docs}->{value}
-        . ( $lang eq 'en' ? ' documents' : ' Dokumente' ) . '</a>)';
-      my $line = "- [$label]($uri) $entry_note";
-
-      # additional indent for Sondermappen
-      # (label starts with notation - has also to deal with first element,
-      # e.g., n Economy)
-      if ( $label =~ m/ Sm\d/ and $firstletter ne 'q' ) {
-        if ( get_firstsig( $id2_old, $detail_ref ) ne
-          get_firstsig( $id2, $detail_ref ) and not $label =~ m/^[a-z]0/ )
-        {
-          ## insert non-linked intermediate item
-          my $id_broader = $detail_ref->{$id2}{broader};
-          my $label      = mark_unchecked_translation(
-            $detail_ref->{$id_broader}{prefLabel}{$lang} );
-          push( @lines,
-            "- [$detail_ref->{$id_broader}{notation} $label]{.gray}" );
+        # first level control break - new category page
+        if ( $id1_old ne '' and $id1 ne $id1_old ) {
+          output_category_page( $lang, \%cat_meta, $id1_old, \@lines );
+          @lines = ();
         }
-        $line = "  $line";
+        $id1_old = $id1;
+
+        # second level control break (label starts with signature)
+        my $firstletter = substr( $label, 0, 1 );
+        if ( $firstletter ne $firstletter_old ) {
+
+          # subheading
+          my $subheading = $detail_ref->{subhead}{$firstletter}{$lang}
+            || $detail_ref->{subhead}{$firstletter}{de};
+          push( @lines, '', "### $subheading", '' );
+          $firstletter_old = $firstletter;
+        }
+
+        # main entry
+        my $uri = $entry->{pm20}->{value};
+        my $entry_note =
+            '(<a href="'
+          . view_url( $lang, $uri )
+          . '" target="_blank">'
+          . $entry->{docs}->{value}
+          . ( $lang eq 'en' ? ' documents' : ' Dokumente' ) . '</a>)';
+        my $line = "- [$label]($uri) $entry_note";
+
+        # additional indent for Sondermappen
+        # (label starts with notation - has also to deal with first element,
+        # e.g., n Economy)
+        if ( $label =~ m/ Sm\d/ and $firstletter ne 'q' ) {
+          if ( get_firstsig( $id2_old, $detail_ref ) ne
+            get_firstsig( $id2, $detail_ref ) and not $label =~ m/^[a-z]0/ )
+          {
+            ## insert non-linked intermediate item
+            my $id_broader = $detail_ref->{$id2}{broader};
+            my $label      = mark_unchecked_translation(
+              $detail_ref->{$id_broader}{prefLabel}{$lang} );
+            push( @lines,
+              "- [$detail_ref->{$id_broader}{notation} $label]{.gray}" );
+          }
+          $line = "  $line";
+        }
+        $id2_old = $id2;
+        push( @lines, $line );
+
+        # statistics
+        $cat_meta{folder_count_first}++;
+        $cat_meta{document_count_first} += $entry->{docs}{value};
       }
-      $id2_old = $id2;
-      push( @lines, $line );
 
-      # statistics
-      $cat_meta{folder_count_first}++;
-      $cat_meta{document_count_first} += $entry->{docs}{value};
+      # output of last category
+      output_category_page( $lang, \%cat_meta, $id1_old, \@lines );
     }
-
-    # output of last category
-    output_category_page( $lang, \%cat_meta, $id1_old, \@lines );
   }
 }
 
@@ -433,7 +433,7 @@ sub set_last_modified {
     my $def_ref = $definitions_ref->{$category_type};
 
     # modification daté of the master
-    my $last_modified = $vocab_all{ $def_ref->{overview}{vocab} }{modified};
+    my $last_modified = $vocab_all{ $def_ref->{vocab} }{modified};
 
     # iterate over details and replace date if later
     foreach my $detail_type ( keys %{ $def_ref->{detail} } ) {
