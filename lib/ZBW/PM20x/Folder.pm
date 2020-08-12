@@ -79,6 +79,8 @@ Return a html-encoded, human-readable label for a folder, optionally with signat
 
 =cut
 
+# TODO use Vocab::get_termlabel()
+
 sub get_folderlabel {
   my $lang       = shift or die "param missing";
   my $collection = shift or die "param missing";

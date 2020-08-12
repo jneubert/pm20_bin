@@ -157,6 +157,9 @@ sub get_termlabel {
   my $term_id = shift or die "param missing";
   my $with_signature = shift;
 
+  if (not defined $vocab_all{$vocab}{id}{$term_id}) {
+    die "Term $term_id not defined in vocab $vocab";
+  }
   my $label = $vocab_all{$vocab}{id}{$term_id}{prefLabel}{$lang};
 
   # mark unchecked translated labels
