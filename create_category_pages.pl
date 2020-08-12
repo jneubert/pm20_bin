@@ -11,6 +11,7 @@ binmode( STDOUT, ":utf8" );
 
 use lib './lib';
 
+use Carp;
 use Data::Dumper;
 use HTML::Template;
 use JSON;
@@ -82,12 +83,13 @@ my ( $master_ref, $detail_ref );
 foreach my $category_type ( keys %{$definitions_ref} ) {
   my $def_ref = $definitions_ref->{$category_type};
 
-  # vocabulary references
-  my $master_vocab = $def_ref->{vocab};
-  $master_ref = $vocab_all{$master_vocab};
+  # master vocabulary reference
+  $master_ref = $vocab_all{ $def_ref->{vocab} };
 
   # loop over detail types
   foreach my $detail_type ( keys %{ $def_ref->{detail} } ) {
+
+    # detail vocabulary reference
     my $detail_vocab =
       $def_ref->{detail}{$detail_type}{vocab};
     $detail_ref = $vocab_all{$detail_vocab};
@@ -185,33 +187,34 @@ foreach my $category_type ( keys %{$definitions_ref} ) {
       $tmpl->param( lines => join( "\n", @lines ), );
 
       ##my $out = $WEB_ROOT->child($category_type)->child("about.$lang.md");
-      my $out = path("/tmp/$category_type.about.$lang.md");
+      my $out = path("/tmp/$category_type/about.$lang.md");
       $out->spew_utf8( $tmpl->output );
     }
   }
 }
-exit;
 
 # individual category pages
 foreach my $category_type ( keys %{$definitions_ref} ) {
 
+  # master vocabulary reference
+  my $master_vocab = $definitions_ref->{$category_type}{vocab};
+  $master_ref = $vocab_all{ $master_vocab };
+
   # loop over detail types
   foreach
-    my $detail_type ( keys %{ $definitions_ref->{$category_type}{detail} } )
-  {
-    my $def_ref =
-      $definitions_ref->{$category_type}->{detail}{$detail_type};
+    my $detail_type ( keys %{ $definitions_ref->{$category_type}{detail} } ) {
+    my $def_ref = $definitions_ref->{$category_type}->{detail}{$detail_type};
+
+    # detail vocabulary reference
+    my $detail_vocab = $def_ref->{vocab};
+    $detail_ref = $vocab_all{$detail_vocab};
+
     foreach my $lang (@LANGUAGES) {
 
       # read json input (all folders for all categories)
       my $file =
         $FOLDERDATA_ROOT->child( $def_ref->{result_file} . ".$lang.json" );
       my @entries =
-        @{ decode_json( $file->slurp )->{results}->{bindings} };
-
-      # read subject categories
-      $file = $KLASSDATA_ROOT->child("subject_by_signature.$lang.json");
-      my @subject_categories =
         @{ decode_json( $file->slurp )->{results}->{bindings} };
 
       # main loop
@@ -233,7 +236,7 @@ foreach my $category_type ( keys %{$definitions_ref} ) {
         $entry->{pm20}->{value} =~ m/(\d{6}),(\d{6})$/;
         my $id1   = $1;
         my $id2   = $2;
-        my $label = ZBW::PM20x::Vocab::get_termlabel( $lang, 'je', $id2, 1 );
+        my $label = ZBW::PM20x::Vocab::get_termlabel( $lang, $detail_vocab, $id2, 1 );
         $label = mark_unchecked_translation($label);
 
         # first level control break - new category page
@@ -272,11 +275,9 @@ foreach my $category_type ( keys %{$definitions_ref} ) {
             get_firstsig( $id2, $detail_ref ) and not $label =~ m/^[a-z]0/ )
           {
             ## insert non-linked intermediate item
-            my $id_broader = $detail_ref->{$id2}{broader};
-            my $label      = mark_unchecked_translation(
-              $detail_ref->{$id_broader}{prefLabel}{$lang} );
-            push( @lines,
-              "- [$detail_ref->{$id_broader}{notation} $label]{.gray}" );
+            my $id_broader = $detail_ref->{id}{$id2}{broader};
+            my $sig_label = ZBW::PM20x::Vocab::get_termlabel($lang, $detail_vocab, $id_broader, 1);
+            push( @lines, "- [$sig_label]{.gray}" );
           }
           $line = "  $line";
         }
@@ -340,6 +341,7 @@ sub output_category_page {
 
   my $out_dir =
     $WEB_ROOT->child( $cat_meta{category_type} )->child('i')->child($id);
+  $out_dir = path("/tmp/$cat_meta_ref->{category_type}/i/$id");
   $out_dir->mkpath;
   my $out = $out_dir->child("about.$lang.md");
   $out->spew_utf8( $tmpl->output );
@@ -354,7 +356,7 @@ sub count_folders_per_category {
   my %count_data;
   my $total_folder_count;
 
-  # subject folder data
+  # folder data
   # read json input (all folders for all categories)
   my $file = $FOLDERDATA_ROOT->child(
 "$definitions_ref->{$category_type}{detail}{$detail_type}{result_file}.de.json"
@@ -407,9 +409,9 @@ sub view_url {
 
 sub get_firstsig {
   my $id         = shift or die "param missing";
-  my $lookup_ref = shift or die "param missing";
+  my $detail_ref = shift or die "param missing";
 
-  my $signature = $lookup_ref->{$id}->{notation};
+  my $signature = $detail_ref->{id}{$id}->{notation};
   my $firstsig  = ( split( / /, $signature ) )[0];
 
   return $firstsig;
