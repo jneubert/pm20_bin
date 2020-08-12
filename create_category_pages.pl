@@ -137,11 +137,15 @@ foreach my $category_type ( keys %{$definitions_ref} ) {
           unless exists $category->{shCountLabel}
           or exists $category->{countLabel};
 
+        my $signature = $category->{signature}->{value};
+
         # control break?
-        my $firstletter = substr( $category->{signature}->{value}, 0, 1 );
+        my $firstletter = substr( $signature, 0, 1 );
         if ( $firstletter ne $firstletter_old ) {
           push( @lines,
-            '', "### $master_ref->{subhead}{$firstletter}{$lang}", '' );
+            '',
+"### $master_ref->{subhead}{$firstletter}{$lang}<a name='$firstletter'></a>",
+            '' );
           $firstletter_old = $firstletter;
         }
 
@@ -167,7 +171,9 @@ foreach my $category_type ( keys %{$definitions_ref} ) {
           . ( $lang eq 'en' ? ' subject folders' : ' Sach-Mappen' ) . ')';
 
         # main entry
-        my $line = "- [$label](i/$id/about.$lang.html) $entry_note";
+        $signature =~ s/ /_/g;
+        my $line =
+"- [$label](i/$id/about.$lang.html) $entry_note<a name='$signature'></a>";
         ## indent for Sondermappe
         if ( $label =~ m/ Sm\d/ and $firstletter ne 'q' ) {
           $line = "  $line";
@@ -185,8 +191,8 @@ foreach my $category_type ( keys %{$definitions_ref} ) {
       ## q & d: add lines as large variable
       $tmpl->param( lines => join( "\n", @lines ), );
 
-      ##my $out = $WEB_ROOT->child($category_type)->child("about.$lang.md");
-      my $out = path("/tmp/$category_type/about.$lang.md");
+      my $out = $WEB_ROOT->child($category_type)->child("about.$lang.md");
+      ##$out = path("/tmp/$category_type/about.$lang.md");
       $out->spew_utf8( $tmpl->output );
     }
   }
@@ -353,7 +359,7 @@ sub output_category_page {
 
   my $out_dir =
     $WEB_ROOT->child($category_type)->child('i')->child($id);
-  $out_dir = path("/tmp/$category_type/i/$id");
+  ##$out_dir = path("/tmp/$category_type/i/$id");
   $out_dir->mkpath;
   my $out = $out_dir->child("about.$lang.md");
   $out->spew_utf8( $tmpl->output );
