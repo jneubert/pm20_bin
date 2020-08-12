@@ -214,8 +214,13 @@ foreach my $category_type ( keys %{$definitions_ref} ) {
       # read json input (all folders for all categories)
       my $file =
         $FOLDERDATA_ROOT->child( $def_ref->{result_file} . ".$lang.json" );
-      my @entries =
+      my @unsorted_entries =
         @{ decode_json( $file->slurp )->{results}->{bindings} };
+
+      # sort entries by relevant notation
+      my $key = "${category_type}Nta";
+      my @entries =
+        sort { $a->{$key}{value} cmp $b->{$key}{value} } @unsorted_entries;
 
       # main loop
       my $count_ref = {
@@ -237,7 +242,6 @@ foreach my $category_type ( keys %{$definitions_ref} ) {
         my $label =
           ZBW::PM20x::Vocab::get_termlabel( $lang, $detail_vocab, $detail_id,
           1 );
-        $label = mark_unchecked_translation($label);
 
         # first level control break - new category page
         if ( $master_id_old ne '' and $master_id ne $master_id_old ) {
@@ -416,16 +420,6 @@ sub get_firstsig {
   my $firstsig  = ( split( / /, $signature ) )[0];
 
   return $firstsig;
-}
-
-sub mark_unchecked_translation {
-  my $label = shift or die "param missing";
-
-  # mark unchecked translations
-  if ( substr( $label, 0, 2 ) eq '. ' ) {
-    $label = substr( $label, 2 ) . '<sup>*</sup>';
-  }
-  return $label;
 }
 
 # set last modification of all category types
