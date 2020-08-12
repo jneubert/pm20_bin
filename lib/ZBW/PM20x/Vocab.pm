@@ -5,6 +5,7 @@ package ZBW::PM20x::Vocab;
 use strict;
 use warnings;
 
+use Carp;
 use Data::Dumper;
 use JSON;
 use Path::Tiny;
@@ -158,7 +159,7 @@ sub get_termlabel {
   my $with_signature = shift;
 
   if (not defined $vocab_all{$vocab}{id}{$term_id}) {
-    die "Term $term_id not defined in vocab $vocab";
+    confess "Term $term_id not defined in vocab $vocab";
   }
   my $label = $vocab_all{$vocab}{id}{$term_id}{prefLabel}{$lang};
 

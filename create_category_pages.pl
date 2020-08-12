@@ -150,8 +150,7 @@ foreach my $category_type ( keys %{$definitions_ref} ) {
         $category_uri =~ m/(\d{6})$/;
         my $id = $1;
         my $label =
-          ZBW::PM20x::Vocab::get_termlabel( $lang, $def_ref->{vocab}, $id,
-          1 );
+          ZBW::PM20x::Vocab::get_termlabel( $lang, $def_ref->{vocab}, $id, 1 );
         my $entry_note = (
           defined $master_ref->{id}{$id}{geoCategoryType}
           ? "$master_ref->{id}{$id}{geoCategoryType} "
@@ -198,11 +197,12 @@ foreach my $category_type ( keys %{$definitions_ref} ) {
 
   # master vocabulary reference
   my $master_vocab = $definitions_ref->{$category_type}{vocab};
-  $master_ref = $vocab_all{ $master_vocab };
+  $master_ref = $vocab_all{$master_vocab};
 
   # loop over detail types
   foreach
-    my $detail_type ( keys %{ $definitions_ref->{$category_type}{detail} } ) {
+    my $detail_type ( keys %{ $definitions_ref->{$category_type}{detail} } )
+  {
     my $def_ref = $definitions_ref->{$category_type}->{detail}{$detail_type};
 
     # detail vocabulary reference
@@ -218,33 +218,34 @@ foreach my $category_type ( keys %{$definitions_ref} ) {
         @{ decode_json( $file->slurp )->{results}->{bindings} };
 
       # main loop
-      my %cat_meta = (
-        category_type => $category_type,
-        provenance =>
-          $PROV{ $definitions_ref->{$category_type}{prov} }{name}{$lang},
+      my $count_ref = {
         folder_count_first   => 0,
         document_count_first => 0,
-      );
+      };
       my @lines;
-      my $id1_old         = '';
-      my $id2_old         = '';
+      my $master_id_old   = '';
+      my $detail_id_old   = '';
       my $firstletter_old = '';
       foreach my $entry (@entries) {
         ##print Dumper $entry;exit;
 
-        # TODO improve query to get values more directly?
-        $entry->{pm20}->{value} =~ m/(\d{6}),(\d{6})$/;
-        my $id1   = $1;
-        my $id2   = $2;
-        my $label = ZBW::PM20x::Vocab::get_termlabel( $lang, $detail_vocab, $id2, 1 );
+        # extract ids for master and detail from folder id
+        my $folder_id = $1 if $entry->{pm20}->{value} =~ m/(\d{6},\d{6})$/;
+        my ( $master_id, $detail_id ) =
+          get_master_detail_ids( $category_type, $detail_type, $folder_id );
+
+        my $label =
+          ZBW::PM20x::Vocab::get_termlabel( $lang, $detail_vocab, $detail_id,
+          1 );
         $label = mark_unchecked_translation($label);
 
         # first level control break - new category page
-        if ( $id1_old ne '' and $id1 ne $id1_old ) {
-          output_category_page( $lang, \%cat_meta, $id1_old, \@lines );
+        if ( $master_id_old ne '' and $master_id ne $master_id_old ) {
+          output_category_page( $lang, $category_type, $master_id_old, \@lines,
+            $count_ref );
           @lines = ();
         }
-        $id1_old = $id1;
+        $master_id_old = $master_id;
 
         # second level control break (label starts with signature)
         my $firstletter = substr( $label, 0, 1 );
@@ -271,26 +272,30 @@ foreach my $category_type ( keys %{$definitions_ref} ) {
         # (label starts with notation - has also to deal with first element,
         # e.g., n Economy)
         if ( $label =~ m/ Sm\d/ and $firstletter ne 'q' ) {
-          if ( get_firstsig( $id2_old, $detail_ref ) ne
-            get_firstsig( $id2, $detail_ref ) and not $label =~ m/^[a-z]0/ )
+          if ( get_firstsig( $detail_id_old, $detail_ref ) ne
+            get_firstsig( $detail_id, $detail_ref )
+            and not $label =~ m/^[a-z]0/ )
           {
             ## insert non-linked intermediate item
-            my $id_broader = $detail_ref->{id}{$id2}{broader};
-            my $sig_label = ZBW::PM20x::Vocab::get_termlabel($lang, $detail_vocab, $id_broader, 1);
+            my $id_broader = $detail_ref->{id}{$detail_id}{broader};
+            my $sig_label =
+              ZBW::PM20x::Vocab::get_termlabel( $lang, $detail_vocab,
+              $id_broader, 1 );
             push( @lines, "- [$sig_label]{.gray}" );
           }
           $line = "  $line";
         }
-        $id2_old = $id2;
+        $detail_id_old = $detail_id;
         push( @lines, $line );
 
         # statistics
-        $cat_meta{folder_count_first}++;
-        $cat_meta{document_count_first} += $entry->{docs}{value};
+        $count_ref->{folder_count_first}++;
+        $count_ref->{document_count_first} += $entry->{docs}{value};
       }
 
       # output of last category
-      output_category_page( $lang, \%cat_meta, $id1_old, \@lines );
+      output_category_page( $lang, $category_type, $master_id_old, \@lines,
+        $count_ref );
     }
   }
 }
@@ -298,13 +303,16 @@ foreach my $category_type ( keys %{$definitions_ref} ) {
 ############
 
 sub output_category_page {
-  my $lang         = shift or die "param missing";
-  my $cat_meta_ref = shift or die "param missing";
-  my $id           = shift or die "param missing";
-  my $lines_ref    = shift or die "param missing";
-  my %cat_meta     = %{$cat_meta_ref};
+  my $lang          = shift or die "param missing";
+  my $category_type = shift or die "param missing";
+  my $id            = shift or die "param missing";
+  my $lines_ref     = shift or die "param missing";
+  my $count_ref     = shift or die "param missing";
 
-  my $title = ZBW::PM20x::Vocab::get_termlabel( $lang, 'ag', $id, 1 );
+  my $provenance =
+    $PROV{ $definitions_ref->{$category_type}{prov} }{name}{$lang};
+  my $master_vocab = $definitions_ref->{$category_type}{vocab};
+  my $title = ZBW::PM20x::Vocab::get_termlabel( $lang, $master_vocab, $id, 1 );
   my @output;
   my $backlinktitle =
     $lang eq 'en'
@@ -313,13 +321,13 @@ sub output_category_page {
   my %tmpl_var = (
     "is_$lang" => 1,
     title      => $title,
-    etr => "category/$cat_meta{category_type}/$master_ref->{id}{$id}{notation}",
-    modified => $definitions_ref->{ $cat_meta{category_type} }{last_modified},
-    backlink => "../../about.$lang.html",
+    etr        => "category/$category_type/$master_ref->{id}{$id}{notation}",
+    modified   => $definitions_ref->{$category_type}{last_modified},
+    backlink   => "../../about.$lang.html",
     backlink_title  => $backlinktitle,
-    provenance      => $cat_meta{provenance},
-    folder_count1   => $cat_meta{folder_count_first},
-    document_count1 => $cat_meta{document_count_first},
+    provenance      => $provenance,
+    folder_count1   => $count_ref->{folder_count_first},
+    document_count1 => $count_ref->{document_count_first},
     scope_note      => $master_ref->{id}{$id}{scopeNote}{$lang},
   );
 
@@ -328,8 +336,8 @@ sub output_category_page {
   {
     $tmpl_var{complete} = 1;
   }
-  $cat_meta_ref->{folder_count_first}   = 0;
-  $cat_meta_ref->{document_count_first} = 0;
+  $count_ref->{folder_count_first}   = 0;
+  $count_ref->{document_count_first} = 0;
 
   my $tmpl = HTML::Template->new(
     filename => $TEMPLATE_ROOT->child('category.md.tmpl'),
@@ -340,8 +348,8 @@ sub output_category_page {
   $tmpl->param( lines => join( "\n", @{$lines_ref} ), );
 
   my $out_dir =
-    $WEB_ROOT->child( $cat_meta{category_type} )->child('i')->child($id);
-  $out_dir = path("/tmp/$cat_meta_ref->{category_type}/i/$id");
+    $WEB_ROOT->child($category_type)->child('i')->child($id);
+  $out_dir = path("/tmp/$category_type/i/$id");
   $out_dir->mkpath;
   my $out = $out_dir->child("about.$lang.md");
   $out->spew_utf8( $tmpl->output );
@@ -365,18 +373,11 @@ sub count_folders_per_category {
     @{ decode_json( $file->slurp )->{results}->{bindings} };
 
   foreach my $folder (@folders) {
-    $folder->{pm20}->{value} =~ m/(\d{6}),(\d{6})$/;
-    my $id1 = $1;
-    my $id2 = $2;
+    my $folder_id = $1 if $folder->{pm20}->{value} =~ m/(\d{6},\d{6})$/;
+    my ( $master_id, $detail_id ) =
+      get_master_detail_ids( $category_type, $detail_type, $folder_id );
 
-    if ( $category_type eq 'geo' and $detail_type eq 'subject' ) {
-      $count_data{$id1}{$id2}++;
-    } elsif ( $category_type eq 'subject' and $detail_type eq 'geo' ) {
-      $count_data{$id2}{$id1}++;
-    } else {
-      die
-"combination of category: $category_type and detail: $detail_type not defined";
-    }
+    $count_data{$master_id}{$detail_id}++;
 
   }
   foreach my $id ( keys %count_data ) {
@@ -449,3 +450,26 @@ sub set_last_modified {
     $def_ref->{last_modified} = $last_modified;
   }
 }
+
+sub get_master_detail_ids {
+  my $category_type = shift or die "param missing";
+  my $detail_type   = shift or die "param missing";
+  my $folder_id     = shift or die "param missing";
+
+  $folder_id =~ m/^(\d{6}),(\d{6})$/
+    or confess "irregular folder id $folder_id";
+
+  my ( $master_id, $detail_id );
+  if ( $category_type eq 'geo' and $detail_type eq 'subject' ) {
+    $master_id = $1;
+    $detail_id = $2;
+  } elsif ( $category_type eq 'subject' and $detail_type eq 'geo' ) {
+    $master_id = $2;
+    $detail_id = $1;
+  } else {
+    die "combination of category: $category_type"
+      . " and detail: $detail_type not defined";
+  }
+  return ( $master_id, $detail_id );
+}
+
