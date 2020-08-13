@@ -176,6 +176,22 @@ sub get_termlabel {
   return $label;
 }
 
+=item get_siglink ( $vocab, $term_id )
+
+Return the signature for a term, formatted suitable for a link.
+
+=cut
+
+sub get_siglink {
+  my $vocab   = shift or die "param missing";
+  my $term_id = shift or die "param missing";
+
+  my $siglink = $vocab_all{$vocab}{id}{$term_id}{notation};
+  $siglink =~ s/ /_/g;
+
+  return $siglink;
+}
+
 ############ internal
 
 sub add_subheadings {

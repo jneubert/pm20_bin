@@ -84,7 +84,8 @@ foreach my $category_type ( keys %{$definitions_ref} ) {
   my $def_ref = $definitions_ref->{$category_type};
 
   # master vocabulary reference
-  $master_ref = $vocab_all{ $def_ref->{vocab} };
+  my $master_vocab = $def_ref->{vocab};
+  $master_ref = $vocab_all{$master_vocab};
 
   # loop over detail types
   foreach my $detail_type ( keys %{ $def_ref->{detail} } ) {
@@ -137,14 +138,13 @@ foreach my $category_type ( keys %{$definitions_ref} ) {
           unless exists $category->{shCountLabel}
           or exists $category->{countLabel};
 
-        my $signature = $category->{signature}->{value};
-
         # control break?
-        my $firstletter = substr( $signature, 0, 1 );
+        my $firstletter = substr( $category->{signature}->{value}, 0, 1 );
         if ( $firstletter ne $firstletter_old ) {
           push( @lines,
             '',
-"### $master_ref->{subhead}{$firstletter}{$lang}<a name='$firstletter'></a>",
+            "### $master_ref->{subhead}{$firstletter}{$lang}"
+              . "<a name='$firstletter'></a>",
             '' );
           $firstletter_old = $firstletter;
         }
@@ -171,9 +171,10 @@ foreach my $category_type ( keys %{$definitions_ref} ) {
           . ( $lang eq 'en' ? ' subject folders' : ' Sach-Mappen' ) . ')';
 
         # main entry
-        $signature =~ s/ /_/g;
+        my $siglink = ZBW::PM20x::Vocab::get_siglink( $master_vocab, $id );
         my $line =
-"- [$label](i/$id/about.$lang.html) $entry_note<a name='$signature'></a>";
+            "- [$label](i/$id/about.$lang.html) $entry_note"
+          . "<a name='$siglink'></a>";
         ## indent for Sondermappe
         if ( $label =~ m/ Sm\d/ and $firstletter ne 'q' ) {
           $line = "  $line";
@@ -269,14 +270,18 @@ foreach my $category_type ( keys %{$definitions_ref} ) {
         }
 
         # main entry
-        my $uri = $entry->{pm20}->{value};
+        my $uri          = $entry->{pm20}->{value};
+        my $catpage_link = "../../../$detail_type/about.$lang.html#"
+          . ZBW::PM20x::Vocab::get_siglink( $detail_vocab, $detail_id );
         my $entry_note =
             '(<a href="'
           . view_url( $lang, $uri )
           . '" target="_blank">'
           . $entry->{docs}->{value}
-          . ( $lang eq 'en' ? ' documents' : ' Dokumente' ) . '</a>)';
-        my $line = "- [$label]($uri) $entry_note";
+          . ( $lang eq 'en' ? ' documents' : ' Dokumente' ) . '</a>)' . ' (['
+          . ( $lang eq 'en' ? 'folder'     : 'Mappe' )
+          . "]($uri))";
+        my $line = "- [$label]($catpage_link) $entry_note";
 
         # additional indent for Sondermappen
         # (label starts with notation - has also to deal with first element,
@@ -377,8 +382,8 @@ sub count_folders_per_category {
   # folder data
   # read json input (all folders for all categories)
   my $file = $FOLDERDATA_ROOT->child(
-"$definitions_ref->{$category_type}{detail}{$detail_type}{result_file}.de.json"
-  );
+    $definitions_ref->{$category_type}{detail}{$detail_type}{result_file}
+      . '.de.json' );
   my @folders =
     @{ decode_json( $file->slurp )->{results}->{bindings} };
 
