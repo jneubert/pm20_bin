@@ -63,7 +63,7 @@ Read a SKOS vocabluary in JSONLD format into perl datastructures
 =cut
 
 sub get_vocab {
-  my $vocab = shift or die "param missing";
+  my $vocab = shift or croak('param missing');
 
   if ( not defined $vocab_all{$vocab} ) {
 
@@ -82,7 +82,7 @@ sub get_vocab {
         } elsif ( $type eq 'skos:Concept' ) {
 
           # skip orphan entries
-          next unless exists $category->{broader};
+          next if not exists $category->{broader};
 
           my $id = $category->{identifier};
 
@@ -104,14 +104,14 @@ sub get_vocab {
           # create lookup table for signatures
           $lookup{ $cat{$id}{notation} } = $id;
         } else {
-          die "Unexpectend type $type\n";
+          croak "Unexpectend type $type\n";
         }
       }
     }
 
     # get the broader id for SM entries from first part of signature
     foreach my $id ( keys %cat ) {
-      next unless $cat{$id}{notation} =~ m/ Sm\d/;
+      next if not $cat{$id}{notation} =~ m/ Sm\d/;
       my ($firstsig) = split( / /, $cat{$id}{notation} );
 
       # special case with artificially introduced x0 level
@@ -119,7 +119,7 @@ sub get_vocab {
         $firstsig = $1;
       }
       $cat{$id}{broader} = $lookup{$firstsig}
-        or die "missing signature $firstsig\n";
+        or croak "missing signature $firstsig\n";
     }
 
     # save vocabs for later invocations
@@ -153,9 +153,9 @@ Return the label for a term, optionally prepended by signature.
 =cut
 
 sub get_termlabel {
-  my $lang    = shift or die "param missing";
-  my $vocab   = shift or die "param missing";
-  my $term_id = shift or die "param missing";
+  my $lang    = shift or croak('param missing');
+  my $vocab   = shift or croak('param missing');
+  my $term_id = shift or croak('param missing');
   my $with_signature = shift;
 
   if (not defined $vocab_all{$vocab}{id}{$term_id}) {
@@ -183,8 +183,8 @@ Return the signature for a term, formatted suitable for a link.
 =cut
 
 sub get_siglink {
-  my $vocab   = shift or die "param missing";
-  my $term_id = shift or die "param missing";
+  my $vocab   = shift or croak('param missing');
+  my $term_id = shift or croak('param missing');
 
   my $siglink = $vocab_all{$vocab}{id}{$term_id}{notation};
   $siglink =~ s/ /_/g;
@@ -195,7 +195,7 @@ sub get_siglink {
 ############ internal
 
 sub add_subheadings {
-  my $vocab = shift or die "param missing";
+  my $vocab = shift or croak('param missing');
 
   my $subheading_ref;
 
@@ -242,7 +242,7 @@ sub add_subheadings {
     foreach my $id ( keys %{ $vocab_all{$vocab}{id} } ) {
       my %terminfo = %{ $vocab_all{$vocab}{id}{$id} };
       my $signature = $terminfo{notation};
-      next unless $signature =~ m/^[a-z]$/;
+      next if not $signature =~ m/^[a-z]$/;
       foreach my $lang (@LANGUAGES) {
         my $label = $terminfo{prefLabel}{$lang};
 

@@ -82,16 +82,16 @@ Return a html-encoded, human-readable label for a folder, optionally with signat
 # TODO use Vocab::get_termlabel()
 
 sub get_folderlabel {
-  my $lang       = shift or die "param missing";
-  my $collection = shift or die "param missing";
-  my $folder_id  = shift or die "param missing";
+  my $lang       = shift or croak('param missing');
+  my $collection = shift or croak('param missing');
+  my $folder_id  = shift or croak('param missing');
   my $with_signature = shift;
 
   my ($geo_ref)     = ZBW::PM20x::Vocab::get_vocab('ag');
   my ($subject_ref) = ZBW::PM20x::Vocab::get_vocab('je');
 
   $folder_id =~ m/(\d{6})(,(\d{6}))?/
-    or die "irregular folder_id: $folder_id for collection: $collection\n";
+    or croak("irregular folder_id: $folder_id for collection: $collection");
   my $id1 = $1;
   my $id2 = $3;
 
@@ -124,9 +124,9 @@ Return a html-encoded, human-readable label for a document from consolidated doc
 =cut
 
 sub get_doclabel {
-  my $lang      = shift || die "param missing";
-  my $doc_id    = shift || die "param missing";
-  my $field_ref = shift || die "param missing";
+  my $lang      = shift or croak('param missing');
+  my $doc_id    = shift or croak('param missing');
+  my $field_ref = shift or croak('param missing');
 
   my $label = '';
   if ( $field_ref->{title} ) {
@@ -171,7 +171,7 @@ sub get_doclabel {
       $label .= " ($field_ref->{pages} $p)";
     }
   } else {
-    warn "Missing pages for $doc_id: ", Dumper $field_ref;
+    carp( "Missing pages for $doc_id: ", Dumper $field_ref );
   }
 
   # encode HTML entities
@@ -187,8 +187,8 @@ Return a path fragment for a folder with intermediate (hashed) directories.
 =cut
 
 sub get_folder_hashed_path {
-  my $collection = shift or die 'param missing';
-  my $folder_id  = shift or die 'param missing';
+  my $collection = shift or croak('param missing');
+  my $folder_id  = shift or croak('param missing');
 
   my $path = path($collection);
   if ( $collection eq 'pe' or $collection eq 'co' ) {
@@ -196,14 +196,14 @@ sub get_folder_hashed_path {
     $path = $path->child($stub)->child($folder_id);
   } elsif ( $collection eq 'sh' or $collection eq 'wa' ) {
     $folder_id =~ m/(\d{6}),(\d{6})/
-      or die "irregular folder_id: $folder_id for collection: $collection\n";
+      or croak("irregular folder_id: $folder_id for collection: $collection");
     my $id1   = $1;
     my $id2   = $2;
     my $stub1 = substr( $id1, 0, 4 ) . 'xx';
     my $stub2 = substr( $id2, 0, 4 ) . 'xx';
     $path = $path->child($stub1)->child($id1)->child($stub2)->child($id2);
   } else {
-    die "wrong collection: $collection";
+    croak("wrong collection: $collection");
   }
 
   return $path;

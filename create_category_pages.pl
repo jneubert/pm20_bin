@@ -7,7 +7,7 @@
 use strict;
 use warnings;
 use utf8;
-binmode( STDOUT, ":utf8" );
+binmode( STDOUT, ":encoding(UTF-8)" );
 
 use lib './lib';
 
@@ -97,7 +97,7 @@ foreach my $category_type ( keys %{$definitions_ref} ) {
 
     # count folders and add to master
     my ( $category_count, $total_folder_count ) =
-      count_folders_per_category( $category_type, $detail_type, $master_ref );
+      count_folders_per_category( $category_type, $detail_type );
 
     foreach my $lang (@LANGUAGES) {
       my @lines;
@@ -135,8 +135,8 @@ foreach my $category_type ( keys %{$definitions_ref} ) {
 
         # skip result if no folders exist
         next
-          unless exists $category->{shCountLabel}
-          or exists $category->{countLabel};
+          if not( exists $category->{shCountLabel}
+          or exists $category->{countLabel} );
 
         # control break?
         my $firstletter = substr( $category->{signature}->{value}, 0, 1 );
@@ -151,8 +151,12 @@ foreach my $category_type ( keys %{$definitions_ref} ) {
 
         ##print Dumper $category; exit;
         my $category_uri = $category->{ $def_ref->{uri_field} }{value};
-        $category_uri =~ m/(\d{6})$/;
-        my $id = $1;
+        my $id;
+        if ( $category_uri =~ m/(\d{6})$/ ) {
+          $id = $1;
+        } else {
+          croak "irregular category uri $category_uri";
+        }
         my $label =
           ZBW::PM20x::Vocab::get_termlabel( $lang, $def_ref->{vocab}, $id, 1 );
         my $entry_note = (
@@ -242,7 +246,10 @@ foreach my $category_type ( keys %{$definitions_ref} ) {
         ##print Dumper $entry;exit;
 
         # extract ids for master and detail from folder id
-        my $folder_id = $1 if $entry->{pm20}->{value} =~ m/(\d{6},\d{6})$/;
+        my $folder_id;
+        if ( $entry->{pm20}->{value} =~ m/(\d{6},\d{6})$/ ) {
+          $folder_id = $1;
+        }
         my ( $master_id, $detail_id ) =
           get_master_detail_ids( $category_type, $detail_type, $folder_id );
 
@@ -287,8 +294,7 @@ foreach my $category_type ( keys %{$definitions_ref} ) {
         # (label starts with notation - has also to deal with first element,
         # e.g., n Economy)
         if ( $label =~ m/ Sm\d/ and $firstletter ne 'q' ) {
-          if ( get_firstsig( $detail_id_old, $detail_ref ) ne
-            get_firstsig( $detail_id, $detail_ref )
+          if ( get_firstsig($detail_id_old) ne get_firstsig($detail_id)
             and not $label =~ m/^[a-z]0/ )
           {
             ## insert non-linked intermediate item
@@ -318,17 +324,16 @@ foreach my $category_type ( keys %{$definitions_ref} ) {
 ############
 
 sub output_category_page {
-  my $lang          = shift or die "param missing";
-  my $category_type = shift or die "param missing";
-  my $id            = shift or die "param missing";
-  my $lines_ref     = shift or die "param missing";
-  my $count_ref     = shift or die "param missing";
+  my $lang          = shift or croak('param missing');
+  my $category_type = shift or croak('param missing');
+  my $id            = shift or croak('param missing');
+  my $lines_ref     = shift or croak('param missing');
+  my $count_ref     = shift or croak('param missing');
 
   my $provenance =
     $PROV{ $definitions_ref->{$category_type}{prov} }{name}{$lang};
   my $master_vocab = $definitions_ref->{$category_type}{vocab};
   my $title = ZBW::PM20x::Vocab::get_termlabel( $lang, $master_vocab, $id, 1 );
-  my @output;
   my $backlinktitle =
     $lang eq 'en'
     ? 'Category Overview'
@@ -368,13 +373,14 @@ sub output_category_page {
   $out_dir->mkpath;
   my $out = $out_dir->child("about.$lang.md");
   $out->spew_utf8( $tmpl->output );
+
+  return;
 }
 
 # should work for subject, ware and geo
 sub count_folders_per_category {
-  my $category_type = shift or die "param missing";
-  my $detail_type   = shift or die "param missing";
-  my $master_ref    = shift or die "param missing";
+  my $category_type = shift or croak('param missing');
+  my $detail_type   = shift or croak('param missing');
 
   my %count_data;
   my $total_folder_count;
@@ -388,7 +394,10 @@ sub count_folders_per_category {
     @{ decode_json( $file->slurp )->{results}->{bindings} };
 
   foreach my $folder (@folders) {
-    my $folder_id = $1 if $folder->{pm20}->{value} =~ m/(\d{6},\d{6})$/;
+    my $folder_id;
+    if ( $folder->{pm20}->{value} =~ m/(\d{6},\d{6})$/ ) {
+      $folder_id = $1;
+    }
     my ( $master_id, $detail_id ) =
       get_master_detail_ids( $category_type, $detail_type, $folder_id );
 
@@ -405,15 +414,17 @@ sub count_folders_per_category {
 }
 
 sub view_url {
-  my $lang       = shift or die "param missing";
-  my $folder_uri = shift or die "param missing";
+  my $lang       = shift or croak('param missing');
+  my $folder_uri = shift or croak('param missing');
 
   my $viewer_stub =
     'https://dfg-viewer.de/show/?tx_dlf[id]=https://pm20.zbw.eu/mets/';
 
-  $folder_uri =~ m;/(pe|co|sh|wa)/(\d{6}(,\d{6})?)$;;
-  my $collection = $1;
-  my $folder_id  = $2;
+  my ( $collection, $folder_id );
+  if ( $folder_uri =~ m;/(pe|co|sh|wa)/(\d{6}(,\d{6})?)$; ) {
+    $collection = $1;
+    $folder_id  = $2;
+  }
 
   my $view_url =
       $viewer_stub
@@ -424,8 +435,7 @@ sub view_url {
 }
 
 sub get_firstsig {
-  my $id         = shift or die "param missing";
-  my $detail_ref = shift or die "param missing";
+  my $id = shift or croak('param missing');
 
   my $signature = $detail_ref->{id}{$id}->{notation};
   my $firstsig  = ( split( / /, $signature ) )[0];
@@ -454,12 +464,13 @@ sub set_last_modified {
     }
     $def_ref->{last_modified} = $last_modified;
   }
+  return;
 }
 
 sub get_master_detail_ids {
-  my $category_type = shift or die "param missing";
-  my $detail_type   = shift or die "param missing";
-  my $folder_id     = shift or die "param missing";
+  my $category_type = shift or croak('param missing');
+  my $detail_type   = shift or croak('param missing');
+  my $folder_id     = shift or croak('param missing');
 
   $folder_id =~ m/^(\d{6}),(\d{6})$/
     or confess "irregular folder id $folder_id";
@@ -472,7 +483,7 @@ sub get_master_detail_ids {
     $master_id = $2;
     $detail_id = $1;
   } else {
-    die "combination of category: $category_type"
+    croak "combination of category: $category_type"
       . " and detail: $detail_type not defined";
   }
   return ( $master_id, $detail_id );
