@@ -70,30 +70,27 @@ subject:
       vocab: ag
 EOF
 
-# data for all vocabularies
-my %vocab_all = %{ ZBW::PM20x::Vocab::get_vocab_all() };
-
 # set last_modified entries for all category types
-set_last_modified();
+##set_last_modified();
 
 # category overview pages
-my ( $master_ref, $detail_ref );
+my ( $master_voc, $detail_voc );
 
 # loop over category types
 foreach my $category_type ( keys %{$definitions_ref} ) {
   my $def_ref = $definitions_ref->{$category_type};
 
   # master vocabulary reference
-  my $master_vocab = $def_ref->{vocab};
-  $master_ref = $vocab_all{$master_vocab};
+  my $master_vocab_name = $def_ref->{vocab};
+  $master_voc = ZBW::PM20x::Vocab->new($master_vocab_name);
 
   # loop over detail types
   foreach my $detail_type ( keys %{ $def_ref->{detail} } ) {
 
     # detail vocabulary reference
-    my $detail_vocab =
+    my $detail_vocab_name =
       $def_ref->{detail}{$detail_type}{vocab};
-    $detail_ref = $vocab_all{$detail_vocab};
+    $detail_voc = ZBW::PM20x::Vocab->new($detail_vocab_name);
 
     # count folders and add to master
     my ( $category_count, $total_folder_count ) =
@@ -143,7 +140,8 @@ foreach my $category_type ( keys %{$definitions_ref} ) {
         if ( $firstletter ne $firstletter_old ) {
           push( @lines,
             '',
-            "### $master_ref->{subhead}{$firstletter}{$lang}"
+            "### "
+              . $master_voc->subheading( $lang, $firstletter )
               . "<a name='$firstletter'></a>",
             '' );
           $firstletter_old = $firstletter;
@@ -157,27 +155,26 @@ foreach my $category_type ( keys %{$definitions_ref} ) {
         } else {
           croak "irregular category uri $category_uri";
         }
-        my $label =
-          ZBW::PM20x::Vocab::get_termlabel( $lang, $def_ref->{vocab}, $id, 1 );
+        my $label      = $master_voc->label( $lang, $id );
+        my $signature  = $master_voc->signature($id);
         my $entry_note = (
-          defined $master_ref->{id}{$id}{geoCategoryType}
-          ? "$master_ref->{id}{$id}{geoCategoryType} "
+          ( $master_voc->geo_category_type($id) )
+          ? $master_voc->geo_category_type($id)
           : ''
           )
           . '('
           . (
-          defined $master_ref->{id}{$id}{foldersComplete}
-            and $master_ref->{id}{$id}{foldersComplete} eq 'Y'
+            ( $master_voc->folders_complete($id) )
           ? ( $lang eq 'en' ? 'complete, ' : 'komplett, ' )
           : ''
           )
-          . $master_ref->{id}{$id}{"${detail_type}FolderCount"}
+          . $master_voc->folder_count( $detail_type, $id )
           . ( $lang eq 'en' ? ' subject folders' : ' Sach-Mappen' ) . ')';
 
         # main entry
-        my $siglink = ZBW::PM20x::Vocab::get_siglink( $master_vocab, $id );
+        my $siglink = $master_voc->siglink($id);
         my $line =
-            "- [$label](i/$id/about.$lang.html) $entry_note"
+            "- [$label $signature](i/$id/about.$lang.html) $entry_note"
           . "<a name='$siglink'></a>";
         ## indent for Sondermappe
         if ( $label =~ m/ Sm\d/ and $firstletter ne 'q' ) {
@@ -197,7 +194,7 @@ foreach my $category_type ( keys %{$definitions_ref} ) {
       $tmpl->param( lines => join( "\n", @lines ), );
 
       my $out = $WEB_ROOT->child($category_type)->child("about.$lang.md");
-      ##$out = path("/tmp/$category_type/about.$lang.md");
+      $out = path("/tmp/$category_type/about.$lang.md");
       $out->spew_utf8( $tmpl->output );
     }
   }
@@ -207,8 +204,8 @@ foreach my $category_type ( keys %{$definitions_ref} ) {
 foreach my $category_type ( keys %{$definitions_ref} ) {
 
   # master vocabulary reference
-  my $master_vocab = $definitions_ref->{$category_type}{vocab};
-  $master_ref = $vocab_all{$master_vocab};
+  my $master_vocab_name = $definitions_ref->{$category_type}{vocab};
+  $master_voc = ZBW::PM20x::Vocab->new($master_vocab_name);
 
   # loop over detail types
   foreach
@@ -217,8 +214,8 @@ foreach my $category_type ( keys %{$definitions_ref} ) {
     my $def_ref = $definitions_ref->{$category_type}->{detail}{$detail_type};
 
     # detail vocabulary reference
-    my $detail_vocab = $def_ref->{vocab};
-    $detail_ref = $vocab_all{$detail_vocab};
+    my $detail_vocab_name = $def_ref->{vocab};
+    $detail_voc = ZBW::PM20x::Vocab->new($detail_vocab_name);
 
     foreach my $lang (@LANGUAGES) {
 
@@ -253,9 +250,8 @@ foreach my $category_type ( keys %{$definitions_ref} ) {
         my ( $master_id, $detail_id ) =
           get_master_detail_ids( $category_type, $detail_type, $folder_id );
 
-        my $label =
-          ZBW::PM20x::Vocab::get_termlabel( $lang, $detail_vocab, $detail_id,
-          1 );
+        my $label     = $detail_voc->label( $lang, $detail_id );
+        my $signature = $detail_voc->signature($detail_id);
 
         # first level control break - new category page
         if ( $master_id_old ne '' and $master_id ne $master_id_old ) {
@@ -265,13 +261,12 @@ foreach my $category_type ( keys %{$definitions_ref} ) {
         }
         $master_id_old = $master_id;
 
-        # second level control break (label starts with signature)
-        my $firstletter = substr( $label, 0, 1 );
+        # second level control break
+        my $firstletter = substr( $signature, 0, 1 );
         if ( $firstletter ne $firstletter_old ) {
 
           # subheading
-          my $subheading = $detail_ref->{subhead}{$firstletter}{$lang}
-            || $detail_ref->{subhead}{$firstletter}{de};
+          my $subheading = $detail_voc->subheading( $lang, $firstletter );
           push( @lines, '', "### $subheading", '' );
           $firstletter_old = $firstletter;
         }
@@ -279,7 +274,7 @@ foreach my $category_type ( keys %{$definitions_ref} ) {
         # main entry
         my $uri          = $entry->{pm20}->{value};
         my $catpage_link = "../../../$detail_type/about.$lang.html#"
-          . ZBW::PM20x::Vocab::get_siglink( $detail_vocab, $detail_id );
+          . $detail_voc->siglink($detail_id);
         my $entry_note =
             '(<a href="'
           . view_url( $lang, $uri )
@@ -288,7 +283,7 @@ foreach my $category_type ( keys %{$definitions_ref} ) {
           . ( $lang eq 'en' ? ' documents' : ' Dokumente' ) . '</a>)' . ' (['
           . ( $lang eq 'en' ? 'folder'     : 'Mappe' )
           . "]($uri))";
-        my $line = "- [$label]($catpage_link) $entry_note";
+        my $line = "- [$signature $label]($catpage_link) $entry_note";
 
         # additional indent for Sondermappen
         # (label starts with notation - has also to deal with first element,
@@ -298,11 +293,10 @@ foreach my $category_type ( keys %{$definitions_ref} ) {
             and not $label =~ m/^[a-z]0/ )
           {
             ## insert non-linked intermediate item
-            my $id_broader = $detail_ref->{id}{$detail_id}{broader};
-            my $sig_label =
-              ZBW::PM20x::Vocab::get_termlabel( $lang, $detail_vocab,
-              $id_broader, 1 );
-            push( @lines, "- [$sig_label]{.gray}" );
+            my $id_broader = $detail_voc->broader($detail_id);
+            my $label      = $detail_voc->label( $lang, $id_broader );
+            my $signature  = $detail_voc->signature($id_broader);
+            push( @lines, "- [$signature $label]{.gray}" );
           }
           $line = "  $line";
         }
@@ -333,27 +327,26 @@ sub output_category_page {
   my $provenance =
     $PROV{ $definitions_ref->{$category_type}{prov} }{name}{$lang};
   my $master_vocab = $definitions_ref->{$category_type}{vocab};
-  my $title = ZBW::PM20x::Vocab::get_termlabel( $lang, $master_vocab, $id, 1 );
+  my $title =
+    $master_voc->signature($id) . ' ' . $master_voc->label( $lang, $id );
   my $backlinktitle =
     $lang eq 'en'
     ? 'Category Overview'
     : 'Systematik-Übersicht';
   my %tmpl_var = (
-    "is_$lang" => 1,
-    title      => $title,
-    etr        => "category/$category_type/$master_ref->{id}{$id}{notation}",
-    modified   => $definitions_ref->{$category_type}{last_modified},
-    backlink   => "../../about.$lang.html",
+    "is_$lang"      => 1,
+    title           => $title,
+    etr             => "category/$category_type/" . $master_voc->signature($id),
+    modified        => $definitions_ref->{$category_type}{last_modified},
+    backlink        => "../../about.$lang.html",
     backlink_title  => $backlinktitle,
     provenance      => $provenance,
     folder_count1   => $count_ref->{folder_count_first},
     document_count1 => $count_ref->{document_count_first},
-    scope_note      => $master_ref->{id}{$id}{scopeNote}{$lang},
+    scope_note      => $master_voc->scope_note( $lang, $id ),
   );
 
-  if ( defined $master_ref->{id}{$id}{foldersComplete}
-    and $master_ref->{id}{$id}{foldersComplete} eq 'Y' )
-  {
+  if ( $master_voc->folders_complete($id) ) {
     $tmpl_var{complete} = 1;
   }
   $count_ref->{folder_count_first}   = 0;
@@ -369,7 +362,7 @@ sub output_category_page {
 
   my $out_dir =
     $WEB_ROOT->child($category_type)->child('i')->child($id);
-  ##$out_dir = path("/tmp/$category_type/i/$id");
+  $out_dir = path("/tmp/$category_type/i/$id");
   $out_dir->mkpath;
   my $out = $out_dir->child("about.$lang.md");
   $out->spew_utf8( $tmpl->output );
@@ -406,7 +399,8 @@ sub count_folders_per_category {
   }
   foreach my $id ( keys %count_data ) {
     my $count = scalar( keys %{ $count_data{$id} } );
-    $master_ref->{id}{$id}{"${detail_type}FolderCount"} = $count;
+    ## TODO possible to read folder count from enhanced vocab file?
+    ##$master_voc->set_folders_count($detail_type, $id, $count);
     $total_folder_count += $count;
   }
   my $category_count = scalar( keys %count_data );
@@ -437,11 +431,35 @@ sub view_url {
 sub get_firstsig {
   my $id = shift or croak('param missing');
 
-  my $signature = $detail_ref->{id}{$id}->{notation};
+  my $signature = $detail_voc->signature($id);
   my $firstsig  = ( split( / /, $signature ) )[0];
 
   return $firstsig;
 }
+
+sub get_master_detail_ids {
+  my $category_type = shift or croak('param missing');
+  my $detail_type   = shift or croak('param missing');
+  my $folder_id     = shift or croak('param missing');
+
+  $folder_id =~ m/^(\d{6}),(\d{6})$/
+    or confess "irregular folder id $folder_id";
+
+  my ( $master_id, $detail_id );
+  if ( $category_type eq 'geo' and $detail_type eq 'subject' ) {
+    $master_id = $1;
+    $detail_id = $2;
+  } elsif ( $category_type eq 'subject' and $detail_type eq 'geo' ) {
+    $master_id = $2;
+    $detail_id = $1;
+  } else {
+    croak "combination of category: $category_type"
+      . " and detail: $detail_type not defined";
+  }
+  return ( $master_id, $detail_id );
+}
+
+__DATA__
 
 # set last modification of all category types
 # to the maximum of the modification dates of the underlying vocabs
@@ -467,25 +485,4 @@ sub set_last_modified {
   return;
 }
 
-sub get_master_detail_ids {
-  my $category_type = shift or croak('param missing');
-  my $detail_type   = shift or croak('param missing');
-  my $folder_id     = shift or croak('param missing');
-
-  $folder_id =~ m/^(\d{6}),(\d{6})$/
-    or confess "irregular folder id $folder_id";
-
-  my ( $master_id, $detail_id );
-  if ( $category_type eq 'geo' and $detail_type eq 'subject' ) {
-    $master_id = $1;
-    $detail_id = $2;
-  } elsif ( $category_type eq 'subject' and $detail_type eq 'geo' ) {
-    $master_id = $2;
-    $detail_id = $1;
-  } else {
-    croak "combination of category: $category_type"
-      . " and detail: $detail_type not defined";
-  }
-  return ( $master_id, $detail_id );
-}
 

@@ -25,14 +25,21 @@ ZBW::PM20x::Vocab - Functions for PM20 vocabularies
 =head1 SYNOPSIS
 
   use ZBW::PM20x::Vocab;
+  my $voc = ZBW::PM20x::Vocab->new('ag');
+
+  my $last_modified = $voc->modified;
+  my $label = $voc->label($id);
+  my $signature = $voc->signature($id);
+  my $term_id = $voc->lookup_signature('A10');
+  my $subheading = $voc->subheading('A');
+  my $folder_count = $voc->folder_count( 'subject', $id );
+  
+  set_folder_count($type, $id, $count);
+  broader($id)
+
 	my ($category_ref, $sig_lookup_ref, $modified_date) = get_vocab('ag');
 
 =head1 DESCRIPTION
-
-
-=cut
-
-=item get_vocab_all ()
 
 Read all vocabularies into a data structure, organized as:
 
@@ -47,65 +54,60 @@ Read all vocabularies into a data structure, organized as:
 
 =cut
 
-sub get_vocab_all {
+=item new ($vocab_name)
 
-  foreach my $vocab (qw/ ag je /) {
-    get_vocab($vocab);
-    add_subheadings($vocab);
-  }
-  return \%vocab_all;
-}
-
-=item get_vocab ($vocab)
-
-Read a SKOS vocabluary in JSONLD format into perl datastructures
+Return a new vocab object from the named vocabulary. (Names are lowercase ifis
+klass_code).  Read the according SKOS vocabluary in JSONLD format into the
+object.
 
 =cut
 
-sub get_vocab {
-  my $vocab = shift or croak('param missing');
+sub new {
+  my $class      = shift or croak('param missing');
+  my $vocab_name = shift or croak('param missing');
 
-  if ( not defined $vocab_all{$vocab} ) {
+  my $self = { vocab_name => $vocab_name };
+  bless $self, $class;
 
-    my ( %cat, %lookup, $modified );
-    my $file = path("$RDF_ROOT/$vocab.skos.jsonld");
-    foreach my $lang (qw/ en de /) {
-      my @categories =
-        @{ decode_json( $file->slurp )->{'@graph'} };
+  # initialize with file
+  my ( %cat, %lookup, $modified );
+  my $file = path("$RDF_ROOT/$vocab_name.skos.jsonld");
+  foreach my $lang (qw/ en de /) {
+    my @categories =
+      @{ decode_json( $file->slurp )->{'@graph'} };
 
-      # read jsonld graph
-      foreach my $category (@categories) {
+    # read jsonld graph
+    foreach my $category (@categories) {
 
-        my $type = $category->{'@type'};
-        if ( $type eq 'skos:ConceptScheme' ) {
-          $modified = $category->{modified};
-        } elsif ( $type eq 'skos:Concept' ) {
+      my $type = $category->{'@type'};
+      if ( $type eq 'skos:ConceptScheme' ) {
+        $modified = $category->{modified};
+      } elsif ( $type eq 'skos:Concept' ) {
 
-          # skip orphan entries
-          next if not exists $category->{broader};
+        # skip orphan entries
+        next if not exists $category->{broader};
 
-          my $id = $category->{identifier};
+        my $id = $category->{identifier};
 
-          # map optional simple jsonld fields to hash entries
-          my @fields =
-            qw / notation notationLong foldersComplete geoCategoryType /;
-          foreach my $field (@fields) {
-            $cat{$id}{$field} = $category->{$field};
-          }
-
-          # map optional language-specifc jsonld fields to hash entries
-          @fields = qw / prefLabel scopeNote /;
-          foreach my $field (@fields) {
-            foreach my $ref ( as_array( $category->{$field} ) ) {
-              $cat{$id}{$field}{ $ref->{'@language'} } = $ref->{'@value'};
-            }
-          }
-
-          # create lookup table for signatures
-          $lookup{ $cat{$id}{notation} } = $id;
-        } else {
-          croak "Unexpectend type $type\n";
+        # map optional simple jsonld fields to hash entries
+        my @fields =
+          qw / notation notationLong foldersComplete geoCategoryType /;
+        foreach my $field (@fields) {
+          $cat{$id}{$field} = $category->{$field};
         }
+
+        # map optional language-specifc jsonld fields to hash entries
+        @fields = qw / prefLabel scopeNote /;
+        foreach my $field (@fields) {
+          foreach my $ref ( _as_array( $category->{$field} ) ) {
+            $cat{$id}{$field}{ $ref->{'@language'} } = $ref->{'@value'};
+          }
+        }
+
+        # add signature to lookup table
+        $lookup{ $cat{$id}{notation} } = $id;
+      } else {
+        croak "Unexpectend type $type\n";
       }
     }
 
@@ -122,17 +124,157 @@ sub get_vocab {
         or croak "missing signature $firstsig\n";
     }
 
-    # save vocabs for later invocations
-    $vocab_all{$vocab}{id}       = \%cat;
-    $vocab_all{$vocab}{nta}      = \%lookup;
-    $vocab_all{$vocab}{modified} = $modified;
+    # save state
+    $self->{id}       = \%cat;
+    $self->{nta}      = \%lookup;
+    $self->{modified} = $modified;
+
+    $self->_add_subheadings();
   }
 
-  return $vocab_all{$vocab}{id}, $vocab_all{$vocab}{nta},
-    $vocab_all{$vocab}{modified};
+  return $self;
 }
 
-sub as_array {
+=item label ( $lang, $term_id )
+
+Return the label for a term.
+
+=cut
+
+sub label {
+  my $self    = shift or croak('param missing');
+  my $lang    = shift or croak('param missing');
+  my $term_id = shift or croak('param missing');
+
+  my $label = $self->{id}{$term_id}{prefLabel}{$lang};
+
+  # mark unchecked translated labels
+  if ( $lang eq 'en' and $label =~ m/^\. / ) {
+    $label =~ s/\. (.*)/$1 \*/;
+  }
+
+  return $label;
+}
+
+=item signature ( $term_id )
+
+Return the signature for a term.
+
+=cut
+
+sub signature {
+  my $self    = shift or croak('param missing');
+  my $term_id = shift or croak('param missing');
+
+  my $signature = $self->{id}{$term_id}{notation};
+
+  return $signature;
+}
+
+=item siglink ( $term_id )
+
+Return the signature for a term, formatted suitable for a link.
+
+=cut
+
+sub siglink {
+  my $self    = shift or croak('param missing');
+  my $term_id = shift or croak('param missing');
+
+  my $siglink = $self->{id}{$term_id}{notation};
+  $siglink =~ s/ /_/g;
+
+  return $siglink;
+}
+
+=item subheading ( $lang, $key )
+
+Return the subheading for a key (normally, the first letter of the signature).
+
+=cut
+
+sub subheading {
+  my $self = shift or croak('param missing');
+  my $lang = shift or croak('param missing');
+  my $key  = shift or croak('param missing');
+
+  my $subheading = $self->{subhead}{$key}{$lang};
+
+  return $subheading;
+}
+
+=item scope_note( $term_id )
+
+Return the scope note for a term, or undef, if not defined.
+
+=cut
+
+sub scope_note {
+  my $self    = shift or croak('param missing');
+  my $lang    = shift or croak('param missing');
+  my $term_id = shift or croak('param missing');
+
+  my $scope_note = $self->{id}{$term_id}{scopeNote}{$lang};
+
+  return $scope_note;
+}
+
+=item geo_category_type( $term_id )
+
+Return the geo_category_type (A for "Sternchenland", B for normal, C for "Kästschenland), or undef, if not defined.
+
+=cut
+
+sub geo_category_type {
+  my $self    = shift or croak('param missing');
+  my $term_id = shift or croak('param missing');
+
+  my $geo_category_type = $self->{id}{$term_id}{geoCategoryType};
+
+  return $geo_category_type;
+}
+
+=item folders_complete( $term_id )
+
+Return true if the subject folders are comlete for a country, false otherwise. 
+
+=cut
+
+sub folders_complete {
+  my $self    = shift or croak('param missing');
+  my $term_id = shift or croak('param missing');
+
+  my $folders_complete;
+  if (  $self->{id}{$term_id}{folders_complete}
+    and $self->{id}{$term_id}{folders_complete} eq 'Y' )
+  {
+    $folders_complete = 1;
+  }
+
+  return $folders_complete;
+}
+
+=item folder_count( $detail_type, $term_id )
+
+Return the folder_count (A for "Sternchenland", B for normal, C for "Kästschenland), or undef, if not defined.
+
+=cut
+
+sub folder_count {
+  my $self        = shift or croak('param missing');
+  my $detail_type = shift or croak('param missing');
+  my $term_id     = shift or croak('param missing');
+
+  # TODO get from loaded data
+  my $count_prop   = "${detail_type}FolderCount";
+  my $folder_count = $self->{id}{$term_id}{$count_prop} || '';
+
+  return $folder_count;
+}
+
+############ internal
+
+sub _as_array {
   my $ref = shift;
 
   my @list = ();
@@ -146,61 +288,11 @@ sub as_array {
   return @list;
 }
 
-=item get_termlabel ( $lang, $vocab, $term_id, $with_signature )
+sub _add_subheadings {
+  my $self = shift or croak('param missing');
 
-Return the label for a term, optionally prepended by signature.
-
-=cut
-
-sub get_termlabel {
-  my $lang    = shift or croak('param missing');
-  my $vocab   = shift or croak('param missing');
-  my $term_id = shift or croak('param missing');
-  my $with_signature = shift;
-
-  if (not defined $vocab_all{$vocab}{id}{$term_id}) {
-    confess "Term $term_id not defined in vocab $vocab";
-  }
-  my $label = $vocab_all{$vocab}{id}{$term_id}{prefLabel}{$lang};
-
-  # mark unchecked translated labels
-  if ( $lang eq 'en' and $label =~ m/^\. / ) {
-    $label =~ s/\. (.*)/$1 \*/;
-  }
-
-  # optionally, prepend with signature
-  if ($with_signature) {
-    $label = "$vocab_all{$vocab}{id}{$term_id}{notation} $label";
-  }
-
-  return $label;
-}
-
-=item get_siglink ( $vocab, $term_id )
-
-Return the signature for a term, formatted suitable for a link.
-
-=cut
-
-sub get_siglink {
-  my $vocab   = shift or croak('param missing');
-  my $term_id = shift or croak('param missing');
-
-  my $siglink = $vocab_all{$vocab}{id}{$term_id}{notation};
-  $siglink =~ s/ /_/g;
-
-  return $siglink;
-}
-
-############ internal
-
-sub add_subheadings {
-  my $vocab = shift or croak('param missing');
-
-  my $subheading_ref;
-
-  if ( $vocab eq 'ag' ) {
-    $subheading_ref = {
+  if ( $self->{vocab_name} eq 'ag' ) {
+    $self->{subhead} = {
       A => {
         de => 'Europa',
         en => 'Europe',
@@ -238,9 +330,9 @@ sub add_subheadings {
         en => 'World',
       },
     };
-  } elsif ($vocab eq 'je') {
-    foreach my $id ( keys %{ $vocab_all{$vocab}{id} } ) {
-      my %terminfo = %{ $vocab_all{$vocab}{id}{$id} };
+  } elsif ( $self->{vocab_name} eq 'je' ) {
+    foreach my $id ( keys %{ $self->{id} } ) {
+      my %terminfo  = %{ $self->{id}{$id} };
       my $signature = $terminfo{notation};
       next if not $signature =~ m/^[a-z]$/;
       foreach my $lang (@LANGUAGES) {
@@ -250,14 +342,11 @@ sub add_subheadings {
         $label =~ s/, Allgemein$//i;
         $label =~ s/, General$//i;
 
-        $subheading_ref->{$signature}{$lang} = $label;
+        $self->{subhead}{$signature}{$lang} = $label;
       }
     }
   }
-
-  $vocab_all{$vocab}{subhead} = $subheading_ref;
-
-  return $subheading_ref;
+  return;
 }
 
 1;
