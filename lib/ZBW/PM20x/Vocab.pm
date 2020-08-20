@@ -7,15 +7,24 @@ use warnings;
 
 use Carp;
 use Data::Dumper;
+use Exporter;
 use JSON;
 use Path::Tiny;
 use Readonly;
 use Scalar::Util qw(looks_like_number reftype);
 
-Readonly my $RDF_ROOT  => path('../data/rdf');
-Readonly my @LANGUAGES => qw/ en de /;
+# exported package constants
+our @ISA    = qw/ Exporter /;
+our @EXPORT = qw/ @LANGUAGES $SM_QR $DEEP_SM_QR /;
 
-my %vocab_all;
+Readonly our @LANGUAGES => qw/ en de /;
+
+# identifies "Sondermappen" on different levels
+Readonly our $SM_QR => qr/ Sm\d+/;
+##Readonly our $DEEP_SM_QR      => qr/ Sm\d+\.[IVX]+/;
+Readonly our $DEEP_SM_QR => qr/ Sm\d+\.\d+/;
+
+Readonly my $RDF_ROOT => path('../data/rdf');
 
 =head1 NAME
 
@@ -185,6 +194,21 @@ sub siglink {
   $siglink =~ s/ /_/g;
 
   return $siglink;
+}
+
+=item broader ( $term_id )
+
+Return the signature for a term, formatted suitable for a link.
+
+=cut
+
+sub broader {
+  my $self    = shift or croak('param missing');
+  my $term_id = shift or croak('param missing');
+
+  my $broader = $self->{id}{$term_id}{broader};
+
+  return $broader;
 }
 
 =item subheading ( $lang, $key )
