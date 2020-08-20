@@ -4,6 +4,12 @@
 # create category overview pages from data/rdf/*.jsonld and
 # data/klassdata/*.json
 
+# TODO clean up mess
+# - changes for gettig aggregated counts from rdf (not finished, needs fixing jsonld)
+# - extend setting broader hierarchy in Vocab
+# - move get_firstsig to Vocab::sig_start($signature, $level)
+# - use check_missing_level for overview pages (needs tracking old id)
+
 use strict;
 use warnings;
 use utf8;
@@ -35,8 +41,6 @@ my %PROV = (
     }
   },
 );
-
-my @LANGUAGES = qw/ de en /;
 
 # TODO create and load external yaml
 # TODO use prov as the first level?
@@ -174,17 +178,22 @@ foreach my $category_type ( keys %{$definitions_ref} ) {
         # main entry
         my $siglink = $master_voc->siglink($id);
         my $line =
-            "- [$label $signature](i/$id/about.$lang.html) $entry_note"
+            "- [$signature $label](i/$id/about.$lang.html) $entry_note"
           . "<a name='$siglink'></a>";
         ## indent for Sondermappe
-        if ( $label =~ m/ Sm\d/ and $firstletter ne 'q' ) {
+        if ( $signature =~ $SM_QR and $firstletter ne 'q' ) {
+          # TODO check_missing_level
+          $line = "  $line";
+        }
+        if ( $signature =~ $DEEP_SM_QR ) {
+          # TODO check_missing_level
           $line = "  $line";
         }
         push( @lines, $line );
       }
 
-      # TODO for multiple details on one category page, this have to move one
-      # level higher
+      # TODO for multiple detail sections on one category page, this has to
+      # move one level higher
       my $tmpl = HTML::Template->new(
         filename => $TEMPLATE_ROOT->child('category_overview.md.tmpl'),
         utf8     => 1
@@ -272,6 +281,7 @@ foreach my $category_type ( keys %{$definitions_ref} ) {
         }
 
         # main entry
+        my $line         = '';
         my $uri          = $entry->{pm20}->{value};
         my $catpage_link = "../../../$detail_type/about.$lang.html#"
           . $detail_voc->siglink($detail_id);
@@ -283,25 +293,25 @@ foreach my $category_type ( keys %{$definitions_ref} ) {
           . ( $lang eq 'en' ? ' documents' : ' Dokumente' ) . '</a>)' . ' (['
           . ( $lang eq 'en' ? 'folder'     : 'Mappe' )
           . "]($uri))";
-        my $line = "- [$signature $label]($catpage_link) $entry_note";
 
         # additional indent for Sondermappen
-        # (label starts with notation - has also to deal with first element,
-        # e.g., n Economy)
-        if ( $label =~ m/ Sm\d/ and $firstletter ne 'q' ) {
-          if ( get_firstsig($detail_id_old) ne get_firstsig($detail_id)
-            and not $label =~ m/^[a-z]0/ )
-          {
-            ## insert non-linked intermediate item
-            my $id_broader = $detail_voc->broader($detail_id);
-            my $label      = $detail_voc->label( $lang, $id_broader );
-            my $signature  = $detail_voc->signature($id_broader);
-            push( @lines, "- [$signature $label]{.gray}" );
-          }
-          $line = "  $line";
+        if ( $signature =~ $SM_QR and $firstletter ne 'q' ) {
+          check_missing_level( $lang, \@lines, $detail_voc, $detail_id,
+            $detail_id_old, 1 );
+          $line .= "  ";
         }
-        $detail_id_old = $detail_id;
+
+        # again, additional indent for subdivided Sondermappen
+        if ( $signature =~ $DEEP_SM_QR ) {
+          ## TODO fix with get_smsig and according broader
+          check_missing_level( $lang, \@lines, $detail_voc, $detail_id,
+            $detail_id_old, 2 );
+          $line .= "  ";
+        }
+
+        $line .= "- [$signature $label]($catpage_link) $entry_note";
         push( @lines, $line );
+        $detail_id_old = $detail_id;
 
         # statistics
         $count_ref->{folder_count_first}++;
@@ -399,8 +409,7 @@ sub count_folders_per_category {
   }
   foreach my $id ( keys %count_data ) {
     my $count = scalar( keys %{ $count_data{$id} } );
-    ## TODO possible to read folder count from enhanced vocab file?
-    ##$master_voc->set_folders_count($detail_type, $id, $count);
+    ## do not set folder_count here, but use the one from rdf
     $total_folder_count += $count;
   }
   my $category_count = scalar( keys %count_data );
@@ -457,6 +466,35 @@ sub get_master_detail_ids {
       . " and detail: $detail_type not defined";
   }
   return ( $master_id, $detail_id );
+}
+
+sub check_missing_level {
+  my $lang      = shift or croak('param missing');
+  my $lines_ref = shift or croak('param missing');
+  my $voc       = shift or croak('param missing');
+  my $id        = shift or croak('param missing');
+  my $id_old    = shift or croak('param missing');
+  my $level     = shift or croak('param missing');
+
+  # skip special signatue
+  return if ( $voc->signature($id) =~ m/^[a-z]0/ );
+
+  # skip if first part of signature is same as in last entry
+  return if ( get_firstsig($id_old) eq get_firstsig($id) );
+
+  ## insert non-linked intermediate item
+  my $id_broader = $voc->broader($id);
+  my $label      = $voc->label( $lang, $id_broader );
+  my $signature  = $voc->signature($id_broader);
+  my $line       = "- [$signature $label]{.gray}";
+
+  # additional indent on deeper level
+  if ( $level == 2 ) {
+    $line = "  $line";
+  }
+  push( @{$lines_ref}, $line );
+
+  return;
 }
 
 __DATA__
