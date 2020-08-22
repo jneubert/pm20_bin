@@ -1,5 +1,5 @@
 <tmpl_if is_de>
-Insgesamt <tmpl_var category_count> Systematikstellen, <tmpl_var folder_count> Mappen.
+Insgesamt <tmpl_var category_count> Systematikstellen, <tmpl_var total_folder_count> Mappen.
 
 Nur grob geschätzt ein Fünftel des digitalisierten Bestandes des
 Länder-/Sacharchivs bis 1949 ist in Mappen erschlossen und über diese
