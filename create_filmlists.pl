@@ -99,7 +99,7 @@ foreach my $prov ( keys %page ) {
       "backlink: ./about.de.html",
       "backlink-title: Film-Überblick",
       '---', '' );
-    push( @lines, "## $page{$prov}{name}",                   '' );
+    push( @lines, "### $page{$prov}{name}",                  '' );
     push( @lines, "# $page{$prov}{list}{$page_name}{title}", '' );
     push( @lines,
 'Aus urheberrechtlichen Gründen sind die digitalisierten Filme nur im ZBW-Lesesaal zugänglich. *Bitte überprüfen Sie eigenverantwortlich vor einer Vervielfältigung oder Veröffentlichung einzelner Artikel deren urheberrechtlichen Status* ([Hinweise](#urheberrecht)) und holen Sie ggf. die Rechte bei den Rechteinhabern ein.',
