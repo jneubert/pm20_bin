@@ -5,7 +5,6 @@
 # data/klassdata/*.json
 
 # TODO clean up mess
-# - changes for gettig aggregated counts from rdf (not finished, needs fixing jsonld)
 # - extend setting broader hierarchy in Vocab
 # - move get_firstsig to Vocab::sig_start($signature, $level)
 # - use check_missing_level for overview pages (needs tracking old id)
@@ -96,15 +95,13 @@ foreach my $category_type ( keys %{$definitions_ref} ) {
       $def_ref->{detail}{$detail_type}{vocab};
     $detail_voc = ZBW::PM20x::Vocab->new($detail_vocab_name);
 
-    # count folders and add to master
-    my ( $category_count, $total_folder_count ) =
-      count_folders_per_category( $category_type, $detail_type );
-
     foreach my $lang (@LANGUAGES) {
       my @lines;
       my $title = $def_ref->{title}{$lang};
       my $provenance =
         $PROV{ $def_ref->{prov} }{name}{$lang};
+      my $category_count     = 0;
+      my $total_folder_count = 0;
 
       # some header information for the page
       my $backlinktitle =
@@ -120,8 +117,6 @@ foreach my $category_type ( keys %{$definitions_ref} ) {
         backlink            => "../about.$lang.html",
         backlink_title      => $backlinktitle,
         provenance          => $provenance,
-        category_count      => $category_count,
-        folder_count        => $total_folder_count,
       );
 
       # read json input
@@ -159,9 +154,10 @@ foreach my $category_type ( keys %{$definitions_ref} ) {
         } else {
           croak "irregular category uri $category_uri";
         }
-        my $label      = $master_voc->label( $lang, $id );
-        my $signature  = $master_voc->signature($id);
-        my $entry_note = (
+        my $label        = $master_voc->label( $lang, $id );
+        my $signature    = $master_voc->signature($id);
+        my $folder_count = $master_voc->folder_count( $category_type, $id );
+        my $entry_note   = (
           ( $master_voc->geo_category_type($id) )
           ? $master_voc->geo_category_type($id)
           : ''
@@ -172,7 +168,7 @@ foreach my $category_type ( keys %{$definitions_ref} ) {
           ? ( $lang eq 'en' ? 'complete, ' : 'komplett, ' )
           : ''
           )
-          . $master_voc->folder_count( $detail_type, $id )
+          . $folder_count
           . ( $lang eq 'en' ? ' subject folders' : ' Sach-Mappen' ) . ')';
 
         # main entry
@@ -182,14 +178,18 @@ foreach my $category_type ( keys %{$definitions_ref} ) {
           . "<a name='$siglink'></a>";
         ## indent for Sondermappe
         if ( $signature =~ $SM_QR and $firstletter ne 'q' ) {
+
           # TODO check_missing_level
           $line = "  $line";
         }
         if ( $signature =~ $DEEP_SM_QR ) {
+
           # TODO check_missing_level
           $line = "  $line";
         }
         push( @lines, $line );
+        $category_count++;
+        $total_folder_count += $folder_count;
       }
 
       # TODO for multiple detail sections on one category page, this has to
@@ -200,7 +200,11 @@ foreach my $category_type ( keys %{$definitions_ref} ) {
       );
       $tmpl->param( \%tmpl_var );
       ## q & d: add lines as large variable
-      $tmpl->param( lines => join( "\n", @lines ), );
+      $tmpl->param(
+        lines              => join( "\n", @lines ),
+        category_count     => $category_count,
+        total_folder_count => $total_folder_count,
+      );
 
       my $out = $WEB_ROOT->child($category_type)->child("about.$lang.md");
       $out = path("/tmp/$category_type/about.$lang.md");
@@ -378,42 +382,6 @@ sub output_category_page {
   $out->spew_utf8( $tmpl->output );
 
   return;
-}
-
-# should work for subject, ware and geo
-sub count_folders_per_category {
-  my $category_type = shift or croak('param missing');
-  my $detail_type   = shift or croak('param missing');
-
-  my %count_data;
-  my $total_folder_count;
-
-  # folder data
-  # read json input (all folders for all categories)
-  my $file = $FOLDERDATA_ROOT->child(
-    $definitions_ref->{$category_type}{detail}{$detail_type}{result_file}
-      . '.de.json' );
-  my @folders =
-    @{ decode_json( $file->slurp )->{results}->{bindings} };
-
-  foreach my $folder (@folders) {
-    my $folder_id;
-    if ( $folder->{pm20}->{value} =~ m/(\d{6},\d{6})$/ ) {
-      $folder_id = $1;
-    }
-    my ( $master_id, $detail_id ) =
-      get_master_detail_ids( $category_type, $detail_type, $folder_id );
-
-    $count_data{$master_id}{$detail_id}++;
-
-  }
-  foreach my $id ( keys %count_data ) {
-    my $count = scalar( keys %{ $count_data{$id} } );
-    ## do not set folder_count here, but use the one from rdf
-    $total_folder_count += $count;
-  }
-  my $category_count = scalar( keys %count_data );
-  return $category_count, $total_folder_count;
 }
 
 sub view_url {

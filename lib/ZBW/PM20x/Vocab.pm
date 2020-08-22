@@ -26,6 +26,12 @@ Readonly our $DEEP_SM_QR => qr/ Sm\d+\.\d+/;
 
 Readonly my $RDF_ROOT => path('../data/rdf');
 
+# detail type -> relevant count property
+Readonly my %COUNT_PROPERTY => (
+  subject => 'zbwext:folderCount',
+  geo     => 'zbwext:shFolderCount',
+);
+
 =head1 NAME
 
 ZBW::PM20x::Vocab - Functions for PM20 vocabularies
@@ -80,7 +86,7 @@ sub new {
 
   # initialize with file
   my ( %cat, %lookup, $modified );
-  my $file = path("$RDF_ROOT/$vocab_name.skos.jsonld");
+  my $file = path("$RDF_ROOT/$vocab_name.skos.extended.jsonld");
   foreach my $lang (qw/ en de /) {
     my @categories =
       @{ decode_json( $file->slurp )->{'@graph'} };
@@ -89,6 +95,7 @@ sub new {
     foreach my $category (@categories) {
 
       my $type = $category->{'@type'};
+      next unless $type;
       if ( $type eq 'skos:ConceptScheme' ) {
         $modified = $category->{modified};
       } elsif ( $type eq 'skos:Concept' ) {
@@ -99,8 +106,8 @@ sub new {
         my $id = $category->{identifier};
 
         # map optional simple jsonld fields to hash entries
-        my @fields =
-          qw / notation notationLong foldersComplete geoCategoryType /;
+        my @fields = qw / notation notationLong foldersComplete geoCategoryType
+          zbwext:shFolderCount zbwext:folderCount /;
         foreach my $field (@fields) {
           $cat{$id}{$field} = $category->{$field};
         }
@@ -116,7 +123,10 @@ sub new {
         # add signature to lookup table
         $lookup{ $cat{$id}{notation} } = $id;
       } else {
-        croak "Unexpectend type $type\n";
+
+        # with extended vocabs, lots of types are possible
+        ##croak "Unexpectend type $type\n";
+        next;
       }
     }
 
@@ -278,21 +288,21 @@ sub folders_complete {
   return $folders_complete;
 }
 
-=item folder_count( $detail_type, $term_id )
+=item folder_count( $category_type, $term_id )
 
 Return the folder_count (A for "Sternchenland", B for normal, C for "Kästschenland), or undef, if not defined.
 
 =cut
 
 sub folder_count {
-  my $self        = shift or croak('param missing');
-  my $detail_type = shift or croak('param missing');
-  my $term_id     = shift or croak('param missing');
+  my $self          = shift or croak('param missing');
+  my $category_type = shift or croak('param missing');
+  my $term_id       = shift or croak('param missing');
 
-  # TODO get from loaded data
-  my $count_prop   = "${detail_type}FolderCount";
-  my $folder_count = $self->{id}{$term_id}{$count_prop} || '';
-
+  # get from extended vocab data
+  ##print Dumper $category_type, $self->{id}{$term_id}; exit;
+  my $folder_count =
+    $self->{id}{$term_id}{ $COUNT_PROPERTY{$category_type} } || '';
   return $folder_count;
 }
 
