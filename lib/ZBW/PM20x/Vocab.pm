@@ -4,8 +4,9 @@ package ZBW::PM20x::Vocab;
 
 use strict;
 use warnings;
+use utf8;
 
-use Carp;
+use Carp qw/ cluck confess/;
 use Data::Dumper;
 use Exporter;
 use JSON;
@@ -32,6 +33,8 @@ Readonly my %COUNT_PROPERTY => (
   geo     => 'zbwext:shFolderCount',
 );
 
+=encoding utf8
+
 =head1 NAME
 
 ZBW::PM20x::Vocab - Functions for PM20 vocabularies
@@ -49,11 +52,6 @@ ZBW::PM20x::Vocab - Functions for PM20 vocabularies
   my $subheading = $voc->subheading('A');
   my $folder_count = $voc->folder_count( 'subject', $id );
   
-  set_folder_count($type, $id, $count);
-  broader($id)
-
-	my ($category_ref, $sig_lookup_ref, $modified_date) = get_vocab('ag');
-
 =head1 DESCRIPTION
 
 Read all vocabularies into a data structure, organized as:
@@ -68,6 +66,10 @@ Read all vocabularies into a data structure, organized as:
       {$first}      first letter of signature
 
 =cut
+
+=head1 Class methods
+
+=over 1
 
 =item new ($vocab_name)
 
@@ -97,7 +99,7 @@ sub new {
       my $type = $category->{'@type'};
       next unless $type;
       if ( $type eq 'skos:ConceptScheme' ) {
-        $modified = $category->{modified};
+        $self->{modified} = $category->{modified};
       } elsif ( $type eq 'skos:Concept' ) {
 
         # skip orphan entries
@@ -130,28 +132,64 @@ sub new {
       }
     }
 
-    # get the broader id for SM entries from first part of signature
-    foreach my $id ( keys %cat ) {
-      next if not $cat{$id}{notation} =~ m/ Sm\d/;
-      my ($firstsig) = split( / /, $cat{$id}{notation} );
-
-      # special case with artificially introduced x0 level
-      if ( $firstsig =~ m/^([a-z])0$/ ) {
-        $firstsig = $1;
-      }
-      $cat{$id}{broader} = $lookup{$firstsig}
-        or croak "missing signature $firstsig\n";
-    }
-
     # save state
-    $self->{id}       = \%cat;
-    $self->{nta}      = \%lookup;
-    $self->{modified} = $modified;
+    $self->{id}  = \%cat;
+    $self->{nta} = \%lookup;
+
+    # get the broader id for SM entries from first parts of the signature
+    # TODO there are more types of hierarchies (below Sm and below ordinary
+    # terms, so the second level should not be used before further analysis
+    foreach my $id ( keys %cat ) {
+      my $signature = $cat{$id}{notation};
+      next if not $signature =~ m/ Sm\d/;
+
+      my $start_sig;
+      if ( $signature =~ $DEEP_SM_QR ) {
+        $start_sig = $self->start_sig( $id, 2 );
+      } elsif ( $signature =~ $SM_QR ) {
+        $start_sig = $self->start_sig( $id, 1 );
+
+        # special case with artificially introduced x0 level
+        if ( $signature =~ m/^([a-z])0$/ ) {
+          $start_sig = $1;
+        }
+      } else {
+        cluck("Unknown Sm scheme: signature $signature");
+      }
+      $cat{$id}{broader} = $lookup{$start_sig}
+        or confess("missing signature $start_sig");
+    }
 
     $self->_add_subheadings();
   }
 
   return $self;
+}
+
+=back
+
+=head2 Instance methods
+
+=over 1
+
+=item modified ()
+
+Returns the date of the last (manual) modification of the vocabulary (obtained from the term timestamps).
+
+=cut
+
+sub modified {
+  my $self = shift or croak('param missing');
+
+  # apparently, for some vocab, jsonld return a date value, for some a string
+  my $modified;
+  if ( ref( $self->{modified} ) ) {
+    $modified = $self->{modified}{'@value'};
+  } else {
+    $modified = $self->{modified};
+  }
+
+  return $modified;
 }
 
 =item label ( $lang, $term_id )
@@ -208,7 +246,7 @@ sub siglink {
 
 =item broader ( $term_id )
 
-Return the signature for a term, formatted suitable for a link.
+Return the id for the hierarchically superordinated term.
 
 =cut
 
@@ -255,7 +293,7 @@ sub scope_note {
 
 =item geo_category_type( $term_id )
 
-Return the geo_category_type (A for "Sternchenland", B for normal, C for "Kästschenland), or undef, if not defined.
+Return the geo_category_type (A for "Sternchenland", B for normal, C for "Kästchenland), or undef, if not defined.
 
 =cut
 
@@ -279,8 +317,8 @@ sub folders_complete {
   my $term_id = shift or croak('param missing');
 
   my $folders_complete;
-  if (  $self->{id}{$term_id}{folders_complete}
-    and $self->{id}{$term_id}{folders_complete} eq 'Y' )
+  if (  $self->{id}{$term_id}{foldersComplete}
+    and $self->{id}{$term_id}{foldersComplete} eq 'Y' )
   {
     $folders_complete = 1;
   }
@@ -300,11 +338,49 @@ sub folder_count {
   my $term_id       = shift or croak('param missing');
 
   # get from extended vocab data
-  ##print Dumper $category_type, $self->{id}{$term_id}; exit;
   my $folder_count =
     $self->{id}{$term_id}{ $COUNT_PROPERTY{$category_type} } || '';
   return $folder_count;
 }
+
+=item start_sig ( $term_id, $level )
+
+Returns the start level(s) of the signature, e.g e4 Sm3.IVa
+
+level 1: e4; level 2: e4 Sm3
+
+=cut
+
+sub start_sig {
+  my $self    = shift or croak('param missing');
+  my $term_id = shift or croak('param missing');
+  my $level   = shift or croak('param missing');
+
+  my $signature = $self->signature($term_id);
+  my $start_sig;
+  if ( $level == 2 ) {
+    if ( $signature =~ m/^([a-z]\S*? Sm\d+)(\.[IVX]+|[a-z])/ ) {
+      $start_sig = $1;
+    } else {
+      cluck("no level 2 signature for $term_id $signature");
+      return;
+    }
+  } elsif ( $level == 1 ) {
+    if ( $signature =~ m/^([a-z]\S*?) (Sm\d+|\(alt\)|I)/ ) {
+      $start_sig = $1;
+    } elsif ( $signature =~ m/^\S+$/ ) {
+      ## signature does not contain any blanks
+      $start_sig = $signature;
+    } else {
+      cluck("no level 1 signature for $term_id $signature");
+      return;
+    }
+  }
+}
+
+=back
+
+=cut
 
 ############ internal
 
