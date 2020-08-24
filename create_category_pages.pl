@@ -5,9 +5,10 @@
 # data/klassdata/*.json
 
 # TODO clean up mess
-# - extend setting broader hierarchy in Vocab
-# - move get_firstsig to Vocab::sig_start($signature, $level)
 # - use check_missing_level for overview pages (needs tracking old id)
+# - use master_detail_ids() for overview pages
+# POSTPONED
+# - deeper hierarchies (too many forms beyond simple sub-Sm hierarchies)
 
 use strict;
 use warnings;
@@ -73,9 +74,6 @@ subject:
       vocab: ag
 EOF
 
-# set last_modified entries for all category types
-##set_last_modified();
-
 # category overview pages
 my ( $master_voc, $detail_voc );
 
@@ -113,7 +111,7 @@ foreach my $category_type ( keys %{$definitions_ref} ) {
         "is_$category_type" => 1,
         title               => $title,
         etr                 => "category_overview/$category_type",
-        modified            => $def_ref->{last_modified},
+        modified            => last_modified( $master_voc, $detail_voc ),
         backlink            => "../about.$lang.html",
         backlink_title      => $backlinktitle,
         provenance          => $provenance,
@@ -159,7 +157,7 @@ foreach my $category_type ( keys %{$definitions_ref} ) {
         my $folder_count = $master_voc->folder_count( $category_type, $id );
         my $entry_note   = (
           ( $master_voc->geo_category_type($id) )
-          ? $master_voc->geo_category_type($id)
+          ? $master_voc->geo_category_type($id) . ' '
           : ''
           )
           . '('
@@ -340,7 +338,6 @@ sub output_category_page {
 
   my $provenance =
     $PROV{ $definitions_ref->{$category_type}{prov} }{name}{$lang};
-  my $master_vocab = $definitions_ref->{$category_type}{vocab};
   my $title =
     $master_voc->signature($id) . ' ' . $master_voc->label( $lang, $id );
   my $backlinktitle =
@@ -351,7 +348,7 @@ sub output_category_page {
     "is_$lang"      => 1,
     title           => $title,
     etr             => "category/$category_type/" . $master_voc->signature($id),
-    modified        => $definitions_ref->{$category_type}{last_modified},
+    modified        => last_modified( $master_voc, $detail_voc ),
     backlink        => "../../about.$lang.html",
     backlink_title  => $backlinktitle,
     provenance      => $provenance,
@@ -405,15 +402,6 @@ sub view_url {
   return $view_url;
 }
 
-sub get_firstsig {
-  my $id = shift or croak('param missing');
-
-  my $signature = $detail_voc->signature($id);
-  my $firstsig  = ( split( / /, $signature ) )[0];
-
-  return $firstsig;
-}
-
 sub get_master_detail_ids {
   my $category_type = shift or croak('param missing');
   my $detail_type   = shift or croak('param missing');
@@ -448,7 +436,8 @@ sub check_missing_level {
   return if ( $voc->signature($id) =~ m/^[a-z]0/ );
 
   # skip if first part of signature is same as in last entry
-  return if ( get_firstsig($id_old) eq get_firstsig($id) );
+  return
+    if ( $voc->start_sig( $id_old, $level ) eq $voc->start_sig( $id, $level ) );
 
   ## insert non-linked intermediate item
   my $id_broader = $voc->broader($id);
@@ -465,30 +454,14 @@ sub check_missing_level {
   return;
 }
 
-__DATA__
+sub last_modified {
+  my $master_voc = shift or croak('param missing');
+  my $detail_voc = shift or croak('param missing');
 
-# set last modification of all category types
-# to the maximum of the modification dates of the underlying vocabs
-sub set_last_modified {
+  my $last_modified =
+      $master_voc->modified() gt $detail_voc->modified()
+    ? $master_voc->modified()
+    : $detail_voc->modified();
 
-  foreach my $category_type ( keys %{$definitions_ref} ) {
-    my $def_ref = $definitions_ref->{$category_type};
-
-    # modification daté of the master
-    my $last_modified = $vocab_all{ $def_ref->{vocab} }{modified};
-
-    # iterate over details and replace date if later
-    foreach my $detail_type ( keys %{ $def_ref->{detail} } ) {
-      if ( $vocab_all{ $def_ref->{detail}{$detail_type}{vocab} }{modified}
-        gt $last_modified )
-      {
-        $last_modified =
-          $vocab_all{ $def_ref->{detail}{$detail_type}{vocab} }{modified};
-      }
-    }
-    $def_ref->{last_modified} = $last_modified;
-  }
-  return;
+  return $last_modified;
 }
-
-
