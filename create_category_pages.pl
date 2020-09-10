@@ -7,6 +7,7 @@
 # TODO clean up mess
 # - use check_missing_level for overview pages (needs tracking old id)
 # - use master_detail_ids() for overview pages
+# - all scope notes (add/prefer direct klassifikator fields)
 # POSTPONED
 # - deeper hierarchies (too many forms beyond simple sub-Sm hierarchies)
 
@@ -338,16 +339,17 @@ sub output_category_page {
 
   my $provenance =
     $PROV{ $definitions_ref->{$category_type}{prov} }{name}{$lang};
-  my $title =
-    $master_voc->signature($id) . ' ' . $master_voc->label( $lang, $id );
+  my $signature = $master_voc->signature($id);
+  my $label     = $master_voc->label( $lang, $id );
   my $backlinktitle =
     $lang eq 'en'
     ? 'Category Overview'
     : 'Systematik-Übersicht';
   my %tmpl_var = (
     "is_$lang"      => 1,
-    title           => $title,
-    etr             => "category/$category_type/" . $master_voc->signature($id),
+    signature       => $signature,
+    label           => $label,
+    etr             => "category/$category_type/$signature",
     modified        => last_modified( $master_voc, $detail_voc ),
     backlink        => "../../about.$lang.html",
     backlink_title  => $backlinktitle,
