@@ -20,7 +20,7 @@ ist online verfügbar.
 </tmpl_if>
 
 <tmpl_if is_en>
-In total <tmpl_var category_count> categories, <tmpl_var folder_count> subject folders.
+In total <tmpl_var category_count> categories, <tmpl_var total_folder_count> subject folders.
 
 
 Of the PM20 Länder-/Sacharchiv up to 1949, only a rough estimate of one-fifth

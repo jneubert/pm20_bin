@@ -16,7 +16,7 @@ leider nur im ZBW-Lesesaal. Die
 ist online verfügbar.
 </tmpl_if>
 <tmpl_if is_en>
-In total <tmpl_var category_count> categories, <tmpl_var folder_count> folders.
+In total <tmpl_var category_count> categories, <tmpl_var total_folder_count> folders.
 
 Of the PM20 Länder-/Sacharchiv up to 1949, only a rough estimate of one-fifth
 of the digitized holdings are indexed in folders and accessible via this
