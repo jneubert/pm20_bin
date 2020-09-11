@@ -5,6 +5,7 @@
 # data/klassdata/*.json
 
 # TODO clean up mess
+# - link directly to county/subject page from entries in overview pages
 # - use check_missing_level for overview pages (needs tracking old id)
 # - use master_detail_ids() for overview pages
 # - all scope notes (add/prefer direct klassifikator fields)
@@ -206,7 +207,7 @@ foreach my $category_type ( keys %{$definitions_ref} ) {
       );
 
       my $out = $WEB_ROOT->child($category_type)->child("about.$lang.md");
-      $out = path("/tmp/$category_type/about.$lang.md");
+      $out = path("$WEB_ROOT/$category_type/about.$lang.md");
       $out->spew_utf8( $tmpl->output );
     }
   }
@@ -375,7 +376,7 @@ sub output_category_page {
 
   my $out_dir =
     $WEB_ROOT->child($category_type)->child('i')->child($id);
-  $out_dir = path("/tmp/$category_type/i/$id");
+  $out_dir = path("$WEB_ROOT/$category_type/i/$id");
   $out_dir->mkpath;
   my $out = $out_dir->child("about.$lang.md");
   $out->spew_utf8( $tmpl->output );
