@@ -4,6 +4,7 @@
 # Create symlinks for ranges of film images in web.public
 # plus an overview page
 # (requires a checked.yaml file in the film directory)
+# see https://pm20intern.zbw.eu/film/meta
 
 # TODO
 # - rename {image_name}.locked.txt {image_name}.access_locked.txt
@@ -97,7 +98,6 @@ sub link_film {
     # skip empty "undef" section at the end
     next if not $section;
 
-    print Dumper $section;
     parse_section( $checked_fn, $section );
     my $count = link_section( $dir, $section );
 
@@ -211,6 +211,7 @@ sub create_overview_page {
   my $holding       = shift or die "param missing";
   my $pub_film_sect = shift or die "param missing";
 
+  (my $holding_shortname = $holding ) =~ s/\//_/;
   my %page_title = (
     de => 'Veröffentlichte Abschnitte aus digitalisierten Rollfilmen',
     en => 'Published sections from digitized roll films',
@@ -220,6 +221,7 @@ sub create_overview_page {
     my $head = <<"EOF";
 ---
 title: $page_title{$lang}
+fn-stub: public_section.$holding_shortname
 ---
 
 # $page_title{$lang}
