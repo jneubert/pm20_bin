@@ -6,6 +6,7 @@
 
 # TODO clean up mess
 # - link directly to county/subject page from entries in overview pages
+#   - catpage_link to be moved to the detail page heading (up arrow)
 # - use check_missing_level for overview pages (needs tracking old id)
 # - use master_detail_ids() for overview pages
 # - all scope notes (add/prefer direct klassifikator fields)
@@ -355,6 +356,7 @@ sub output_category_page {
     backlink        => "../../about.$lang.html",
     backlink_title  => $backlinktitle,
     provenance      => $provenance,
+    wdlink          => $master_voc->wdlink($id),
     folder_count1   => $count_ref->{folder_count_first},
     document_count1 => $count_ref->{document_count_first},
     scope_note      => $master_voc->scope_note( $lang, $id ),

@@ -114,6 +114,16 @@ sub new {
           $cat{$id}{$field} = $category->{$field};
         }
 
+   # map optional multivalued language-independent jsonld fields to hash entries
+        @fields = qw / exactMatch /;
+        foreach my $field (@fields) {
+          foreach my $entry ( _as_array( $category->{$field} ) ) {
+            if ( $lang eq 'de' ) {
+              push( @{ $cat{$id}{$field} }, $entry );
+            }
+          }
+        }
+
         # map optional language-specifc jsonld fields to hash entries
         @fields = qw / prefLabel scopeNote /;
         foreach my $field (@fields) {
@@ -291,9 +301,33 @@ sub scope_note {
   return $scope_note;
 }
 
+=item wdlink( $term_id )
+
+Return a link to the exactly matching Wikidata item
+
+=cut
+
+sub wdlink {
+  my $self    = shift or croak('param missing');
+  my $term_id = shift or croak('param missing');
+
+  my $wdlink;
+  if ( defined $self->{id}{$term_id}{exactMatch} ) {
+    my @exact_links = @{ $self->{id}{$term_id}{exactMatch} };
+    foreach my $link (@exact_links) {
+      if ( $link =~ m|^http://www\.wikidata\.org/entity| ) {
+        $wdlink = $link;
+        last;
+      }
+    }
+  }
+
+  return $wdlink;
+}
+
 =item geo_category_type( $term_id )
 
-Return the geo_category_type (A for "Sternchenland", B for normal, C for "Kästchenland), or undef, if not defined.
+Return the geo_category_type (A for "Sternchenland", B for normal, C for "Kästchenland"), or undef, if not defined.
 
 =cut
 
@@ -385,14 +419,15 @@ sub start_sig {
 ############ internal
 
 sub _as_array {
-  my $ref = shift;
+  my $var = shift;
 
+  # $var may or may not be a reference
   my @list = ();
-  if ($ref) {
-    if ( reftype($ref) eq 'ARRAY' ) {
-      @list = @{$ref};
+  if ($var) {
+    if ( reftype($var) and reftype($var) eq 'ARRAY' ) {
+      @list = @{$var};
     } else {
-      @list = ($ref);
+      @list = ($var);
     }
   }
   return @list;
