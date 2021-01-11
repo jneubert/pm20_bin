@@ -10,6 +10,7 @@
 # - use check_missing_level for overview pages (needs tracking old id)
 # - use master_detail_ids() for overview pages
 # - all scope notes (add/prefer direct klassifikator fields)
+# - for dedicated categories (B43), set "folders complete" if present
 # POSTPONED
 # - deeper hierarchies (too many forms beyond simple sub-Sm hierarchies)
 
