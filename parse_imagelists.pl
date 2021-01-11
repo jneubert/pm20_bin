@@ -13,10 +13,11 @@ use Path::Tiny;
 
 $Data::Dumper::Sortkeys = 1;
 
-my $imagedata_root = path('../var/imagedata');
+my $imagedata_root = path('../data/imagedata');
 
 # iterate through all collections
-foreach my $collection (qw/ co pe sh wa /) {
+#foreach my $collection (qw/ co pe sh wa /) {
+foreach my $collection (qw/ pe sh /) {
 
   my $lst   = $imagedata_root->child("${collection}_image.lst");
   my $files = $lst->slurp;
