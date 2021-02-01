@@ -72,7 +72,7 @@ my %conf = (
     },
     prefix   => 'pe/',
     url_stub => {
-      '/mnt/digidata/P' => 'https://pm20.zbw.eu/folder/pe/',
+      '/pm20/folder/pe' => 'https://pm20.zbw.eu/folder/pe/',
     },
   },
   sh => {
@@ -82,7 +82,7 @@ my %conf = (
     },
     prefix   => 'sa/',
     url_stub => {
-      '/mnt/sach/S' => 'https://pm20.zbw.eu/folder/sh/',
+      '/pm20/folder/sh' => 'https://pm20.zbw.eu/folder/sh/',
     },
   },
   wa => {

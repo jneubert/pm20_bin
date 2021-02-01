@@ -87,8 +87,8 @@ sub get_folderlabel {
   my $folder_id  = shift or croak('param missing');
   my $with_signature = shift;
 
-  my ($geo_ref)     = ZBW::PM20x::Vocab::get_vocab('ag');
-  my ($subject_ref) = ZBW::PM20x::Vocab::get_vocab('je');
+  my ($geo_ref)     = ZBW::PM20x::Vocab->new('ag');
+  my ($subject_ref) = ZBW::PM20x::Vocab->new('je');
 
   $folder_id =~ m/(\d{6})(,(\d{6}))?/
     or croak("irregular folder_id: $folder_id for collection: $collection");
