@@ -5,6 +5,8 @@ package ZBW::PM20x::Folder;
 use strict;
 use warnings;
 
+use lib './lib/';
+
 use HTML::Entities;
 use JSON;
 use Path::Tiny;
@@ -65,15 +67,19 @@ ZBW::PM20x::Folder - Functions for PM20 folders
 =head1 SYNOPSIS
 
   use ZBW::PM20x::Folder;
-	my $label = get_folderlabel( $lang, $folder_id );
+	my $label = get_folderlabel( $lang, $collection, $folder_numkey );
 
 =head1 DESCRIPTION
 
-
+  Identifiers:
+    term_id       := \d{6}  # with leading zeros
+    collection    := (co|pe|sh|wa)
+    folder_numkey := <term_id> | <term_id>,<term_id>
+    folder_id     := <collection>/<folder_numkey>
 
 =cut
 
-=item get_folderlabel ( $lang, $folder_id, $with_signature )
+=item get_folderlabel ( $lang, $collection, $folder_numkey, $with_signature )
 
 Return a html-encoded, human-readable label for a folder, optionally with signature.
 
@@ -82,16 +88,16 @@ Return a html-encoded, human-readable label for a folder, optionally with signat
 # TODO use Vocab::get_termlabel()
 
 sub get_folderlabel {
-  my $lang       = shift or croak('param missing');
-  my $collection = shift or croak('param missing');
-  my $folder_id  = shift or croak('param missing');
+  my $lang          = shift or croak('param missing');
+  my $collection    = shift or croak('param missing');
+  my $folder_numkey = shift or croak('param missing');
   my $with_signature = shift;
 
   my ($geo_ref)     = ZBW::PM20x::Vocab->new('ag');
   my ($subject_ref) = ZBW::PM20x::Vocab->new('je');
 
-  $folder_id =~ m/(\d{6})(,(\d{6}))?/
-    or croak("irregular folder_id: $folder_id for collection: $collection");
+  $folder_numkey =~ m/(\d{6})(,(\d{6}))?/
+    or croak("irregular folder_id: $folder_numkey for collection: $collection");
   my $id1 = $1;
   my $id2 = $3;
 
@@ -180,23 +186,24 @@ sub get_doclabel {
   return $label;
 }
 
-=item get_folder_hashed_path ( $collection, $folder_id )
+=item get_folder_hashed_path ( $collection, $folder_numkey )
 
 Return a path fragment for a folder with intermediate (hashed) directories.
 
 =cut
 
 sub get_folder_hashed_path {
-  my $collection = shift or croak('param missing');
-  my $folder_id  = shift or croak('param missing');
+  my $collection    = shift or croak('param missing');
+  my $folder_numkey = shift or croak('param missing');
 
   my $path = path($collection);
   if ( $collection eq 'pe' or $collection eq 'co' ) {
-    my $stub = substr( $folder_id, 0, 4 ) . 'xx';
-    $path = $path->child($stub)->child($folder_id);
+    my $stub = substr( $folder_numkey, 0, 4 ) . 'xx';
+    $path = $path->child($stub)->child($folder_numkey);
   } elsif ( $collection eq 'sh' or $collection eq 'wa' ) {
-    $folder_id =~ m/(\d{6}),(\d{6})/
-      or croak("irregular folder_id: $folder_id for collection: $collection");
+    $folder_numkey =~ m/(\d{6}),(\d{6})/
+      or
+      croak("irregular folder_id: $folder_numkey for collection: $collection");
     my $id1   = $1;
     my $id2   = $2;
     my $stub1 = substr( $id1, 0, 4 ) . 'xx';
@@ -208,5 +215,6 @@ sub get_folder_hashed_path {
 
   return $path;
 }
+
 1;
 

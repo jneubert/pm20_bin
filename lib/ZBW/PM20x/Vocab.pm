@@ -65,6 +65,9 @@ Read all vocabularies into a data structure, organized as:
     subhead         subheadings for lists
       {$first}      first letter of signature
 
+
+  $id   term id (\d{6}, with leading zeros)
+
 =cut
 
 =head1 Class methods
