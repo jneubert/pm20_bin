@@ -134,33 +134,34 @@ if ( scalar(@ARGV) == 1 ) {
 
 sub mk_all {
 
-  # remove old alias file
-  open( my $url_fh, '>', $URLALIAS_FILE );
+  # overwrite old alias file
+  open( my $alias_fh, '>', $URLALIAS_FILE );
 
   foreach my $collection ( sort keys %conf ) {
 
-    mk_collection( $collection, $url_fh );
+    # $alias_fh is defined only when invoked from here
+    mk_collection( $collection, $alias_fh );
 
   }
-  close($url_fh);
+  close($alias_fh);
 }
 
 sub mk_collection {
   my $collection = shift or die "param missing";
-  my $url_fh     = shift;
+  my $alias_fh     = shift;
 
   # load input files
   load_files($collection);
 
   foreach my $folder_id ( sort keys %{$docdata_ref} ) {
-    mk_folder( $collection, $folder_id, $url_fh );
+    mk_folder( $collection, $folder_id, $alias_fh );
   }
 }
 
 sub mk_folder {
   my $collection = shift || die "param missing";
   my $folder_id  = shift || die "param missing";
-  my $url_fh     = shift;
+  my $alias_fh     = shift;
 
   # open files if necessary
   # (check with arbitrary entry)
@@ -196,8 +197,8 @@ sub mk_folder {
     write_mets( $lang, $collection, $folder_id, $tmpl );
 
     # create url aliases for awstats
-    if ($url_fh) {
-      print $url_fh '/mets/'
+    if ($alias_fh) {
+      print $alias_fh '/melts/'
         . ZBW::PM20x::Folder::get_folder_hashed_path( $collection, $folder_id )
         . "/public.mets.$lang.xml\t$label\n";
     }
