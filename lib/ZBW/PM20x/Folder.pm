@@ -7,12 +7,37 @@ use warnings;
 
 use lib './lib/';
 
+use Data::Dumper;
 use HTML::Entities;
 use JSON;
 use Path::Tiny;
 use Readonly;
 use Scalar::Util qw(looks_like_number reftype);
 use ZBW::PM20x::Vocab;
+
+Readonly our $FOLDER_ROOT     => path('/pm20/folder');
+Readonly our $FOLDERDATA_ROOT => path('../data/folderdata');
+Readonly our $DOCDATA_ROOT    => path('../data/docdata');
+Readonly our @ACCESS_TYPES    => qw/ public intern /;
+
+# global data structure (initialized lazily):
+#
+# {collection}
+#   doclist
+#     internal
+#     pulic
+#   docdata
+#     {full docdata file}
+
+my %data;
+foreach my $collection (qw/ co pe sh wa /) {
+  foreach my $entry (qw/ doclist docdata /) {
+    $data{$collection}{$entry} = ();
+  }
+  foreach my $type (@ACCESS_TYPES) {
+    $data{$collection}{doclist}{$type} = ();
+  }
+}
 
 Readonly my $RDF_ROOT => path('../data/rdf');
 
@@ -155,7 +180,8 @@ sub get_folderlabel {
 
 =item get_doclabel ( $lang, $doc_id, $field_ref )
 
-Return a html-encoded, human-readable label for a document from consolidated document info.
+Return a html-encoded, human-readable label for a document from consolidated
+document info.
 
 =cut
 
@@ -193,7 +219,7 @@ sub get_doclabel {
       if ( $DOCTYPE{$type} ) {
         $label = "$DOCTYPE{$type}{$lang} $doc_id";
       } else {
-        print "unknown $type\n";
+        warn "unknown $type\n";
       }
     } else {
       $label = ( $lang eq 'en' ? 'Doc ' : 'Dok ' ) . $doc_id;
@@ -226,22 +252,86 @@ sub get_folder_hashed_path {
   my $self = shift or croak('param missing');
 
   my $collection = $self->{collection};
-  my $term_id1 = $self->{term_id1};
-  my $term_id2 = $self->{term_id2};
-  my $path = path($collection);
+  my $term_id1   = $self->{term_id1};
+  my $term_id2   = $self->{term_id2};
+  my $path       = path($collection);
   if ( $collection eq 'pe' or $collection eq 'co' ) {
     my $stub = substr( $term_id1, 0, 4 ) . 'xx';
-    $path = $path->child($stub)->child( $term_id1 );
+    $path = $path->child($stub)->child($term_id1);
   } elsif ( $collection eq 'sh' or $collection eq 'wa' ) {
     my $stub1 = substr( $term_id1, 0, 4 ) . 'xx';
     my $stub2 = substr( $term_id2, 0, 4 ) . 'xx';
-    $path = $path->child($stub1)->child( $term_id1 )->child($stub2)
-      ->child( $term_id2 );
+    $path =
+      $path->child($stub1)->child($term_id1)->child($stub2)->child($term_id2);
   } else {
     croak("wrong collection: $collection");
   }
 
   return $path;
+}
+
+=item get_document_hashed_path ()
+
+Return a path fragment for a folder's document with intermediate (hashed) directories.
+
+=cut
+
+sub get_document_hashed_path {
+  my $self   = shift or croak('param missing');
+  my $doc_id = shift or croak('param missing');
+
+  my $stub = substr( $doc_id, 0, 3 ) . 'xx';
+  my $path = $self->get_folder_hashed_path->child($stub)->child($doc_id);
+
+  return $path;
+}
+
+=item get_doclist( $type )
+
+Return a reference to a list of sorted document ids for the folder, either of
+all documents (type 'intern') or only of free documents (type 'public').
+
+=cut
+
+sub get_doclist {
+  my $self = shift or croak('param missing');
+  my $type = shift or croak('param missing');
+
+  my $collection  = $self->{collection};
+  my $folder_nk   = $self->{folder_nk};
+  my $doclist_ref = $data{$collection}{doclist}{$type};
+
+  if ( not defined $doclist_ref ) {
+
+    # list has to be created
+    if ( not defined $data{$collection}{docdata} ) {
+      _load_docdata($collection);
+    }
+    my @tmplist = sort keys %{ $data{$collection}{docdata}{$folder_nk}{info} };
+    foreach my $doc_id (@tmplist) {
+
+      # skip if .htaccess in document directory exists
+      if ( $type eq 'public' ) {
+        my $lockfile = $FOLDER_ROOT->child(
+          $self->get_document_hashed_path($doc_id)->child('.htaccess') );
+        next if -f $lockfile;
+      }
+      push( @{$doclist_ref}, $doc_id );
+    }
+  }
+
+  return $doclist_ref;
+}
+
+# Internal procedures
+
+sub _load_docdata {
+  my $collection = shift or croak('param missing');
+
+  my $docdata_file = $DOCDATA_ROOT->child("${collection}_docdata.json");
+  my $docdata_ref  = decode_json( $docdata_file->slurp );
+
+  $data{$collection}{docdata} = $docdata_ref;
 }
 
 1;

@@ -30,12 +30,10 @@ $Data::Dumper::Sortkeys = 1;
 
 Readonly my $FOLDER_ROOT_URI => 'https://purl.org/pressemappe20/folder/';
 Readonly my $PDF_ROOT_URI    => 'http://zbw.eu/beta/pm20pdf/';
-Readonly my $FOLDER_ROOT     => path('/pm20/folder');
 Readonly my $METS_ROOT       => path('../web.public/mets');
 Readonly my $IMAGEDATA_ROOT  => path('../data/imagedata');
-Readonly my $DOCDATA_ROOT    => path('../data/docdata');
-Readonly my $FOLDERDATA_ROOT => path('../data/folderdata');
-Readonly my $URLALIAS_FILE   => path("$FOLDERDATA_ROOT/urlalias.pm20mets.txt");
+Readonly my $URLALIAS_FILE =>
+  path("$ZBW::PM20x::Folder::FOLDERDATA_ROOT/urlalias.pm20mets.txt");
 
 Readonly my %RES_EXT => (
   DEFAULT => '_B.JPG',
@@ -146,7 +144,7 @@ sub mk_collection {
   # load input files
   load_files($collection);
 
-  foreach my $folder_nk ( sort keys %{$docdata_ref} ) {
+  foreach my $folder_nk ( sort keys %{$imagedata_ref} ) {
     mk_folder( $collection, $folder_nk, $alias_fh );
   }
 }
@@ -160,7 +158,7 @@ sub mk_folder {
 
   # check if folder dir exists
   my $rel_path  = $folder->get_folder_hashed_path();
-  my $full_path = $FOLDER_ROOT->child($rel_path);
+  my $full_path = $ZBW::PM20x::Folder::FOLDER_ROOT->child($rel_path);
   if ( not -d $full_path ) {
     die "$full_path does not exist\n";
   }
@@ -169,46 +167,46 @@ sub mk_folder {
   # (check with arbitrary entry)
   if ( not defined $imagedata_ref ) {
     load_files($collection);
-    # TODO remove hack
-    my %free_tmp = ( '00001' => 1, '00002' => 1, );
-    $docdata_ref->{$folder_nk}{free} = \%free_tmp;
   }
 
-  # skip if none of the folder's articles are free
-  return unless exists $docdata_ref->{$folder_nk}{free};
-
+  # TODO clearly wrong - change to public/intern pdfs?
   my $pdf_url = $PDF_ROOT_URI . "$rel_path/${folder_nk}.pdf";
 
-  foreach my $lang (@LANGUAGES) {
-    my $label = $folder->get_folderlabel($lang);
+  foreach my $type ( 'public', 'intern' ) {
 
-    my %tmpl_var = (
-      pref_label    => $label,
-      uri           => "$FOLDER_ROOT_URI$conf{$collection}{prefix}$folder_nk",
-      folder_nk     => $folder_nk,
-      file_grp_loop => build_file_grp( $conf{$collection}, $folder_nk ),
-      phys_loop     => build_phys_struct($folder_nk),
-      log_loop      => build_log_struct( $lang, $folder_nk ),
-      link_loop     => build_link($folder_nk),
-      pdf_url       => $pdf_url,
-    );
-    $tmpl->param( \%tmpl_var );
+    # get document list, skip if empty
+    my $doclist_ref = $folder->get_doclist($type);
+    next unless scalar( @{$doclist_ref} ) gt 0;
 
-    # write mets file for the folder
-    write_mets( $lang, $folder, $tmpl );
+    foreach my $lang (@LANGUAGES) {
+      my $label = $folder->get_folderlabel($lang);
 
-    # create url aliases for awstats
-    if ($alias_fh) {
-      print $alias_fh '/mets/' . $folder->get_folder_hashed_path()
-        . "/public.mets.$lang.xml\t$label\n";
+      my %tmpl_var = (
+        pref_label    => $label,
+        uri           => "$FOLDER_ROOT_URI$conf{$collection}{prefix}$folder_nk",
+        folder_nk     => $folder_nk,
+        file_grp_loop => build_file_grp( $conf{$collection}, $folder_nk ),
+        phys_loop     => build_phys_struct($folder_nk),
+        log_loop      => build_log_struct( $lang, $folder_nk ),
+        link_loop     => build_link($folder_nk),
+        pdf_url       => $pdf_url,
+      );
+      $tmpl->param( \%tmpl_var );
+
+      # write mets file for the folder
+      write_mets( $type, $lang, $folder, $tmpl );
+
+      # create url aliases for awstats
+      if ($alias_fh) {
+        print $alias_fh '/mets/' . $folder->get_folder_hashed_path()
+          . "/$type.mets.$lang.xml\t$label\n";
+      }
     }
   }
 }
 
 sub load_files {
   my $collection = shift || die "param missing";
-  $docdata_file   = $DOCDATA_ROOT->child("${collection}_docdata.json");
-  $docdata_ref    = decode_json( $docdata_file->slurp );
   $imagedata_file = $IMAGEDATA_ROOT->child("${collection}_image.json");
   $imagedata_ref  = decode_json( $imagedata_file->slurp );
 }
@@ -347,6 +345,7 @@ sub build_link {
 }
 
 sub write_mets {
+  my $type   = shift || die "param missing";
   my $lang   = shift || die "param missing";
   my $folder = shift || die "param missing";
   my $tmpl   = shift || die "param missing";
@@ -355,7 +354,7 @@ sub write_mets {
   my $mets_dir    = $METS_ROOT->child($hashed_path);
   $mets_dir->mkpath;
 
-  my $mets_file = $mets_dir->child("public.mets.$lang.xml");
+  my $mets_file = $mets_dir->child("$type.mets.$lang.xml");
   $mets_file->spew_utf8( $tmpl->output() );
 }
 
