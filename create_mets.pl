@@ -97,10 +97,7 @@ my %conf = (
   },
 );
 
-my (
-  $docdata_file, $imagedata_file,
-  $docdata_ref,  $imagedata_ref,
-);
+my ( $docdata_file, $imagedata_file, $docdata_ref, $imagedata_ref, );
 
 my $tmpl = HTML::Template->new( filename => '../etc/html_tmpl/mets.tmpl' );
 
@@ -159,9 +156,10 @@ sub mk_folder {
   my $folder_nk  = shift || die "param missing";
   my $alias_fh   = shift;
 
+  my $folder = ZBW::PM20x::Folder->new( $collection, $folder_nk );
+
   # check if folder dir exists
-  my $rel_path =
-    ZBW::PM20x::Folder::get_folder_hashed_path( $collection, $folder_nk );
+  my $rel_path  = $folder->get_folder_hashed_path();
   my $full_path = $FOLDER_ROOT->child($rel_path);
   if ( not -d $full_path ) {
     die "$full_path does not exist\n";
@@ -171,6 +169,9 @@ sub mk_folder {
   # (check with arbitrary entry)
   if ( not defined $imagedata_ref ) {
     load_files($collection);
+    # TODO remove hack
+    my %free_tmp = ( '00001' => 1, '00002' => 1, );
+    $docdata_ref->{$folder_nk}{free} = \%free_tmp;
   }
 
   # skip if none of the folder's articles are free
@@ -179,8 +180,7 @@ sub mk_folder {
   my $pdf_url = $PDF_ROOT_URI . "$rel_path/${folder_nk}.pdf";
 
   foreach my $lang (@LANGUAGES) {
-    my $label =
-      ZBW::PM20x::Folder::get_folderlabel( $lang, $collection, $folder_nk );
+    my $label = $folder->get_folderlabel($lang);
 
     my %tmpl_var = (
       pref_label    => $label,
@@ -195,12 +195,11 @@ sub mk_folder {
     $tmpl->param( \%tmpl_var );
 
     # write mets file for the folder
-    write_mets( $lang, $collection, $folder_nk, $tmpl );
+    write_mets( $lang, $folder, $tmpl );
 
     # create url aliases for awstats
     if ($alias_fh) {
-      print $alias_fh '/melts/'
-        . ZBW::PM20x::Folder::get_folder_hashed_path( $collection, $folder_nk )
+      print $alias_fh '/mets/' . $folder->get_folder_hashed_path()
         . "/public.mets.$lang.xml\t$label\n";
     }
   }
@@ -208,10 +207,10 @@ sub mk_folder {
 
 sub load_files {
   my $collection = shift || die "param missing";
-  $docdata_file    = $DOCDATA_ROOT->child("${collection}_docdata.json");
-  $docdata_ref     = decode_json( $docdata_file->slurp );
-  $imagedata_file  = $IMAGEDATA_ROOT->child("${collection}_image.json");
-  $imagedata_ref   = decode_json( $imagedata_file->slurp );
+  $docdata_file   = $DOCDATA_ROOT->child("${collection}_docdata.json");
+  $docdata_ref    = decode_json( $docdata_file->slurp );
+  $imagedata_file = $IMAGEDATA_ROOT->child("${collection}_image.json");
+  $imagedata_ref  = decode_json( $imagedata_file->slurp );
 }
 
 sub build_file_grp {
@@ -348,14 +347,12 @@ sub build_link {
 }
 
 sub write_mets {
-  my $lang       = shift || die "param missing";
-  my $collection = shift || die "param missing";
-  my $folder_nk  = shift || die "param missing";
-  my $tmpl       = shift || die "param missing";
+  my $lang   = shift || die "param missing";
+  my $folder = shift || die "param missing";
+  my $tmpl   = shift || die "param missing";
 
-  my $hashed_path =
-    ZBW::PM20x::Folder::get_folder_hashed_path( $collection, $folder_nk );
-  my $mets_dir = $METS_ROOT->child($hashed_path);
+  my $hashed_path = $folder->get_folder_hashed_path();
+  my $mets_dir    = $METS_ROOT->child($hashed_path);
   $mets_dir->mkpath;
 
   my $mets_file = $mets_dir->child("public.mets.$lang.xml");

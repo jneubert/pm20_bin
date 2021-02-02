@@ -63,23 +63,59 @@ Readonly my %DOCTYPE => (
 
 ZBW::PM20x::Folder - Functions for PM20 folders
 
-
 =head1 SYNOPSIS
 
   use ZBW::PM20x::Folder;
-	my $label = get_folderlabel( $lang, $collection, $folder_nk );
+  my $folder = ZBW::PM20x::Folder->new( $collection, $folder_nk );
+	my $label = $folder->get_folderlabel( $lang );
 
 =head1 DESCRIPTION
 
   Identifiers:
+
     term_id     := \d{6}  # with leading zeros
     collection  := (co|pe|sh|wa)
     folder_nk   := <term_id> | <term_id>,<term_id>
     folder_id   := <collection>/<folder_nk>
 
+
+=head1 Class methods
+
+=over 1
+
+=item new ( $collection, $folder_nk )
+
+Return a new folder object.
+
 =cut
 
-=item get_folderlabel ( $lang, $collection, $folder_nk, $with_signature )
+sub new {
+  my $class      = shift or croak('param missing');
+  my $collection = shift or croak('param missing');
+  my $folder_nk  = shift or croak('param missing');
+
+  $folder_nk =~ m/^(\d{6})(,(\d{6}))?/
+    or croak("irregular folder_id: $folder_nk for collection: $collection");
+  my $term_id1 = $1;
+  my $term_id2 = $3;
+
+  my $self = {
+    collection => $collection,
+    folder_nk  => $folder_nk,
+    folder_id  => "$collection/$folder_nk",
+    term_id1   => $term_id1,
+    term_id2   => $term_id2,
+  };
+  bless $self, $class;
+
+  return $self;
+}
+
+=head1 Instance methods
+
+=over 1
+
+=item get_folderlabel ( $lang, $with_signature )
 
 Return a html-encoded, human-readable label for a folder, optionally with signature.
 
@@ -88,28 +124,22 @@ Return a html-encoded, human-readable label for a folder, optionally with signat
 # TODO use Vocab::get_termlabel()
 
 sub get_folderlabel {
-  my $lang       = shift or croak('param missing');
-  my $collection = shift or croak('param missing');
-  my $folder_nk  = shift or croak('param missing');
+  my $self = shift or croak('param missing');
+  my $lang = shift or croak('param missing');
   my $with_signature = shift;
 
   my ($geo_ref)     = ZBW::PM20x::Vocab->new('ag');
   my ($subject_ref) = ZBW::PM20x::Vocab->new('je');
 
-  $folder_nk =~ m/(\d{6})(,(\d{6}))?/
-    or croak("irregular folder_id: $folder_nk for collection: $collection");
-  my $id1 = $1;
-  my $id2 = $3;
+  if ( $self->{collection} eq 'sh' ) {
 
-  if ( $collection eq 'sh' ) {
-
-    my $geo     = $geo_ref->{$id1}{prefLabel}{$lang};
-    my $subject = $subject_ref->{$id2}{prefLabel}{$lang};
+    my $geo     = $geo_ref->{ $self->{term_id1} }{prefLabel}{$lang};
+    my $subject = $subject_ref->{ $self->{term_id2} }{prefLabel}{$lang};
 
     my $label = "$geo : $subject";
 
     if ($with_signature) {
-      $label = "$subject_ref->{$id2}{notation} $label";
+      $label = "$subject_ref->{$self->{term_id2}}{notation} $label";
     }
 
     # encode HTML entities
@@ -186,28 +216,27 @@ sub get_doclabel {
   return $label;
 }
 
-=item get_folder_hashed_path ( $collection, $folder_nk )
+=item get_folder_hashed_path ()
 
 Return a path fragment for a folder with intermediate (hashed) directories.
 
 =cut
 
 sub get_folder_hashed_path {
-  my $collection = shift or croak('param missing');
-  my $folder_nk  = shift or croak('param missing');
+  my $self = shift or croak('param missing');
 
+  my $collection = $self->{collection};
+  my $term_id1 = $self->{term_id1};
+  my $term_id2 = $self->{term_id2};
   my $path = path($collection);
   if ( $collection eq 'pe' or $collection eq 'co' ) {
-    my $stub = substr( $folder_nk, 0, 4 ) . 'xx';
-    $path = $path->child($stub)->child($folder_nk);
+    my $stub = substr( $term_id1, 0, 4 ) . 'xx';
+    $path = $path->child($stub)->child( $term_id1 );
   } elsif ( $collection eq 'sh' or $collection eq 'wa' ) {
-    $folder_nk =~ m/(\d{6}),(\d{6})/
-      or croak("irregular folder_id: $folder_nk for collection: $collection");
-    my $id1   = $1;
-    my $id2   = $2;
-    my $stub1 = substr( $id1, 0, 4 ) . 'xx';
-    my $stub2 = substr( $id2, 0, 4 ) . 'xx';
-    $path = $path->child($stub1)->child($id1)->child($stub2)->child($id2);
+    my $stub1 = substr( $term_id1, 0, 4 ) . 'xx';
+    my $stub2 = substr( $term_id2, 0, 4 ) . 'xx';
+    $path = $path->child($stub1)->child( $term_id1 )->child($stub2)
+      ->child( $term_id2 );
   } else {
     croak("wrong collection: $collection");
   }
