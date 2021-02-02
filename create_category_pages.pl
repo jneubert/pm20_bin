@@ -258,12 +258,12 @@ foreach my $category_type ( keys %{$definitions_ref} ) {
         ##print Dumper $entry;exit;
 
         # extract ids for master and detail from folder id
-        my $folder_numkey;
+        my $folder_nk;
         if ( $entry->{pm20}->{value} =~ m/(\d{6},\d{6})$/ ) {
-          $folder_numkey = $1;
+          $folder_nk = $1;
         }
         my ( $master_id, $detail_id ) =
-          get_master_detail_ids( $category_type, $detail_type, $folder_numkey );
+          get_master_detail_ids( $category_type, $detail_type, $folder_nk );
 
         my $label     = $detail_voc->label( $lang, $detail_id );
         my $signature = $detail_voc->signature($detail_id);
@@ -394,15 +394,15 @@ sub view_url {
   my $viewer_stub =
     'https://dfg-viewer.de/show/?tx_dlf[id]=https://pm20.zbw.eu/mets/';
 
-  my ( $collection, $folder_numkey );
+  my ( $collection, $folder_nk );
   if ( $folder_uri =~ m;/(pe|co|sh|wa)/(\d{6}(,\d{6})?)$; ) {
-    $collection    = $1;
-    $folder_numkey = $2;
+    $collection = $1;
+    $folder_nk  = $2;
   }
 
   my $view_url =
       $viewer_stub
-    . ZBW::PM20x::Folder::get_folder_hashed_path( $collection, $folder_numkey )
+    . ZBW::PM20x::Folder::get_folder_hashed_path( $collection, $folder_nk )
     . "/public.mets.$lang.xml";
 
   return $view_url;
@@ -411,10 +411,10 @@ sub view_url {
 sub get_master_detail_ids {
   my $category_type = shift or croak('param missing');
   my $detail_type   = shift or croak('param missing');
-  my $folder_numkey = shift or croak('param missing');
+  my $folder_nk     = shift or croak('param missing');
 
-  $folder_numkey =~ m/^(\d{6}),(\d{6})$/
-    or confess "irregular folder id $folder_numkey";
+  $folder_nk =~ m/^(\d{6}),(\d{6})$/
+    or confess "irregular folder id $folder_nk";
 
   my ( $master_id, $detail_id );
   if ( $category_type eq 'geo' and $detail_type eq 'subject' ) {

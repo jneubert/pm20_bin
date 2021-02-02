@@ -48,7 +48,7 @@ foreach my $collection ( keys %input ) {
       warn "Wrong format1: $orig_line\n" if scalar(@parts) eq 0;
 
       # check first part of the line
-      my ( $folder_numkey, $doc_id, $date ) = split( / +/, $parts[0] );
+      my ( $folder_nk, $doc_id, $date ) = split( / +/, $parts[0] );
       if ( not $doc_id or $doc_id eq '' ) {
         warn "Wrong format2: $orig_line\n";
         next;
@@ -85,7 +85,7 @@ foreach my $collection ( keys %input ) {
       }
 
       # add entry for the document
-      $data{$folder_numkey}{$doc_id} = \%entry;
+      $data{$folder_nk}{$doc_id} = \%entry;
       $doc_stat{$collection}++;
     }
   }

@@ -110,17 +110,17 @@ if ( scalar(@ARGV) == 1 ) {
     my $collection = $1;
     mk_collection($collection);
   } elsif ( $ARGV[0] =~ m:^(co|pe)/(\d{6}): ) {
-    my $collection    = $1;
-    my $folder_numkey = $2;
+    my $collection = $1;
+    my $folder_nk  = $2;
 
     # TODO check existence of folder directory
-    mk_folder( $collection, $folder_numkey );
+    mk_folder( $collection, $folder_nk );
   } elsif ( $ARGV[0] =~ m:^(sh|wa)/(\d{6},\d{6})$: ) {
-    my $collection    = $1;
-    my $folder_numkey = $2;
+    my $collection = $1;
+    my $folder_nk  = $2;
 
     # TODO check existence of folder directory
-    mk_folder( $collection, $folder_numkey );
+    mk_folder( $collection, $folder_nk );
   } elsif ( $ARGV[0] eq 'ALL' ) {
     mk_all();
   } else {
@@ -153,15 +153,15 @@ sub mk_collection {
   # load input files
   load_files($collection);
 
-  foreach my $folder_numkey ( sort keys %{$docdata_ref} ) {
-    mk_folder( $collection, $folder_numkey, $alias_fh );
+  foreach my $folder_nk ( sort keys %{$docdata_ref} ) {
+    mk_folder( $collection, $folder_nk, $alias_fh );
   }
 }
 
 sub mk_folder {
-  my $collection    = shift || die "param missing";
-  my $folder_numkey = shift || die "param missing";
-  my $alias_fh      = shift;
+  my $collection = shift || die "param missing";
+  my $folder_nk  = shift || die "param missing";
+  my $alias_fh   = shift;
 
   # open files if necessary
   # (check with arbitrary entry)
@@ -170,37 +170,36 @@ sub mk_folder {
   }
 
   # skip if none of the folder's articles are free
-  return unless exists $docdata_ref->{$folder_numkey}{free};
+  return unless exists $docdata_ref->{$folder_nk}{free};
 
   my $pdf_url =
       $PDF_ROOT_URI
-    . ZBW::PM20x::Folder::get_folder_hashed_path( $collection, $folder_numkey )
-    . "/${folder_numkey}.pdf";
+    . ZBW::PM20x::Folder::get_folder_hashed_path( $collection, $folder_nk )
+    . "/${folder_nk}.pdf";
 
   foreach my $lang (@LANGUAGES) {
     my $label =
-      ZBW::PM20x::Folder::get_folderlabel( $lang, $collection, $folder_numkey );
+      ZBW::PM20x::Folder::get_folderlabel( $lang, $collection, $folder_nk );
 
     my %tmpl_var = (
-      pref_label => $label,
-      uri        => "$FOLDER_ROOT_URI$conf{$collection}{prefix}$folder_numkey",
-      folder_numkey => $folder_numkey,
-      file_grp_loop => build_file_grp( $conf{$collection}, $folder_numkey ),
-      phys_loop     => build_phys_struct($folder_numkey),
-      log_loop      => build_log_struct( $lang, $folder_numkey ),
-      link_loop     => build_link($folder_numkey),
+      pref_label    => $label,
+      uri           => "$FOLDER_ROOT_URI$conf{$collection}{prefix}$folder_nk",
+      folder_nk     => $folder_nk,
+      file_grp_loop => build_file_grp( $conf{$collection}, $folder_nk ),
+      phys_loop     => build_phys_struct($folder_nk),
+      log_loop      => build_log_struct( $lang, $folder_nk ),
+      link_loop     => build_link($folder_nk),
       pdf_url       => $pdf_url,
     );
     $tmpl->param( \%tmpl_var );
 
     # write mets file for the folder
-    write_mets( $lang, $collection, $folder_numkey, $tmpl );
+    write_mets( $lang, $collection, $folder_nk, $tmpl );
 
     # create url aliases for awstats
     if ($alias_fh) {
       print $alias_fh '/melts/'
-        . ZBW::PM20x::Folder::get_folder_hashed_path( $collection,
-        $folder_numkey )
+        . ZBW::PM20x::Folder::get_folder_hashed_path( $collection, $folder_nk )
         . "/public.mets.$lang.xml\t$label\n";
     }
   }
@@ -218,14 +217,14 @@ sub load_files {
 
 sub build_file_grp {
   my $collection_ref = shift || die "param missing";
-  my $folder_numkey  = shift || die "param missing";
+  my $folder_nk      = shift || die "param missing";
 
   my @file_grp_loop;
 
   foreach my $res ( sort keys %RES_EXT ) {
     my %entry = (
       use       => $res,
-      file_loop => build_res_files( $collection_ref, $folder_numkey, $res ),
+      file_loop => build_res_files( $collection_ref, $folder_nk, $res ),
     );
     push( @file_grp_loop, \%entry );
   }
@@ -234,11 +233,11 @@ sub build_file_grp {
 
 sub build_res_files {
   my $collection_ref = shift || die "param missing";
-  my $folder_numkey  = shift || die "param missing";
+  my $folder_nk      = shift || die "param missing";
   my $res            = shift || die "param missing";
 
-  my %imagedata = %{ $imagedata_ref->{$folder_numkey} };
-  my %docdata   = %{ $docdata_ref->{$folder_numkey} };
+  my %imagedata = %{ $imagedata_ref->{$folder_nk} };
+  my %docdata   = %{ $docdata_ref->{$folder_nk} };
 
   # create a flat list of files
   my @file_loop;
@@ -246,7 +245,7 @@ sub build_res_files {
     my $page_no = 1;
     foreach my $page ( @{ $imagedata{docs}{$doc_id}{pg} } ) {
 
-      ( my $folder_hash = $folder_numkey ) =~ s/^(\d\d\d\d)../$1xx/;
+      ( my $folder_hash = $folder_nk ) =~ s/^(\d\d\d\d)../$1xx/;
       ( my $doc_hash    = $doc_id ) =~ s/^(\d\d\d)../$1xx/;
 
       # create url according to dir structure
@@ -256,7 +255,7 @@ sub build_res_files {
         . "/$page$RES_EXT{$res}";
 
       my %entry = (
-        img_id  => get_img_id( $folder_numkey, $doc_id, $page_no, $res ),
+        img_id  => get_img_id( $folder_nk, $doc_id, $page_no, $res ),
         img_url => $img_url,
       );
       push( @file_loop, \%entry );
@@ -267,19 +266,19 @@ sub build_res_files {
 }
 
 sub get_img_id {
-  my $folder_numkey = shift || die "param missing";
-  my $doc_id        = shift || die "param missing";
-  my $page_no       = shift || die "param missing";
-  my $res           = shift || die "param missing";
+  my $folder_nk = shift || die "param missing";
+  my $doc_id    = shift || die "param missing";
+  my $page_no   = shift || die "param missing";
+  my $res       = shift || die "param missing";
 
-  return "img_${folder_numkey}_${doc_id}_${page_no}_" . lc($res);
+  return "img_${folder_nk}_${doc_id}_${page_no}_" . lc($res);
 }
 
 sub build_phys_struct {
-  my $folder_numkey = shift || die "param missing";
+  my $folder_nk = shift || die "param missing";
 
-  my %imagedata = %{ $imagedata_ref->{$folder_numkey} };
-  my %docdata   = %{ $docdata_ref->{$folder_numkey} };
+  my %imagedata = %{ $imagedata_ref->{$folder_nk} };
+  my %docdata   = %{ $docdata_ref->{$folder_nk} };
 
   my @phys_loop;
   my $i = 1;
@@ -289,7 +288,7 @@ sub build_phys_struct {
       my @size_loop;
       foreach my $res ( sort keys %RES_EXT ) {
         push( @size_loop,
-          { img_id => get_img_id( $folder_numkey, $doc_id, $page_no, $res ) } );
+          { img_id => get_img_id( $folder_nk, $doc_id, $page_no, $res ) } );
       }
       my %entry = (
         i        => $i,
@@ -308,10 +307,10 @@ sub build_phys_struct {
 }
 
 sub build_log_struct {
-  my $lang          = shift || die "param missing";
-  my $folder_numkey = shift || die "param missing";
+  my $lang      = shift || die "param missing";
+  my $folder_nk = shift || die "param missing";
 
-  my %docdata = %{ $docdata_ref->{$folder_numkey} };
+  my %docdata = %{ $docdata_ref->{$folder_nk} };
 
   my @log_loop;
   foreach my $doc_id ( sort keys %{ $docdata{free} } ) {
@@ -328,10 +327,10 @@ sub build_log_struct {
 }
 
 sub build_link {
-  my $folder_numkey = shift || die "param missing";
+  my $folder_nk = shift || die "param missing";
 
-  my %imagedata = %{ $imagedata_ref->{$folder_numkey} };
-  my %docdata   = %{ $docdata_ref->{$folder_numkey} };
+  my %imagedata = %{ $imagedata_ref->{$folder_nk} };
+  my %docdata   = %{ $docdata_ref->{$folder_nk} };
 
   # duplicates logic from build_phys_struct()!
   my @link_loop;
@@ -350,13 +349,13 @@ sub build_link {
 }
 
 sub write_mets {
-  my $lang          = shift || die "param missing";
-  my $collection    = shift || die "param missing";
-  my $folder_numkey = shift || die "param missing";
-  my $tmpl          = shift || die "param missing";
+  my $lang       = shift || die "param missing";
+  my $collection = shift || die "param missing";
+  my $folder_nk  = shift || die "param missing";
+  my $tmpl       = shift || die "param missing";
 
   my $hashed_path =
-    ZBW::PM20x::Folder::get_folder_hashed_path( $collection, $folder_numkey );
+    ZBW::PM20x::Folder::get_folder_hashed_path( $collection, $folder_nk );
   my $mets_dir = $METS_ROOT->child($hashed_path);
   $mets_dir->mkpath;
 
