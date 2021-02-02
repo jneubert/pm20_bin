@@ -7,6 +7,7 @@ use warnings;
 
 use lib './lib/';
 
+use Carp;
 use Data::Dumper;
 use HTML::Entities;
 use JSON;
@@ -23,6 +24,7 @@ Readonly our @ACCESS_TYPES    => qw/ public intern /;
 # global data structure (initialized lazily):
 #
 # {collection}
+#   label       # for pe and co
 #   doclist
 #     internal
 #     pulic
@@ -31,7 +33,7 @@ Readonly our @ACCESS_TYPES    => qw/ public intern /;
 
 my %data;
 foreach my $collection (qw/ co pe sh wa /) {
-  foreach my $entry (qw/ doclist docdata /) {
+  foreach my $entry (qw/ label doclist docdata /) {
     $data{$collection}{$entry} = ();
   }
   foreach my $type (@ACCESS_TYPES) {
@@ -146,8 +148,6 @@ Return a html-encoded, human-readable label for a folder, optionally with signat
 
 =cut
 
-# TODO use Vocab::get_termlabel()
-
 sub get_folderlabel {
   my $self = shift or croak('param missing');
   my $lang = shift or croak('param missing');
@@ -156,12 +156,14 @@ sub get_folderlabel {
   my ($geo_ref)     = ZBW::PM20x::Vocab->new('ag');
   my ($subject_ref) = ZBW::PM20x::Vocab->new('je');
 
-  if ( $self->{collection} eq 'sh' ) {
+  my $collection = $self->{collection};
+  my $label;
+  if ( $collection eq 'sh' ) {
 
-    my $geo     = $geo_ref->{ $self->{term_id1} }{prefLabel}{$lang};
-    my $subject = $subject_ref->{ $self->{term_id2} }{prefLabel}{$lang};
+    my $geo     = $geo_ref->label($lang, $self->{term_id1});
+    my $subject = $subject_ref->label($lang, $self->{term_id2} );
 
-    my $label = "$geo : $subject";
+    $label = "$geo : $subject";
 
     if ($with_signature) {
       $label = "$subject_ref->{$self->{term_id2}}{notation} $label";
@@ -174,11 +176,32 @@ sub get_folderlabel {
     if ( $lang eq 'en' and $subject =~ m/^\. / ) {
       $label =~ s/(.*?) : \. (.*)/$1 : $2 \*/;
     }
-    return $label;
+  } elsif ( $collection eq 'pe' or $collection eq 'co' ) {
+    if ( not defined $data{$collection}{label} ) {
+      _load_folderdata($collection);
+    }
+    $label = $data{$collection}{label}{$self->{folder_nk}};
   }
+
+  return $label;
 }
 
-=item get_doclabel ( $lang, $doc_id, $field_ref )
+=item get_docdata ()
+
+Return a hash with document data for a folder (TODO more specifc methods)
+
+=cut
+
+sub get_docdata {
+  my $self = shift or croak('param missing');
+
+  my $collection = $self->{collection};
+  my $folder_nk  = $self->{folder_nk};
+
+  return $data{$collection}{docdata}{$folder_nk};
+}
+
+=item get_doclabel ( $lang, $doc_id )
 
 Return a html-encoded, human-readable label for a document from consolidated
 document info.
@@ -186,9 +209,12 @@ document info.
 =cut
 
 sub get_doclabel {
-  my $lang      = shift or croak('param missing');
-  my $doc_id    = shift or croak('param missing');
-  my $field_ref = shift or croak('param missing');
+  my $self   = shift or croak('param missing');
+  my $lang   = shift or croak('param missing');
+  my $doc_id = shift or croak('param missing');
+
+  my $docdata_ref = $self->get_docdata();
+  my $field_ref   = $docdata_ref->{info}{$doc_id}{con};
 
   my $label = '';
   if ( $field_ref->{title} ) {
@@ -330,8 +356,16 @@ sub _load_docdata {
 
   my $docdata_file = $DOCDATA_ROOT->child("${collection}_docdata.json");
   my $docdata_ref  = decode_json( $docdata_file->slurp );
-
   $data{$collection}{docdata} = $docdata_ref;
+}
+
+sub _load_folderdata {
+  my $collection = shift or croak('param missing');
+
+  my $folderdata_file = $FOLDERDATA_ROOT->child("${collection}_label.json");
+  my $folderdata_ref = decode_json($folderdata_file->slurp);
+
+  $data{$collection}{label} = $folderdata_ref;
 }
 
 1;

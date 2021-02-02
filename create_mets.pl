@@ -9,9 +9,6 @@
 # - a collection id (e.g., pe)
 # - 'ALL' (to (re-) create all collections)
 
-# TODO
-# - extend to internal and external
-
 use strict;
 use warnings;
 
@@ -185,10 +182,10 @@ sub mk_folder {
         pref_label    => $label,
         uri           => "$FOLDER_ROOT_URI$conf{$collection}{prefix}$folder_nk",
         folder_nk     => $folder_nk,
-        file_grp_loop => build_file_grp( $conf{$collection}, $folder_nk ),
-        phys_loop     => build_phys_struct($folder_nk),
-        log_loop      => build_log_struct( $lang, $folder_nk ),
-        link_loop     => build_link($folder_nk),
+        file_grp_loop => build_file_grp( $type, $conf{$collection}, $folder ),
+        phys_loop     => build_phys_struct( $type, $folder ),
+        log_loop      => build_log_struct( $type, $lang, $folder ),
+        link_loop     => build_link( $type, $folder ),
         pdf_url       => $pdf_url,
       );
       $tmpl->param( \%tmpl_var );
@@ -212,15 +209,16 @@ sub load_files {
 }
 
 sub build_file_grp {
+  my $type           = shift || die "param missing";
   my $collection_ref = shift || die "param missing";
-  my $folder_nk      = shift || die "param missing";
+  my $folder         = shift || die "param missing";
 
   my @file_grp_loop;
 
   foreach my $res ( sort keys %RES_EXT ) {
     my %entry = (
       use       => $res,
-      file_loop => build_res_files( $collection_ref, $folder_nk, $res ),
+      file_loop => build_res_files( $type, $collection_ref, $folder, $res ),
     );
     push( @file_grp_loop, \%entry );
   }
@@ -228,21 +226,19 @@ sub build_file_grp {
 }
 
 sub build_res_files {
+  my $type           = shift || die "param missing";
   my $collection_ref = shift || die "param missing";
-  my $folder_nk      = shift || die "param missing";
+  my $folder         = shift || die "param missing";
   my $res            = shift || die "param missing";
 
+  my $folder_nk = $folder->{folder_nk};
   my %imagedata = %{ $imagedata_ref->{$folder_nk} };
-  my %docdata   = %{ $docdata_ref->{$folder_nk} };
 
   # create a flat list of files
   my @file_loop;
-  foreach my $doc_id ( sort keys %{ $docdata{free} } ) {
+  foreach my $doc_id ( @{ $folder->get_doclist($type) } ) {
     my $page_no = 1;
     foreach my $page ( @{ $imagedata{docs}{$doc_id}{pg} } ) {
-
-      ( my $folder_hash = $folder_nk ) =~ s/^(\d\d\d\d)../$1xx/;
-      ( my $doc_hash    = $doc_id ) =~ s/^(\d\d\d)../$1xx/;
 
       # create url according to dir structure
       my $img_url =
@@ -258,6 +254,7 @@ sub build_res_files {
       $page_no++;
     }
   }
+
   return \@file_loop;
 }
 
@@ -271,14 +268,15 @@ sub get_img_id {
 }
 
 sub build_phys_struct {
-  my $folder_nk = shift || die "param missing";
+  my $type   = shift || die "param missing";
+  my $folder = shift || die "param missing";
 
+  my $folder_nk = $folder->{folder_nk};
   my %imagedata = %{ $imagedata_ref->{$folder_nk} };
-  my %docdata   = %{ $docdata_ref->{$folder_nk} };
 
   my @phys_loop;
   my $i = 1;
-  foreach my $doc_id ( sort keys %{ $docdata{free} } ) {
+  foreach my $doc_id ( @{ $folder->get_doclist($type) } ) {
     my $page_no = 1;
     foreach my $page ( @{ $imagedata{docs}{$doc_id}{pg} } ) {
       my @size_loop;
@@ -303,15 +301,13 @@ sub build_phys_struct {
 }
 
 sub build_log_struct {
-  my $lang      = shift || die "param missing";
-  my $folder_nk = shift || die "param missing";
-
-  my %docdata = %{ $docdata_ref->{$folder_nk} };
+  my $type   = shift || die "param missing";
+  my $lang   = shift || die "param missing";
+  my $folder = shift || die "param missing";
 
   my @log_loop;
-  foreach my $doc_id ( sort keys %{ $docdata{free} } ) {
-    my $label = ZBW::PM20x::Folder::get_doclabel( $lang, $doc_id,
-      $docdata{info}{$doc_id}{con} );
+  foreach my $doc_id ( @{ $folder->get_doclist($type) } ) {
+    my $label = $folder->get_doclabel( $lang, $doc_id );
     my %entry = (
       document_id => "doc$doc_id",
       label       => $label,
@@ -323,15 +319,16 @@ sub build_log_struct {
 }
 
 sub build_link {
-  my $folder_nk = shift || die "param missing";
+  my $type   = shift || die "param missing";
+  my $folder = shift || die "param missing";
 
+  my $folder_nk = $folder->{folder_nk};
   my %imagedata = %{ $imagedata_ref->{$folder_nk} };
-  my %docdata   = %{ $docdata_ref->{$folder_nk} };
 
   # duplicates logic from build_phys_struct()!
   my @link_loop;
   my $i = 1;
-  foreach my $doc_id ( sort keys %{ $docdata{free} } ) {
+  foreach my $doc_id ( @{ $folder->get_doclist($type) } ) {
     foreach my $page ( @{ $imagedata{docs}{$doc_id}{pg} } ) {
       my %entry = (
         document_id => "doc$doc_id",

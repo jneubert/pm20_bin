@@ -46,7 +46,7 @@ ZBW::PM20x::Vocab - Functions for PM20 vocabularies
   my $voc = ZBW::PM20x::Vocab->new('ag');
 
   my $last_modified = $voc->modified;
-  my $label = $voc->label($id);
+  my $label = $voc->label($lang, $id);
   my $signature = $voc->signature($id);
   my $term_id = $voc->lookup_signature('A10');
   my $subheading = $voc->subheading('A');
