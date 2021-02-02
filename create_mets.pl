@@ -30,8 +30,8 @@ $Data::Dumper::Sortkeys = 1;
 
 Readonly my $FOLDER_ROOT_URI => 'https://purl.org/pressemappe20/folder/';
 Readonly my $PDF_ROOT_URI    => 'http://zbw.eu/beta/pm20pdf/';
-Readonly my $FOLDER_ROOT     => path('/disc1/pm20/folder');
-Readonly my $METS_ROOT       => path('../web.public/mets/');
+Readonly my $FOLDER_ROOT     => path('/pm20/folder');
+Readonly my $METS_ROOT       => path('../web.public/mets');
 Readonly my $IMAGEDATA_ROOT  => path('../data/imagedata');
 Readonly my $DOCDATA_ROOT    => path('../data/docdata');
 Readonly my $FOLDERDATA_ROOT => path('../data/folderdata');
@@ -98,8 +98,8 @@ my %conf = (
 );
 
 my (
-  $docdata_file, $imagedata_file, $folderdata_file,
-  $docdata_ref,  $imagedata_ref,  $folderdata_ref
+  $docdata_file, $imagedata_file,
+  $docdata_ref,  $imagedata_ref,
 );
 
 my $tmpl = HTML::Template->new( filename => '../etc/html_tmpl/mets.tmpl' );
@@ -112,14 +112,10 @@ if ( scalar(@ARGV) == 1 ) {
   } elsif ( $ARGV[0] =~ m:^(co|pe)/(\d{6}): ) {
     my $collection = $1;
     my $folder_nk  = $2;
-
-    # TODO check existence of folder directory
     mk_folder( $collection, $folder_nk );
   } elsif ( $ARGV[0] =~ m:^(sh|wa)/(\d{6},\d{6})$: ) {
     my $collection = $1;
     my $folder_nk  = $2;
-
-    # TODO check existence of folder directory
     mk_folder( $collection, $folder_nk );
   } elsif ( $ARGV[0] eq 'ALL' ) {
     mk_all();
@@ -163,6 +159,14 @@ sub mk_folder {
   my $folder_nk  = shift || die "param missing";
   my $alias_fh   = shift;
 
+  # check if folder dir exists
+  my $rel_path =
+    ZBW::PM20x::Folder::get_folder_hashed_path( $collection, $folder_nk );
+  my $full_path = $FOLDER_ROOT->child($rel_path);
+  if ( not -d $full_path ) {
+    die "$full_path does not exist\n";
+  }
+
   # open files if necessary
   # (check with arbitrary entry)
   if ( not defined $imagedata_ref ) {
@@ -172,10 +176,7 @@ sub mk_folder {
   # skip if none of the folder's articles are free
   return unless exists $docdata_ref->{$folder_nk}{free};
 
-  my $pdf_url =
-      $PDF_ROOT_URI
-    . ZBW::PM20x::Folder::get_folder_hashed_path( $collection, $folder_nk )
-    . "/${folder_nk}.pdf";
+  my $pdf_url = $PDF_ROOT_URI . "$rel_path/${folder_nk}.pdf";
 
   foreach my $lang (@LANGUAGES) {
     my $label =
@@ -211,8 +212,6 @@ sub load_files {
   $docdata_ref     = decode_json( $docdata_file->slurp );
   $imagedata_file  = $IMAGEDATA_ROOT->child("${collection}_image.json");
   $imagedata_ref   = decode_json( $imagedata_file->slurp );
-  $folderdata_file = $FOLDERDATA_ROOT->child("${collection}_label.json");
-  $folderdata_ref  = decode_json( $folderdata_file->slurp );
 }
 
 sub build_file_grp {
@@ -364,7 +363,7 @@ sub write_mets {
 }
 
 sub usage {
-  print "Usage: $0 {extended-folder-id}|{collection}|ALL\n";
+  print "Usage: $0 {folder-id}|{collection}|ALL\n";
   exit 1;
 }
 
