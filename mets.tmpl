@@ -2,7 +2,7 @@
 <mets:mets xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
   xmlns:xlink="http://www.w3.org/1999/xlink" xmlns:mets="http://www.loc.gov/METS/"
   xsi:schemaLocation="http://www.loc.gov/METS/ http://www.loc.gov/mets/mets.xsd">
-  <mets:dmdSec ID="md_<tmpl_var name='folder_id'>">
+  <mets:dmdSec ID="md_<tmpl_var name='folder_nk'>">
     <mets:mdWrap MIMETYPE="text/xml" MDTYPE="MODS">
       <mets:xmlData>
         <mods:mods xmlns:mods="http://www.loc.gov/mods/v3" version="3.3"
@@ -24,8 +24,8 @@
       </mets:xmlData>
     </mets:mdWrap>
   </mets:dmdSec>
-  <mets:amdSec ID="amd_<tmpl_var name='folder_id'>">
-    <mets:rightsMD ID="rights_<tmpl_var name='folder_id'>">
+  <mets:amdSec ID="amd_<tmpl_var name='folder_nk'>">
+    <mets:rightsMD ID="rights_<tmpl_var name='folder_nk'>">
       <mets:mdWrap MIMETYPE="text/xml" MDTYPE="OTHER" OTHERMDTYPE="DVRIGHTS">
         <mets:xmlData>
           <dv:rights xmlns:dv="http://dfg-viewer.de/">
@@ -37,7 +37,7 @@
         </mets:xmlData>
       </mets:mdWrap>
     </mets:rightsMD>
-    <mets:digiprovMD ID="digiprov_<tmpl_var name='folder_id'>">
+    <mets:digiprovMD ID="digiprov_<tmpl_var name='folder_nk'>">
       <mets:mdWrap MIMETYPE="text/xml" MDTYPE="OTHER" OTHERMDTYPE="DVLINKS">
         <mets:xmlData>
           <dv:links xmlns:dv="http://dfg-viewer.de/">
@@ -66,7 +66,7 @@
   </tmpl_loop>
   </mets:fileSec>
   <mets:structMap TYPE="PHYSICAL">
-    <mets:div ID="phys_<tmpl_var name='folder_id'>" TYPE="physSequence">
+    <mets:div ID="phys_<tmpl_var name='folder_nk'>" TYPE="physSequence">
     <tmpl_loop name='phys_loop'>
       <mets:div ID="<tmpl_var name='phys_id'>" ORDER="<tmpl_var name='i'>" TYPE="page" CONTENTIDS="<tmpl_var name='page_uri'>">
       <tmpl_loop name='size_loop'>
@@ -77,9 +77,9 @@
     </mets:div>
   </mets:structMap>
   <mets:structMap TYPE="LOGICAL">
-    <mets:div ID="log_<tmpl_var name='folder_id'>" TYPE="<tmpl_var name='type'>" CONTENTIDS="<tmpl_var name='uri'>"
+    <mets:div ID="log_<tmpl_var name='folder_nk'>" TYPE="<tmpl_var name='type'>" CONTENTIDS="<tmpl_var name='uri'>"
       LABEL="<tmpl_var name='pref_label'>"
-      DMDID="md_<tmpl_var name='folder_id'>" ADMID="amd_<tmpl_var name='folder_id'>">
+      DMDID="md_<tmpl_var name='folder_nk'>" ADMID="amd_<tmpl_var name='folder_nk'>">
 
       <mets:fptr FILEID="pdf_folder_download" />
     <tmpl_loop name='log_loop'>
@@ -88,7 +88,7 @@
     </mets:div>
   </mets:structMap>
   <mets:structLink>
-    <mets:smLink xlink:from="log_<tmpl_var name='folder_id'>" xlink:to="phys_<tmpl_var name='folder_id'>"/>
+    <mets:smLink xlink:from="log_<tmpl_var name='folder_nk'>" xlink:to="phys_<tmpl_var name='folder_nk'>"/>
     <tmpl_loop name='link_loop'>
       <mets:smLink xlink:from="<tmpl_var name='document_id'>" xlink:to="<tmpl_var name='phys_id'>"/>
     </tmpl_loop>
