@@ -25,7 +25,10 @@ use ZBW::PM20x::Folder;
 
 $Data::Dumper::Sortkeys = 1;
 
+# use folder_root for persistent URI, and image_root for internal linking
+# to image files (spares redirect for every file)
 Readonly my $FOLDER_ROOT_URI => 'https://purl.org/pressemappe20/folder/';
+Readonly my $IMAGE_ROOT_URI  => 'https://pm20.zbw.eu/folder/';
 Readonly my $PDF_ROOT_URI    => 'http://zbw.eu/beta/pm20pdf/';
 Readonly my $METS_ROOT       => path('../web.public/mets');
 Readonly my $IMAGEDATA_ROOT  => path('../data/imagedata');
@@ -173,7 +176,7 @@ sub mk_folder {
 
     # get document list, skip if empty
     my $doclist_ref = $folder->get_doclist($type);
-    next unless scalar( @{$doclist_ref} ) gt 0;
+    next unless $doclist_ref and scalar( @{$doclist_ref} ) gt 0;
 
     foreach my $lang (@LANGUAGES) {
       my $label = $folder->get_folderlabel($lang);
@@ -231,8 +234,9 @@ sub build_res_files {
   my $folder         = shift || die "param missing";
   my $res            = shift || die "param missing";
 
-  my $folder_nk = $folder->{folder_nk};
-  my %imagedata = %{ $imagedata_ref->{$folder_nk} };
+  my $collection = $folder->{collection};
+  my $folder_nk  = $folder->{folder_nk};
+  my %imagedata  = %{ $imagedata_ref->{$folder_nk} };
 
   # create a flat list of files
   my @file_loop;
@@ -241,10 +245,19 @@ sub build_res_files {
     foreach my $page ( @{ $imagedata{docs}{$doc_id}{pg} } ) {
 
       # create url according to dir structure
-      my $img_url =
-          $collection_ref->{url_stub}{ $imagedata{root} }
-        . $imagedata{docs}{$doc_id}{rp}
-        . "/$page$RES_EXT{$res}";
+      my $img_url;
+      if ( $collection eq 'pe' or $collection eq 'sh' ) {
+        ## switch to new mechanism
+        $img_url =
+            "$IMAGE_ROOT_URI$collection/"
+          . $imagedata{docs}{$doc_id}{rp}
+          . "/$page$RES_EXT{$res}";
+      } else {
+        $img_url =
+            $collection_ref->{url_stub}{ $imagedata{root} }
+          . $imagedata{docs}{$doc_id}{rp}
+          . "/$page$RES_EXT{$res}";
+      }
 
       my %entry = (
         img_id  => get_img_id( $folder_nk, $doc_id, $page_no, $res ),
