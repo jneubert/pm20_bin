@@ -23,19 +23,25 @@ my $log = ZBW::Logutil->get_logger('./log_conf/document_locks.logconf');
 $log->level($INFO);
 
 Readonly my $COPYRIGHT_TERM   => 70;
-Readonly my $HTACCESS_CONTENT => 'Require env PM20_INTERNAL';
+Readonly my $HTACCESS_CONTENT => <<'EOF';
+Require env PM20_INTERNAL
+<RequireAll>
+  Require method HEAD
+  Require env PM20_DFGVIEWER
+</RequireAll>
+EOF
 
 # these flags overide everything else!
 Readonly my $ACCESS_LOCKED_FN => 'access_locked.txt';
 Readonly my $ACCESS_FREE_FN   => 'access_free.txt';
 
-# document-specific metadata, especially authors death_year and publication_date
+# document-specific metadata, especially authors' death_year and publication_date
 # (overide codes from file name)
 Readonly my $META_FN => 'meta.yaml';
 
 # root directory for documents is required
 if ( not @ARGV ) {
-  die "Usage: $0 {root}\n";
+  die "Usage: $0 {root_dir_absolute}\n";
 }
 my $docroot = path( $ARGV[0] );
 if ( !$docroot->is_dir ) {
