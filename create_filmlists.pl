@@ -13,11 +13,8 @@ use Path::Tiny;
 use Readonly;
 use Scalar::Util qw(looks_like_number);
 
-# filmdata publicly available now
-my $film_intern_root = path('../web.intern/film');
-my $film_public_root = path('../web.public/film');
-my $filmdata_root    = path('../data/filmdata');
-##my $filmdata_root    = $film_public_root;
+my $film_web_root = path('../web.public/film');
+my $filmdata_root = path('../data/filmdata');
 my $img_file = $filmdata_root->child('img_count.json');
 my $ip_hints =
   path('../web.public/templates/fragments/ip_hints.de.md.frag')->slurp_utf8;
@@ -149,14 +146,14 @@ foreach my $prov ( keys %page ) {
     push( @lines, $ip_hints );
 
     # write output to public
-    my $out = $film_public_root->child( $page_name . '.de.md' );
+    my $out = $film_web_root->child( 'public.' . $page_name . '.de.md' );
     $out->spew_utf8( join( "\n", @lines ) );
 
     # insert links into @lines
     my $lines_intern_ref = insert_links( $page_name, \@lines );
 
     # write output to intern
-    $out = $film_intern_root->child( $page_name . '.de.md' );
+    $out = $film_web_root->child( 'intern.' . $page_name . '.de.md' );
     $out->spew_utf8( join( "\n", @{$lines_intern_ref} ) );
   }
 }
@@ -189,7 +186,7 @@ sub insert_links {
       # link only if there's content for the cell with the first image
       # and the according film directory exists
       my $film_link;
-      if ( $second_match ne '' and -d "$film_intern_root/$dir/$film_id" ) {
+      if ( $second_match ne '' and -d "$film_web_root/$dir/$film_id" ) {
         $film_link = "[$film_id]($dir/$film_id)";
       } else {
         $film_link = $film_id;
@@ -204,7 +201,7 @@ sub insert_links {
           $img_id = sprintf( "%04d", $img_id );
         }
         my $img_file =
-          "$film_intern_root/$dir/$film_id/S$film_id${img_id}K.jpg";
+          "$film_web_root/$dir/$film_id/S$film_id${img_id}K.jpg";
 
         # check if according file exists
         my $img_link;
