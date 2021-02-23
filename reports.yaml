@@ -1,0 +1,31 @@
+---
+archive:
+  de: ZBW Pressearchive
+  en: ZBW Press Archives
+backlink_title:
+  de: Auswertungen
+  en: Reports
+rep:
+  de: Auswertung
+  en: Report
+section:
+  co:
+    de: Firmen/Institutionen
+    en: Companies/Institutions
+  pe:
+    de: Personen
+    en: Persons
+  sh:
+    de: Länder/Sach-Mappen
+    en: Country/subject folders
+  vocab:
+    de: Systematiken
+    en: Category systems
+sections:
+  - pe
+  - co
+  - sh
+  - vocab
+subtitle:
+  de: Auswertungen Pressemappe 20. Jahrhundert
+  en: Reports 20th Century Press Archives
