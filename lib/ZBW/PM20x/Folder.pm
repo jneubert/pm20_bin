@@ -25,6 +25,8 @@ Readonly our @ACCESS_TYPES    => qw/ public intern /;
 #
 # {collection}
 #   label       # for pe and co
+#   vocab       # for sh and wa
+#     {vocab}   # ag/je or ag/ip
 #   doclist
 #     internal
 #     pulic
@@ -153,20 +155,23 @@ sub get_folderlabel {
   my $lang = shift or croak('param missing');
   my $with_signature = shift;
 
-  my ($geo_ref)     = ZBW::PM20x::Vocab->new('ag');
-  my ($subject_ref) = ZBW::PM20x::Vocab->new('je');
-
   my $collection = $self->{collection};
   my $label;
   if ( $collection eq 'sh' ) {
 
-    my $geo     = $geo_ref->label($lang, $self->{term_id1});
-    my $subject = $subject_ref->label($lang, $self->{term_id2} );
+    if ( not defined $data{$collection}{vocab} ) {
+      _load_vocabdata($collection);
+    }
+    my $geo = $data{$collection}{vocab}{ag}->label( $lang, $self->{term_id1} );
+    my $subject =
+      $data{$collection}{vocab}{je}->label( $lang, $self->{term_id2} );
 
     $label = "$geo : $subject";
 
     if ($with_signature) {
-      $label = "$subject_ref->{$self->{term_id2}}{notation} $label";
+      carp("with_signature not yet defined");
+
+      #$label = "$subject_ref->{$self->{term_id2}}{notation} $label";
     }
 
     # encode HTML entities
@@ -180,7 +185,7 @@ sub get_folderlabel {
     if ( not defined $data{$collection}{label} ) {
       _load_folderdata($collection);
     }
-    $label = $data{$collection}{label}{$self->{folder_nk}};
+    $label = $data{$collection}{label}{ $self->{folder_nk} };
   }
 
   return $label;
@@ -362,10 +367,24 @@ sub _load_docdata {
 sub _load_folderdata {
   my $collection = shift or croak('param missing');
 
-  my $folderdata_file = $FOLDERDATA_ROOT->child("${collection}_label.json");
-  my $folderdata_ref = decode_json($folderdata_file->slurp);
+  if ( $collection eq 'co' or $collection eq 'pe' ) {
+    my $folderdata_file = $FOLDERDATA_ROOT->child("${collection}_label.json");
+    my $folderdata_ref  = decode_json( $folderdata_file->slurp );
+    $data{$collection}{label} = $folderdata_ref;
+  } else {
+    confess("undefined collection: $collection");
+  }
+}
 
-  $data{$collection}{label} = $folderdata_ref;
+sub _load_vocabdata {
+  my $collection = shift or croak('param missing');
+
+  if ( $collection eq 'sh' ) {
+    $data{$collection}{vocab}{ag} = ZBW::PM20x::Vocab->new('ag');
+    $data{$collection}{vocab}{je} = ZBW::PM20x::Vocab->new('je');
+  } else {
+    confess("undefined collection: $collection");
+  }
 }
 
 1;
