@@ -21,7 +21,7 @@ binmode( STDOUT, ":utf8" );
 
 Readonly my $DEFINITIONS_FILE   => 'sparql_results.yaml';
 Readonly my $CONFIGURATION_FILE => 'reports.yaml';
-Readonly my $REPORT_ROOT        => path('/pm20/web.public/report');
+Readonly my $REPORT_ROOT        => path('/pm20/web/report');
 
 # read report definitions
 my %definition = %{ YAML::LoadFile($DEFINITIONS_FILE) };

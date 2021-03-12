@@ -13,11 +13,11 @@ use Path::Tiny;
 use Readonly;
 use Scalar::Util qw(looks_like_number);
 
-my $film_web_root = path('../web.public/film');
+my $film_web_root = path('../web/film');
 my $filmdata_root = path('../data/filmdata');
 my $img_file = $filmdata_root->child('img_count.json');
 my $ip_hints =
-  path('../web.public/templates/fragments/ip_hints.de.md.frag')->slurp_utf8;
+  path('../web/templates/fragments/ip_hints.de.md.frag')->slurp_utf8;
 
 my %page = (
   h => {

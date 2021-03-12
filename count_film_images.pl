@@ -16,7 +16,7 @@ use Path::Tiny;
 
 $Data::Dumper::Sortkeys = 1;
 
-my $film_root      = path('/disc1/pm20/film');
+my $film_root      = path('/pm20/film');
 my $filmdata_root  = path('../data/filmdata');
 my $img_count_file = $filmdata_root->child('img_count.json');
 my $missing_file   = $filmdata_root->child('missing.json');

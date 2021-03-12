@@ -21,7 +21,7 @@ else
 fi
 LANG_OPTS="--variable is_$lang --variable lang:$lang"
 
-TMPL_OPTS="--data-dir /disc1/pm20/web.public --template pm20_default.html --css /styles/simple.css"
+TMPL_OPTS="--data-dir /pm20/web --template pm20_default.html --css /styles/simple.css"
 
 EXT_OPTS="-t html+pipe_tables+fenced_divs+bracketed_spans"
 

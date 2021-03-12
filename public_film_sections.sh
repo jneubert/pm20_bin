@@ -6,13 +6,13 @@
 
 set -e
 
-DIR=/disc1/pm20
+DIR=/pm20
 
 # recreate symlinks and markdown overview files
 cd $DIR/bin
 perl img_to_public.pl h1/sh
 
 # update html
-cd $DIR/web.public
+cd $DIR/web
 make
 

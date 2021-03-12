@@ -18,8 +18,8 @@ binmode( STDIN,  ":encoding(iso-8859-1)" );
 binmode( STDOUT, ":utf8" );
 $Data::Dumper::Sortkeys = 1;
 
-Readonly my $DOCATTRIB_ROOT => path('/disc1/pm20/data/DocAttribute/');
-Readonly my $DOCDATA_ROOT   => path('/disc1/pm20/data/docdata/');
+Readonly my $DOCATTRIB_ROOT => path('/pm20/data/DocAttribute/');
+Readonly my $DOCDATA_ROOT   => path('/pm20/data/docdata/');
 
 my %input = (
   pe => [qw/ DocAttribute_P.txt /],

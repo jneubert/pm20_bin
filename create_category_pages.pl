@@ -32,7 +32,7 @@ use YAML;
 use ZBW::PM20x::Folder;
 use ZBW::PM20x::Vocab;
 
-Readonly my $WEB_ROOT        => path('../web.public/category');
+Readonly my $WEB_ROOT        => path('../web/category');
 Readonly my $KLASSDATA_ROOT  => path('../data/klassdata');
 Readonly my $FOLDERDATA_ROOT => path('../data/folderdata');
 Readonly my $TEMPLATE_ROOT   => path('../etc/html_tmpl');
