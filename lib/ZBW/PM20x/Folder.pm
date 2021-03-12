@@ -156,9 +156,14 @@ sub get_folderlabel {
   my $with_signature = shift;
 
   my $collection = $self->{collection};
-  my $label;
-  if ( $collection eq 'sh' ) {
 
+  my $label;
+  if ( $collection eq 'pe' or $collection eq 'co' ) {
+    if ( not defined $data{$collection}{label} ) {
+      _load_folderdata($collection);
+    }
+    $label = $data{$collection}{label}{ $self->{folder_nk} };
+  } elsif ( $collection eq 'sh' ) {
     if ( not defined $data{$collection}{vocab} ) {
       _load_vocabdata($collection);
     }
@@ -169,23 +174,29 @@ sub get_folderlabel {
     $label = "$geo : $subject";
 
     if ($with_signature) {
+      ##$label = "$subject_ref->{$self->{term_id2}}{notation} $label";
       carp("with_signature not yet defined");
-
-      #$label = "$subject_ref->{$self->{term_id2}}{notation} $label";
     }
 
     # encode HTML entities
     $label = encode_entities( $label, '<>&"' );
 
-    # mark unchecked translated labels
-    if ( $lang eq 'en' and $subject =~ m/^\. / ) {
-      $label =~ s/(.*?) : \. (.*)/$1 : $2 \*/;
+  } elsif ( $collection eq 'wa' ) {
+    if ( not defined $data{$collection}{vocab} ) {
+      _load_vocabdata($collection);
     }
-  } elsif ( $collection eq 'pe' or $collection eq 'co' ) {
-    if ( not defined $data{$collection}{label} ) {
-      _load_folderdata($collection);
+    my $ware = $data{$collection}{vocab}{ip}->label( $lang, $self->{term_id1} )
+      || $data{$collection}{vocab}{ip}->label( 'de', $self->{term_id1} );
+
+    my $geo = $data{$collection}{vocab}{ag}->label( $lang, $self->{term_id2} );
+
+    $label = "$ware : $geo";
+    if ($with_signature) {
+      carp("with_signature not yet defined");
     }
-    $label = $data{$collection}{label}{ $self->{folder_nk} };
+
+    # encode HTML entities
+    $label = encode_entities( $label, '<>&"' );
   }
 
   return $label;
@@ -382,6 +393,9 @@ sub _load_vocabdata {
   if ( $collection eq 'sh' ) {
     $data{$collection}{vocab}{ag} = ZBW::PM20x::Vocab->new('ag');
     $data{$collection}{vocab}{je} = ZBW::PM20x::Vocab->new('je');
+  } elsif ( $collection eq 'wa' ) {
+    $data{$collection}{vocab}{ag} = ZBW::PM20x::Vocab->new('ag');
+    $data{$collection}{vocab}{ip} = ZBW::PM20x::Vocab->new('ip');
   } else {
     confess("undefined collection: $collection");
   }

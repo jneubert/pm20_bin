@@ -219,7 +219,7 @@ sub label {
   my $label = $self->{id}{$term_id}{prefLabel}{$lang};
 
   # mark unchecked translated labels
-  if ( $lang eq 'en' and $label =~ m/^\. / ) {
+  if ( $lang eq 'en' and $label and $label =~ m/^\. / ) {
     $label =~ s/\. (.*)/$1 \*/;
   }
 
