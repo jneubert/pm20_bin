@@ -191,7 +191,7 @@ foreach my $category_type ( keys %{$definitions_ref} ) {
         }
         push( @lines, $line );
         $category_count++;
-        $total_folder_count += $folder_count;
+        $total_folder_count += $folder_count || 0;
       }
 
       # TODO for multiple detail sections on one category page, this has to
