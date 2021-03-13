@@ -16,10 +16,12 @@ use Readonly;
 use Scalar::Util qw(looks_like_number reftype);
 use ZBW::PM20x::Vocab;
 
-Readonly our $FOLDER_ROOT     => path('/pm20/folder');
-Readonly our $FOLDERDATA_ROOT => path('../data/folderdata');
-Readonly our $DOCDATA_ROOT    => path('../data/docdata');
-Readonly our @ACCESS_TYPES    => qw/ public intern /;
+Readonly our $FOLDER_ROOT      => path('/pm20/folder');
+Readonly our $FOLDERDATA_ROOT  => path('../data/folderdata');
+Readonly our $DOCDATA_ROOT     => path('../data/docdata');
+Readonly our @ACCESS_TYPES     => qw/ public intern /;
+Readonly our $URI_STUB         => 'http://purl.org/pressemappe20/folder';
+Readonly our $DFGVIEW_URL_STUB => 'https://pm20.zbw.eu/dfgview';
 
 # global data structure (initialized lazily):
 #
@@ -134,6 +136,7 @@ sub new {
     folder_id  => "$collection/$folder_nk",
     term_id1   => $term_id1,
     term_id2   => $term_id2,
+    folder_uri => "$URI_STUB/$collection/$folder_nk",
   };
   bless $self, $class;
 
@@ -310,6 +313,21 @@ sub get_folder_hashed_path {
   }
 
   return $path;
+}
+
+=item get_dfgview_url ()
+
+Return a URL for the DFG viewer, loading the folder METS file.
+
+=cut
+
+sub get_dfgview_url {
+  my $self = shift or croak('param missing');
+  my $lang = shift;
+
+  # currenly, $lang is not used
+
+  return "$DFGVIEW_URL_STUB/$self->{folder_id}";
 }
 
 =item get_document_hashed_path ()

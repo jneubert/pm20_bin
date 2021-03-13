@@ -262,6 +262,8 @@ foreach my $category_type ( keys %{$definitions_ref} ) {
         if ( $entry->{pm20}->{value} =~ m/(\d{6},\d{6})$/ ) {
           $folder_nk = $1;
         }
+        my $folder = ZBW::PM20x::Folder->new( 'sh', $folder_nk );
+
         my ( $master_id, $detail_id ) =
           get_master_detail_ids( $category_type, $detail_type, $folder_nk );
 
@@ -293,7 +295,7 @@ foreach my $category_type ( keys %{$definitions_ref} ) {
           . $detail_voc->siglink($detail_id);
         my $entry_note =
             '(<a href="'
-          . view_url( $lang, $uri )
+          . $folder->get_dfgview_url()
           . '" target="_blank">'
           . $entry->{docs}->{value}
           . ( $lang eq 'en' ? ' documents' : ' Dokumente' ) . '</a>)' . ' (['
@@ -385,27 +387,6 @@ sub output_category_page {
   $out->spew_utf8( $tmpl->output );
 
   return;
-}
-
-sub view_url {
-  my $lang       = shift or croak('param missing');
-  my $folder_uri = shift or croak('param missing');
-
-  my $viewer_stub =
-    'https://dfg-viewer.de/show/?tx_dlf[id]=https://pm20.zbw.eu/mets/';
-
-  my ( $collection, $folder_nk );
-  if ( $folder_uri =~ m;/(pe|co|sh|wa)/(\d{6}(,\d{6})?)$; ) {
-    $collection = $1;
-    $folder_nk  = $2;
-  }
-
-  my $view_url =
-      $viewer_stub
-    . ZBW::PM20x::Folder::get_folder_hashed_path( $collection, $folder_nk )
-    . "/public.mets.$lang.xml";
-
-  return $view_url;
 }
 
 sub get_master_detail_ids {
