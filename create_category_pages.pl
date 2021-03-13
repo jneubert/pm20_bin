@@ -5,8 +5,6 @@
 # data/klassdata/*.json
 
 # TODO clean up mess
-# - link directly to county/subject page from entries in overview pages
-#   - catpage_link to be moved to the detail page heading (up arrow)
 # - use check_missing_level for overview pages (needs tracking old id)
 # - use master_detail_ids() for overview pages
 # - all scope notes (add/prefer direct klassifikator fields)
@@ -77,6 +75,41 @@ subject:
       result_file: subject_folders
       vocab: ag
 EOF
+
+my %linktitle = (
+  about_hint => {
+    de => 'über',
+    en => 'about',
+  },
+  all_about_hint => {
+    de => 'Alles über',
+    en => 'All about',
+  },
+  folder => {
+    de => 'Mappe',
+    en => 'folder',
+  },
+  documents => {
+    de => 'Dokumente',
+    en => 'documents',
+  },
+  subject_cat => {
+    de => '(in der ganzen Welt)',
+    en => '(all over the world)',
+  },
+  geo_cat => {
+    de => '(alle Mappen)',
+    en => '(all folders)',
+  },
+  subject_sys => {
+    de => 'Sachsystematik',
+    en => 'Subject category system',
+  },
+  geo_sys => {
+    de => 'Ländersystematik',
+    en => 'Country category system',
+  },
+);
 
 # category overview pages
 my ( $master_voc, $detail_voc );
@@ -291,16 +324,19 @@ foreach my $category_type ( keys %{$definitions_ref} ) {
         # main entry
         my $line         = '';
         my $uri          = $entry->{pm20}->{value};
-        my $catpage_link = "../../../$detail_type/about.$lang.html#"
+        my $syspage_link = "../../../$detail_type/about.$lang.html#"
           . $detail_voc->siglink($detail_id);
+        my $catpage_link =
+          "../../../$detail_type/i/$detail_id/about.$lang.html";
         my $entry_note =
             '(<a href="'
           . $folder->get_dfgview_url()
+          . '" title="'
+          . "$linktitle{about_hint}{$lang}: "
+          . $folder->get_folderlabel($lang)
           . '" target="_blank">'
-          . $entry->{docs}->{value}
-          . ( $lang eq 'en' ? ' documents' : ' Dokumente' ) . '</a>)' . ' (['
-          . ( $lang eq 'en' ? 'folder'     : 'Mappe' )
-          . "]($uri))";
+          . "$entry->{docs}->{value} $linktitle{documents}{$lang}</a>) "
+          . "([$linktitle{folder}{$lang}]($uri))";
 
         # additional indent for Sondermappen
         if ( $signature =~ $SM_QR and $firstletter ne 'q' ) {
@@ -317,7 +353,13 @@ foreach my $category_type ( keys %{$definitions_ref} ) {
           $line .= "  ";
         }
 
-        $line .= "- [$signature $label]($catpage_link) $entry_note";
+        my $syspage_title = $linktitle{"${detail_type}_sys"}{$lang};
+        my $catpage_title = "$label " . $linktitle{"${detail_type}_cat"}{$lang};
+        $line .=
+            "- $signature $label "
+          . "**[&nearr;]($catpage_link \"$catpage_title\") "
+          . "[&uarr;]($syspage_link \"$syspage_title\")** "
+          . $entry_note;
         push( @lines, $line );
         $detail_id_old = $detail_id;
 
