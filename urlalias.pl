@@ -35,7 +35,7 @@ print $alias_fh <<"EOF";
 EOF
 
 # collections
-foreach my $collection (qw/ pe sh /) {
+foreach my $collection (qw/ co pe sh wa /) {
 
   # load input file
   my $imagedata_file = $IMAGEDATA_ROOT->child("${collection}_image.json");
