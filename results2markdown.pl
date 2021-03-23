@@ -44,7 +44,7 @@ foreach my $report ( keys %definition ) {
 
     push( @lines,
       '---',
-      "title: \"$conf{rep}{$lang}: $title | $conf{archive}{$lang}\"",
+      "title: \"$conf{rep}{title}{$lang}: $title | $conf{archive}{$lang}\"",
       "etr: report",
       "backlink: ../about.$lang.html",
       "backlink-title: $conf{backlink_title}{$lang}",
@@ -146,10 +146,10 @@ foreach my $lang (qw/de en/) {
   # iterate over page sections
   foreach my $section ( @{ $conf{sections} } ) {
 
-    push( @lines, "## $conf{section}{$section}{$lang}", '' );
+    push( @lines, "## $conf{section}{$section}{title}{$lang}", '' );
 
     # iterate over reports
-    for my $report ( keys %definition ) {
+    for my $report ( @{ $conf{section}{$section}{seq} } ) {
 
       next unless $definition{$report}{report_dir} eq $section;
 
@@ -168,12 +168,13 @@ foreach my $lang (qw/de en/) {
       }
     }
   }
-  my $note = $lang eq 'de'
-  ? 'Diese Daten sind auch über einen [SPARQL-Endpoint](http://zbw.eu/beta/sparql-lab/about#pm20) abfragbar. ' 
-  . 'Die Quelltexte der Abfragen sind über [Github](https://github.com/zbw/sparql-queries/tree/master/pm20) zugänglich.'
-  : 'This data is also queryable via a [SPARQL endpoint](http://zbw.eu/beta/sparql-lab/about#pm20).. ' 
-  . 'The source code of the queries is accessible on [Github](https://github.com/zbw/sparql-queries/tree/master/pm20).';
-  push(@lines, "<small>$note</small>");
+  my $note =
+    $lang eq 'de'
+    ? 'Diese Daten sind auch über einen [SPARQL-Endpoint](http://zbw.eu/beta/sparql-lab/about#pm20) abfragbar. '
+    . 'Die Quelltexte der Abfragen sind über [Github](https://github.com/zbw/sparql-queries/tree/master/pm20) zugänglich.'
+    : 'This data is also queryable via a [SPARQL endpoint](http://zbw.eu/beta/sparql-lab/about#pm20).. '
+    . 'The source code of the queries is accessible on [Github](https://github.com/zbw/sparql-queries/tree/master/pm20).';
+  push( @lines, "<small>$note</small>" );
 
   # write output
   $REPORT_ROOT->child("about.$lang.md")->spew_utf8( join( "\n", @lines ) );

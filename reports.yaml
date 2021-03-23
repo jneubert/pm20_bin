@@ -6,21 +6,38 @@ backlink_title:
   de: Auswertungen
   en: Reports
 rep:
-  de: Auswertung
-  en: Report
+  title:
+    de: Auswertung
+    en: Report
 section:
   co:
-    de: Firmen/Institutionen
-    en: Companies/Institutions
+    title:
+      de: Firmen/Institutionen
+      en: Companies/Institutions
+    seq:
+      - companies_with_reports
+      - companies
+      - companies_with_metadata
   pe:
-    de: Personen
-    en: Persons
+    title:
+      de: Personen
+      en: Persons
+    seq:
+      - persons
+      - persons_with_metadata
   sh:
-    de: Länder/Sach-Mappen
-    en: Country/subject folders
+    title:
+      de: Länder/Sach-Mappen
+      en: Country/subject folders
+    seq:
+      - subject_folders
   vocab:
-    de: Systematiken
-    en: Category systems
+    title:
+      de: Systematiken
+      en: Category systems
+    seq:
+      - geo_by_signature
+      - subject_by_signature
 sections:
   - pe
   - co
