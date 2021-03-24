@@ -118,7 +118,7 @@ sub mk_folder {
       my $label = $folder->get_folderlabel($lang);
 
       my %tmpl_var = (
-        pref_label    => $label,
+        pref_label    => encode_entities($label),
         uri           => "$FOLDER_ROOT_URI$collection/$folder_nk",
         folder_nk     => $folder_nk,
         file_grp_loop => build_file_grp( $type, $folder ),
