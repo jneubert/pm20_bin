@@ -357,8 +357,8 @@ foreach my $category_type ( keys %{$definitions_ref} ) {
         my $catpage_title = "$label " . $linktitle{"${detail_type}_cat"}{$lang};
         $line .=
             "- $signature $label "
-          . "**[&nearr;]($catpage_link \"$catpage_title\") "
-          . "[&uarr;]($syspage_link \"$syspage_title\")** "
+          . "[**&nearr;**]($catpage_link \"$catpage_title\") "
+          . "[**&uarr;**]($syspage_link \"$syspage_title\") "
           . $entry_note;
         push( @lines, $line );
         $detail_id_old = $detail_id;
