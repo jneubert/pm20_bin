@@ -16,7 +16,7 @@ use lib './lib';
 
 use Data::Dumper;
 use Encode;
-use HTML::Entities;
+use HTML::Entities qw(encode_entities_numeric);
 use HTML::Template;
 use JSON;
 use Path::Tiny;
@@ -118,7 +118,7 @@ sub mk_folder {
       my $label = $folder->get_folderlabel($lang);
 
       my %tmpl_var = (
-        pref_label    => encode_entities($label),
+        pref_label    => encode_entities_numeric($label),
         uri           => "$FOLDER_ROOT_URI$collection/$folder_nk",
         folder_nk     => $folder_nk,
         file_grp_loop => build_file_grp( $type, $folder ),
