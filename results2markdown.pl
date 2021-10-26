@@ -30,6 +30,11 @@ my %conf       = %{ YAML::LoadFile($CONFIGURATION_FILE) };
 # iterate over reports
 foreach my $report ( keys %definition ) {
 
+  # TODO remove TEMPORARY WORKAROUND
+  # (memory exceeded with Pandoc 2.7.3)
+  # skip huge report
+  next if ( $report eq 'companies_with_metadata' );
+
   # iterate over languages
   foreach my $lang ( keys %{ $definition{$report}{title} } ) {
 
@@ -65,7 +70,7 @@ foreach my $report ( keys %definition ) {
 
     # print table head
     push( @lines, '::: {.wikitable}', '' );
-    push( @lines, join( '|', @fields ) );
+    push( @lines, join( ' | ', @fields ) );
     my @delims = map( '-', @fields );
     push( @lines, join( '|', @delims ) );
 
@@ -101,7 +106,7 @@ foreach my $report ( keys %definition ) {
           push( @row, $entry->{$field}{value} );
         }
       }
-      push( @lines, join( '|', @row ) );
+      push( @lines, join( ' | ', @row ) );
     }
 
     push( @lines, '', ':::', '' );
