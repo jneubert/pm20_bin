@@ -16,8 +16,7 @@ $Data::Dumper::Sortkeys = 1;
 my $imagedata_root = path('../data/imagedata');
 
 # iterate through all collections
-#foreach my $collection (qw/ co pe sh wa /) {
-foreach my $collection (qw/ pe sh /) {
+foreach my $collection (qw/ co pe sh wa /) {
 
   my $lst   = $imagedata_root->child("${collection}_image.lst");
   my $files = $lst->slurp;
@@ -30,6 +29,7 @@ foreach my $collection (qw/ pe sh /) {
 
     # assign elements
     my $holding_dir = join( '/', @parts[ 0 .. 3 ] );
+
     my $folder_number = $parts[5];
 
     my ( $relative_path, $doc_number, $basename );
@@ -64,7 +64,7 @@ foreach my $collection (qw/ pe sh /) {
   }
 
   # save as json
-  my $out_fn = $collection . '_image.json';
-  $imagedata_root->child($out_fn)->spew( encode_json( \%img ) );
-  print "$out_fn saved\n";
+  my $out_file = $imagedata_root->child($collection . '_image.json');
+  $out_file->spew( encode_json( \%img ) );
+  print "$out_file saved\n";
 }
