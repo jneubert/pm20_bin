@@ -72,7 +72,7 @@ Read all vocabularies into a data structure, organized as:
 
 =head1 Class methods
 
-=over 1
+=over 2
 
 =item new ($vocab_name)
 
@@ -181,9 +181,9 @@ sub new {
 
 =back
 
-=head2 Instance methods
+=head1 Instance methods
 
-=over 1
+=over 2
 
 =item modified ()
 

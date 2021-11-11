@@ -98,7 +98,7 @@ ZBW::PM20x::Folder - Functions for PM20 folders
 
   use ZBW::PM20x::Folder;
   my $folder = ZBW::PM20x::Folder->new( $collection, $folder_nk );
-	my $label = $folder->get_folderlabel( $lang );
+  my $label = $folder->get_folderlabel( $lang );
 
 =head1 DESCRIPTION
 
@@ -112,7 +112,7 @@ ZBW::PM20x::Folder - Functions for PM20 folders
 
 =head1 Class methods
 
-=over 1
+=over 2
 
 =item new ( $collection, $folder_nk )
 
@@ -143,9 +143,11 @@ sub new {
   return $self;
 }
 
+=back
+
 =head1 Instance methods
 
-=over 1
+=over 2
 
 =item get_folderlabel ( $lang, $with_signature )
 
@@ -382,6 +384,10 @@ sub get_doclist {
 
   return $doclist_ref;
 }
+
+=back
+
+=cut
 
 # Internal procedures
 
