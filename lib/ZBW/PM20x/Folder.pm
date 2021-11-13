@@ -17,7 +17,6 @@ use Scalar::Util qw(looks_like_number reftype);
 use ZBW::PM20x::Vocab;
 
 Readonly our $FOLDER_ROOT     => path('/pm20/folder');
-Readonly our $FOLDERDATA_ROOT => path('../data/folderdata');
 ##Readonly our $FOLDERDATA_FILE  => path('../data/rdf/pm20.extended.jsonld');
 Readonly our $FOLDERDATA_FILE =>
   path('../data/rdf/pm20.extended.examples.jsonld');
@@ -31,9 +30,6 @@ our ( %folderdata, %blank_node );
 # global data structure (initialized lazily):
 #
 # {collection}
-#   label       # for pe and co
-#   vocab       # for sh and wa
-#     {vocab}   # ag/je or ag/ip
 #   doclist
 #     internal
 #     pulic
@@ -42,7 +38,7 @@ our ( %folderdata, %blank_node );
 
 my %data;
 foreach my $collection (qw/ co pe sh wa /) {
-  foreach my $entry (qw/ label doclist docdata /) {
+  foreach my $entry (qw/ doclist docdata /) {
     $data{$collection}{$entry} = ();
   }
   foreach my $type (@ACCESS_TYPES) {
@@ -165,49 +161,35 @@ sub get_folderlabel {
   my $lang           = shift or croak('param missing');
   my $with_signature = shift;
 
+  if ($with_signature) {
+    ##$label = "$subject_ref->{$self->{term_id2}}{notation} $label";
+    carp("with_signature not yet defined");
+  }
+
   my $collection = $self->{collection};
+  my $folder_nk  = $self->{folder_nk};
+
+  # lazy load - test with example value
+  if ( not defined $folderdata{co} ) {
+    _load_folderdata();
+  }
 
   my $label;
+
   if ( $collection eq 'pe' or $collection eq 'co' ) {
-    if ( not defined $data{$collection}{label} ) {
-      _load_folderdata($collection);
+    ## currently no distinction between English and German prefLabel
+    $label = $folderdata{$collection}{$folder_nk}{prefLabel};
+  } else {
+    foreach
+      my $label_ref ( @{ $folderdata{$collection}{$folder_nk}{prefLabel} } )
+    {
+      next unless $label_ref->{'@language'} eq $lang;
+      $label = $label_ref->{'@value'};
     }
-    $label = $data{$collection}{label}{ $self->{folder_nk} };
-  } elsif ( $collection eq 'sh' ) {
-    if ( not defined $data{$collection}{vocab} ) {
-      _load_vocabdata($collection);
-    }
-    my $geo = $data{$collection}{vocab}{ag}->label( $lang, $self->{term_id1} );
-    my $subject =
-      $data{$collection}{vocab}{je}->label( $lang, $self->{term_id2} );
-
-    $label = "$geo : $subject";
-
-    if ($with_signature) {
-      ##$label = "$subject_ref->{$self->{term_id2}}{notation} $label";
-      carp("with_signature not yet defined");
-    }
-
-    # encode HTML entities
-    $label = encode_entities( $label, '<>&"' );
-
-  } elsif ( $collection eq 'wa' ) {
-    if ( not defined $data{$collection}{vocab} ) {
-      _load_vocabdata($collection);
-    }
-    my $ware = $data{$collection}{vocab}{ip}->label( $lang, $self->{term_id1} )
-      || $data{$collection}{vocab}{ip}->label( 'de', $self->{term_id1} );
-
-    my $geo = $data{$collection}{vocab}{ag}->label( $lang, $self->{term_id2} );
-
-    $label = "$ware : $geo";
-    if ($with_signature) {
-      carp("with_signature not yet defined");
-    }
-
-    # encode HTML entities
-    $label = encode_entities( $label, '<>&"' );
   }
+
+  # encode HTML entities
+  $label = encode_entities( $label, '<>&"' );
 
   return $label;
 }
@@ -404,24 +386,9 @@ sub _load_docdata {
   $data{$collection}{docdata} = $docdata_ref;
 }
 
-# load old folderdata (only labels)
-
-sub _load_folderdata {
-  my $collection = shift or croak('param missing');
-
-  if ( $collection eq 'co' or $collection eq 'pe' ) {
-    my $folderdata_file = $FOLDERDATA_ROOT->child("${collection}_label.json");
-    my $folderdata_ref  = decode_json( $folderdata_file->slurp );
-    $data{$collection}{label} = $folderdata_ref;
-  } else {
-    confess("undefined collection: $collection");
-  }
-  print Dumper \%data;
-}
-
 # load complete folderdata (from jsonld)
 
-sub _load_folderdata1 {
+sub _load_folderdata {
 
   my @folders =
     @{ decode_json( $FOLDERDATA_FILE->slurp )->{'@graph'} };
@@ -441,24 +408,6 @@ sub _load_folderdata1 {
     } else {
       confess("strange folder \@id value: $id_value");
     }
-  }
-  print Dumper \%folderdata, \%blank_node;
-
-  #$data{$collection}{label} = $folderdata_ref;
-
-}
-
-sub _load_vocabdata {
-  my $collection = shift or croak('param missing');
-
-  if ( $collection eq 'sh' ) {
-    $data{$collection}{vocab}{ag} = ZBW::PM20x::Vocab->new('ag');
-    $data{$collection}{vocab}{je} = ZBW::PM20x::Vocab->new('je');
-  } elsif ( $collection eq 'wa' ) {
-    $data{$collection}{vocab}{ag} = ZBW::PM20x::Vocab->new('ag');
-    $data{$collection}{vocab}{ip} = ZBW::PM20x::Vocab->new('ip');
-  } else {
-    confess("undefined collection: $collection");
   }
 }
 
