@@ -16,12 +16,17 @@ use Readonly;
 use Scalar::Util qw(looks_like_number reftype);
 use ZBW::PM20x::Vocab;
 
-Readonly our $FOLDER_ROOT      => path('/pm20/folder');
-Readonly our $FOLDERDATA_ROOT  => path('../data/folderdata');
+Readonly our $FOLDER_ROOT     => path('/pm20/folder');
+Readonly our $FOLDERDATA_ROOT => path('../data/folderdata');
+##Readonly our $FOLDERDATA_FILE  => path('../data/rdf/pm20.extended.jsonld');
+Readonly our $FOLDERDATA_FILE =>
+  path('../data/rdf/pm20.extended.examples.jsonld');
 Readonly our $DOCDATA_ROOT     => path('../data/docdata');
 Readonly our @ACCESS_TYPES     => qw/ public intern /;
 Readonly our $URI_STUB         => 'http://purl.org/pressemappe20/folder';
 Readonly our $DFGVIEW_URL_STUB => 'https://pm20.zbw.eu/dfgview';
+
+our ( %folderdata, %blank_node );
 
 # global data structure (initialized lazily):
 #
@@ -156,8 +161,8 @@ Return a html-encoded, human-readable label for a folder, optionally with signat
 =cut
 
 sub get_folderlabel {
-  my $self = shift or croak('param missing');
-  my $lang = shift or croak('param missing');
+  my $self           = shift or croak('param missing');
+  my $lang           = shift or croak('param missing');
   my $with_signature = shift;
 
   my $collection = $self->{collection};
@@ -399,6 +404,8 @@ sub _load_docdata {
   $data{$collection}{docdata} = $docdata_ref;
 }
 
+# load old folderdata (only labels)
+
 sub _load_folderdata {
   my $collection = shift or croak('param missing');
 
@@ -409,6 +416,36 @@ sub _load_folderdata {
   } else {
     confess("undefined collection: $collection");
   }
+  print Dumper \%data;
+}
+
+# load complete folderdata (from jsonld)
+
+sub _load_folderdata1 {
+
+  my @folders =
+    @{ decode_json( $FOLDERDATA_FILE->slurp )->{'@graph'} };
+  foreach my $folder_ref (@folders) {
+    my $id_value = $folder_ref->{'@id'};
+    my $folder_key;
+
+    # should be folder URL or blank node
+    if ( $id_value =~ m/^http/ ) {
+      my @parts      = split( /\//, $id_value );
+      my $folder_nk  = $parts[-1];
+      my $collection = $parts[-2];
+
+      $folderdata{$collection}{$folder_nk} = $folder_ref;
+    } elsif ( $id_value =~ m/^_:b/ ) {
+      $blank_node{$id_value} = $folder_ref;
+    } else {
+      confess("strange folder \@id value: $id_value");
+    }
+  }
+  print Dumper \%folderdata, \%blank_node;
+
+  #$data{$collection}{label} = $folderdata_ref;
+
 }
 
 sub _load_vocabdata {
