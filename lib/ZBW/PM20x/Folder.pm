@@ -16,7 +16,8 @@ use Readonly;
 use Scalar::Util qw(looks_like_number reftype);
 use ZBW::PM20x::Vocab;
 
-Readonly our $FOLDER_ROOT     => path('/pm20/folder');
+Readonly my $FOLDER_URI_ROOT => 'https://purl.org/pressemappe20/folder/';
+Readonly our $FOLDER_ROOT    => path('/pm20/folder');
 ##Readonly our $FOLDERDATA_FILE  => path('../data/rdf/pm20.extended.jsonld');
 Readonly our $FOLDERDATA_FILE =>
   path('../data/rdf/pm20.extended.examples.jsonld');
@@ -149,6 +150,20 @@ sub new {
 =head1 Instance methods
 
 =over 2
+
+=item get_folder_uri
+
+Return the URI for a folder
+
+=cut
+
+sub get_folder_uri {
+  my $self = shift or croak('param missing');
+
+  my $folder_uri =
+    $FOLDER_URI_ROOT . $self->{collection} . '/' . $self->{folder_nk};
+  return $folder_uri;
+}
 
 =item get_folderlabel ( $lang, $with_signature )
 
