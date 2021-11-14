@@ -1,0 +1,24 @@
+---
+archive:
+  de: ZBW Pressearchive
+  en: ZBW Press Archives
+provenance:
+  ki:
+    de: Kieler Wirtschaftsarchiv (WiA)
+    en: Kieler Wirtschaftsarchiv (WiA)
+  hh:
+    de: Hamburgisches Welt-Wirtschafts-Archiv (HWWA)
+    en: Hamburgisches Welt-Wirtschafts-Archiv (HWWA)
+collection:
+  co:
+    de: Firmen/Institutionen
+    en: Companies/Institutions
+  pe:
+    de: Personen
+    en: Persons
+  sh:
+    de: Länder/Sach
+    en: Countries/subjects
+  wa:
+    de: Waren
+    en: Commodities
