@@ -16,7 +16,16 @@ fn-stub: about
 > Scope Note: <tmpl_var scope_note>
 </tmpl_if>
 
-URI: <tmpl_var folder_uri>
+<tmpl_if note><tmpl_var note></tmpl_if>
 
-ID: <tmpl_var fid>
+::: {.fieldtable}
+
+ | 
+--:|-----
+<tmpl_if location><tmpl_if is_de>Sitz</tmpl_if><tmpl_if is_en>Location</tmpl_if>|<tmpl_var location></tmpl_if>
+<tmpl_if gnd>GND|[<tmpl_var gnd>](https://d-nb.info/gnd/<tmpl_var gnd>)</tmpl_if>
+URI|[<tmpl_var folder_uri>](<tmpl_var folder_uri>)
+ID| <tmpl_var fid>
+
+:::
 
