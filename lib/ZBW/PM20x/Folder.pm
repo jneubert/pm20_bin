@@ -209,6 +209,24 @@ sub get_folderlabel {
   return $label;
 }
 
+=item get_folderdata_raw ()
+
+Return a hash of raw data from JSONLD
+
+=cut
+
+sub get_folderdata_raw {
+  my $self = shift or croak('param missing');
+
+  # lazy load - test with example value
+  if ( not defined $folderdata{co} ) {
+    _load_folderdata();
+  }
+
+  my $data = $folderdata{ $self->{collection} }{ $self->{folder_nk} };
+  return $data;
+}
+
 =item get_docdata ()
 
 Return a hash with document data for a folder (TODO more specifc methods)
