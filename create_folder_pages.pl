@@ -99,20 +99,40 @@ sub mk_folder {
   $folder_dir->mkpath;
 
   # TODO type public/intern
-  my $type = 'dummy';
+  my $type           = 'dummy';
+  my $folderdata_raw = $folder->get_folderdata_raw;
+  print Dumper $folderdata_raw;
+  my $doc_counts =
+    $folderdata_raw->{freeDocCount} . ' / ' . $folderdata_raw->{totalDocCount};
 
   foreach my $lang (@LANGUAGES) {
     my $label = $folder->get_folderlabel($lang);
 
     my %tmpl_var = (
       "is_$lang"  => 1,
-      provenance => $TITLE{provenance}{hh}{$lang},
-      coll => $TITLE{collection}{$collection}{$lang},
+      provenance  => $TITLE{provenance}{hh}{$lang},
+      coll        => $TITLE{collection}{$collection}{$lang},
       label       => $label,
       folder_uri  => $folder->get_folder_uri,
       dfgview_url => $folder->get_dfgview_url,
       fid         => "$collection/$folder_nk",
+      doc_counts  => $doc_counts,
     );
+
+    if ( $folderdata_raw->{note} ) {
+      my @notes = @{ $folderdata_raw->{note} };
+      $tmpl_var{note} = join( "<br>", @notes );
+    }
+
+    if ( $collection eq 'pe' or $collection eq 'co' ) {
+      $tmpl_var{from_to} =
+        ( $folderdata_raw->{dateOfBirthAndDeath} || $folderdata_raw->{fromTo} );
+      $tmpl_var{gnd} = $folderdata_raw->{gndIdentifier};
+    }
+    if ( $collection eq 'co' ) {
+      $tmpl_var{location} =
+        get_field_values( $lang, $folderdata_raw, 'location' );
+    }
     $tmpl->clear_params;
     $tmpl->param( \%tmpl_var );
     print Dumper \%tmpl_var;
@@ -142,9 +162,34 @@ sub write_page {
 
   my $page_dir = $folder->get_folder_hashed_path();
   $page_dir = $FOLDER_WEBROOT->child($page_dir);
-
   my $page_file = $page_dir->child("about.$lang.md");
-  $page_file->spew_utf8( $tmpl->output() );
+
+  # remove blank lines (necessary for pipe tables)
+  # within fenced block
+  my $lines = $tmpl->output();
+  $lines =~ m/\A(.*?::: .*?\n)(.*)(\n:::\n.*)\z/ms;
+  my $start  = $1;
+  my $fenced = $2;
+  my $end    = $3;
+  $fenced =~ s/\n+/\n/mg;
+  $lines = "$start$fenced$end";
+
+  $page_file->spew_utf8($lines);
   print "written $page_file\n";
+}
+
+sub get_field_values {
+  my $lang           = shift || die "param missing";
+  my $folderdata_raw = shift || die "param missing";
+  my $field          = shift || die "param missing";
+
+  my @field_values;
+  foreach my $field_ref ( @{ $folderdata_raw->{$field} } ) {
+    next unless $field_ref->{'@language'} eq $lang;
+    push( @field_values, $field_ref->{'@value'} );
+  }
+
+  my $values = join( '; ', @field_values );
+  return $values;
 }
 
