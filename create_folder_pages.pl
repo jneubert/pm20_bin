@@ -1,8 +1,7 @@
 #!/bin/env perl
 # nbt, 2021-10-26
 
-# Create the folder tree for the web directory, and
-# create symlinks for actual document directories
+# creates the .md files for folders
 
 # can be invoked either by
 # - an extended folder id (e.g., pe/000012)
@@ -21,6 +20,8 @@ use Path::Tiny;
 use Readonly;
 use YAML;
 use ZBW::PM20x::Folder;
+
+$Data::Dumper::Sortkeys = 1;
 
 Readonly my $FOLDER_ROOT    => $ZBW::PM20x::Folder::FOLDER_ROOT;
 Readonly my $FOLDER_WEBROOT => path('/pm20/web/folder.new');
@@ -117,22 +118,45 @@ sub mk_folder {
       dfgview_url => $folder->get_dfgview_url,
       fid         => "$collection/$folder_nk",
       doc_counts  => $doc_counts,
+      wdlink      => $folderdata_raw->{exactMatch}{'@id'},
     );
 
-    if ( $folderdata_raw->{note} ) {
+    if ( $folderdata_raw->{temporal} ) {
+      $tmpl_var{holdings} = join( '<br>', @{ $folderdata_raw->{temporal} } );
+    }
+    if ( $collection eq 'pe' or $collection eq 'co' ) {
+      $tmpl_var{from_to} =
+        ( $folderdata_raw->{dateOfBirthAndDeath} || $folderdata_raw->{fromTo} );
+      $tmpl_var{gnd}       = $folderdata_raw->{gndIdentifier};
+      $tmpl_var{signature} = $folderdata_raw->{notation};
+    }
+
+    if ( $folderdata_raw->{nationality} ) {
+      $tmpl_var{nationality} =
+        get_field_values( $lang, $folderdata_raw, 'nationality' );
+    }
+    if ( $folderdata_raw->{hasOccupation} and $lang eq 'de' ) {
+      $tmpl_var{occupation} = $folderdata_raw->{hasOccupation};
+    }
+
+    if ( $folderdata_raw->{note} and $lang eq 'de' ) {
       my @notes = @{ $folderdata_raw->{note} };
       $tmpl_var{note} = join( "<br>", @notes );
     }
 
-    if ( $collection eq 'pe' or $collection eq 'co' ) {
-      $tmpl_var{from_to} =
-        ( $folderdata_raw->{dateOfBirthAndDeath} || $folderdata_raw->{fromTo} );
-      $tmpl_var{gnd} = $folderdata_raw->{gndIdentifier};
-    }
-    if ( $collection eq 'co' ) {
+    if ( $folderdata_raw->{location} ) {
       $tmpl_var{location} =
         get_field_values( $lang, $folderdata_raw, 'location' );
     }
+    if ( $folderdata_raw->{industry} ) {
+      $tmpl_var{industry} =
+        get_field_values( $lang, $folderdata_raw, 'industry' );
+    }
+    if ( $folderdata_raw->{organizationType} ) {
+      $tmpl_var{organization_type} =
+        get_field_values( $lang, $folderdata_raw, 'organizationType' );
+    }
+
     $tmpl->clear_params;
     $tmpl->param( \%tmpl_var );
     print Dumper \%tmpl_var;
