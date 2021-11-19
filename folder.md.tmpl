@@ -22,8 +22,16 @@ fn-stub: about
 
  | 
 --:|-----
+<tmpl_if occupation><tmpl_if is_de>Beruf</tmpl_if><tmpl_if is_en>Occupation</tmpl_if>|<tmpl_var occupation></tmpl_if>
+<tmpl_if nationality><tmpl_if is_de>Land</tmpl_if><tmpl_if is_en>Country</tmpl_if>|<tmpl_var nationality></tmpl_if>
+
+<tmpl_if organization_type><tmpl_if is_de>Typ</tmpl_if><tmpl_if is_en>Type</tmpl_if>|<tmpl_var organization_type></tmpl_if>
 <tmpl_if location><tmpl_if is_de>Sitz</tmpl_if><tmpl_if is_en>Location</tmpl_if>|<tmpl_var location></tmpl_if>
+<tmpl_if industry><tmpl_if is_de>Branche</tmpl_if><tmpl_if is_en>Industry</tmpl_if>|<tmpl_var industry></tmpl_if>
+
 <tmpl_if gnd>GND|[<tmpl_var gnd>](https://d-nb.info/gnd/<tmpl_var gnd>)</tmpl_if>
+<tmpl_if holdings><tmpl_if is_de>Bestand</tmpl_if><tmpl_if is_en>Holdings</tmpl_if>|<tmpl_var holdings></tmpl_if>
+<tmpl_if signature><tmpl_if is_de>Signatur</tmpl_if><tmpl_if is_en>Signature</tmpl_if>|<tmpl_var signature></tmpl_if>
 URI|[<tmpl_var folder_uri>](<tmpl_var folder_uri>)
 ID| <tmpl_var fid>
 
