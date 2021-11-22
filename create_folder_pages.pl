@@ -131,6 +131,26 @@ sub mk_folder {
       $tmpl_var{signature} = $folderdata_raw->{notation};
     }
 
+    if ( $folderdata_raw->{activity} ) {
+      my @field_values;
+      foreach my $field_ref ( @{ $folderdata_raw->{activity} } ) {
+        my @entry;
+        foreach my $part (qw/ location about /) {
+          if ( not $field_ref->{$part} ) {
+            warn "missing activity $part", Dumper $field_ref;
+            next;
+          }
+          foreach my $subfield_ref ( @{ $field_ref->{$part} } ) {
+            next unless $subfield_ref->{'@language'} eq $lang;
+            push( @entry, $subfield_ref->{'@value'} );
+          }
+        }
+        push( @field_values, join( ' - ', @entry ) );
+      }
+      my $values = join( '<br>', @field_values );
+
+      $tmpl_var{activity} = $values;
+    }
     if ( $folderdata_raw->{nationality} ) {
       $tmpl_var{nationality} =
         get_field_values( $lang, $folderdata_raw, 'nationality' );
