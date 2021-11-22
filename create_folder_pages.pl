@@ -34,6 +34,44 @@ my $tmpl = HTML::Template->new( filename => '../etc/html_tmpl/folder.md.tmpl' );
 
 my ( $imagedata_file, $imagedata_ref );
 
+our @company_relations = (
+  {
+    field => 'parentOrganization',
+    label => {
+      en => 'Parent organization',
+      de => 'Übergeordnet',
+    },
+  },
+  {
+    field => 'subOrganization',
+    label => {
+      en => 'Subsidiary',
+      de => 'Untergeordnet',
+    },
+  },
+  {
+    field => 'precedingCorporateBody',
+    label => {
+      en => 'Preceeding org.',
+      de => 'Vorgänger',
+    },
+  },
+  {
+    field => 'succeedingCorporateBody',
+    label => {
+      en => 'Succeeding org.',
+      de => 'Nachfolger',
+    },
+  },
+  {
+    field => 'relatedCorporateBody',
+    label => {
+      en => 'Related org.',
+      de => 'Verwandte Org.',
+    },
+  },
+);
+
 # check arguments
 if ( scalar(@ARGV) == 1 ) {
   if ( $ARGV[0] =~ m:^(co|pe|wa|sh)$: ) {
@@ -164,6 +202,8 @@ sub mk_folder {
       $tmpl_var{note} = join( "<br>", @notes );
     }
 
+    $tmpl_var{company_relations_loop} =
+      get_company_relations( $lang, $folderdata_raw );
     if ( $folderdata_raw->{location} ) {
       $tmpl_var{location} =
         get_field_values( $lang, $folderdata_raw, 'location' );
@@ -237,3 +277,24 @@ sub get_field_values {
   return $values;
 }
 
+sub get_company_relations {
+  my $lang           = shift || die "param missing";
+  my $folderdata_raw = shift || die "param missing";
+
+  my @field_entries;
+  print Dumper \@company_relations;
+  foreach my $field_ref (@company_relations) {
+    my $field_name = $field_ref->{field};
+    next unless $folderdata_raw->{$field_name};
+
+    foreach my $occ ( @{ $folderdata_raw->{$field_name} } ) {
+      my %entry = (
+        field_label => $field_ref->{label}{$lang},
+        name        => $occ->{name},
+        url         => $occ->{url},
+      );
+      push( @field_entries, \%entry );
+    }
+  }
+  return \@field_entries;
+}
