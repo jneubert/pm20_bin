@@ -140,10 +140,9 @@ sub mk_folder {
   # TODO type public/intern
   my $type           = 'dummy';
   my $folderdata_raw = $folder->get_folderdata_raw;
-  print Dumper $folderdata_raw;
-  my $doc_counts =
-    $folderdata_raw->{freeDocCount} . ' / ' . $folderdata_raw->{totalDocCount};
+  ##print Dumper $folderdata_raw;
 
+  # main loop
   foreach my $lang (@LANGUAGES) {
     my $label = $folder->get_folderlabel($lang);
 
@@ -155,8 +154,8 @@ sub mk_folder {
       folder_uri  => $folder->get_folder_uri,
       dfgview_url => $folder->get_dfgview_url,
       fid         => "$collection/$folder_nk",
-      doc_counts  => $doc_counts,
-      wdlink      => $folderdata_raw->{exactMatch}{'@id'},
+      doc_counts  => $folder->get_doc_counts,
+      modified    => $folder->get_modified,
     );
 
     if ( $folderdata_raw->{temporal} ) {
@@ -219,7 +218,7 @@ sub mk_folder {
 
     $tmpl->clear_params;
     $tmpl->param( \%tmpl_var );
-    print Dumper \%tmpl_var;
+    ##print Dumper \%tmpl_var;
 
     # write  file for the folder
     write_page( $type, $lang, $folder, $tmpl );
@@ -259,7 +258,7 @@ sub write_page {
   $lines = "$start$fenced$end";
 
   $page_file->spew_utf8($lines);
-  print "written $page_file\n";
+  ##print "written $page_file\n";
 }
 
 sub get_field_values {
@@ -282,7 +281,6 @@ sub get_company_relations {
   my $folderdata_raw = shift || die "param missing";
 
   my @field_entries;
-  print Dumper \@company_relations;
   foreach my $field_ref (@company_relations) {
     my $field_name = $field_ref->{field};
     next unless $folderdata_raw->{$field_name};
