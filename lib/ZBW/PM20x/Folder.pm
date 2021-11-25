@@ -16,11 +16,11 @@ use Readonly;
 use Scalar::Util qw(looks_like_number reftype);
 use ZBW::PM20x::Vocab;
 
-Readonly my $FOLDER_URI_ROOT => 'https://purl.org/pressemappe20/folder/';
-Readonly our $FOLDER_ROOT    => path('/pm20/folder');
-##Readonly our $FOLDERDATA_FILE  => path('../data/rdf/pm20.extended.jsonld');
-Readonly our $FOLDERDATA_FILE =>
-  path('../data/rdf/pm20.extended.examples.jsonld');
+Readonly my $FOLDER_URI_ROOT  => 'https://purl.org/pressemappe20/folder/';
+Readonly our $FOLDER_ROOT     => path('/pm20/folder');
+Readonly our $FOLDERDATA_FILE => path('../data/rdf/pm20.extended.jsonld');
+##Readonly our $FOLDERDATA_FILE =>
+##  path('../data/rdf/pm20.extended.examples.jsonld');
 Readonly our $DOCDATA_ROOT     => path('../data/docdata');
 Readonly our @ACCESS_TYPES     => qw/ public intern /;
 Readonly our $URI_STUB         => 'http://purl.org/pressemappe20/folder';
@@ -160,9 +160,21 @@ Return the URI for a folder
 sub get_folder_uri {
   my $self = shift or croak('param missing');
 
-  my $folder_uri =
-    $FOLDER_URI_ROOT . $self->{collection} . '/' . $self->{folder_nk};
+  my $folder_uri = $FOLDER_URI_ROOT . $self->get_folder_id;
   return $folder_uri;
+}
+
+=item get_folder_id
+
+Get folder id ({collection}/{folder_nk}).
+
+=cut
+
+sub get_folder_id {
+  my $self = shift or croak('param missing');
+
+  my $fid = $self->{collection} . '/' . $self->{folder_nk};
+  return $fid;
 }
 
 =item get_folderlabel ( $lang, $with_signature )
@@ -203,10 +215,92 @@ sub get_folderlabel {
     }
   }
 
+  if ( not $label ) {
+    warn "label missing for $collection/$folder_nk\n";
+    $label = '';
+  }
+
   # encode HTML entities
   $label = encode_entities( $label, '<>&"' );
 
   return $label;
+}
+
+=item get_doc_counts ()
+
+Return a string with free and total document counts
+
+=cut
+
+sub get_doc_counts {
+  my $self = shift or croak('param missing');
+
+  my $fid            = $self->get_folder_id;
+  my $label          = $self->get_folderlabel('en');
+  my $folderdata_raw = $self->get_folderdata_raw;
+
+  my $doc_counts = '';
+  if ( exists $folderdata_raw->{freeDocCount} ) {
+    $doc_counts = $folderdata_raw->{freeDocCount};
+  } else {
+    warn "no freeDocCount for $fid $label\n";
+  }
+  $doc_counts .= ' / ';
+  if ( exists $folderdata_raw->{totalDocCount} ) {
+    $doc_counts .= $folderdata_raw->{totalDocCount};
+  } else {
+    warn "no totalDocCount for $fid $label\n";
+  }
+  return $doc_counts;
+}
+
+=item get_wdlink ()
+
+Get the URI of the exact matching Wikidata item. If more than one exists, issue
+a warning and return the first.
+
+=cut
+
+sub get_wdlink {
+  my $self = shift or croak('param missing');
+
+  my $fid            = $self->get_folder_id;
+  my $label          = $self->get_folderlabel('en');
+  my $folderdata_raw = $self->get_folderdata_raw;
+
+  my $wdlink;
+  if ( $folderdata_raw->{exactMatch} ) {
+    if ( scalar( $folderdata_raw->{exactMatch} ) gt 1 ) {
+      warn "more than one wdlink for $fid $label\n";
+    }
+    $wdlink = $folderdata_raw->{exactMatch}[0]{'@id'};
+  } else {
+    warn "no wdlink for $fid $label\n";
+  }
+  return $wdlink;
+}
+
+=item get_modified
+
+Get date of last modification.
+
+=cut
+
+sub get_modified {
+  my $self = shift or croak('param missing');
+
+  my $folderdata_raw = $self->get_folderdata_raw;
+  my $modified;
+
+  # pe and co have onw timestamps
+  if ( $folderdata_raw->{modified} ) {
+    $modified = $folderdata_raw->{modified};
+  } else {
+
+    # arbitrary timestamp (end of Sach migration)
+    $modified = '2021-01-21';
+  }
+  return $modified;
 }
 
 =item get_folderdata_raw ()
