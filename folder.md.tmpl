@@ -10,7 +10,11 @@ fn-stub: about
 # <tmpl_var label>&#160; <tmpl_if wdlink>[![Wikidata item](/images/Wikidata-logo.svg){.inline-icon}](<tmpl_var wdlink>)</tmpl_if>
 <tmpl_if from_to>## (<tmpl_var from_to>)</tmpl_if>
 
-**[<tmpl_if is_de>Dokumente anzeigen</tmpl_if><tmpl_if is_en>View documents</tmpl_if>](<tmpl_var dfgview_url>)** (<tmpl_var doc_counts>)
+<div class="spacer">&#160;</div>
+
+<a class="btn" href="<tmpl_var dfgview_url>"><tmpl_if is_de>Dokumente anzeigen</tmpl_if><tmpl_if is_en>View documents</tmpl_if></a> &#160; (<tmpl_var doc_counts>)
+
+<div class="spacer">&#160;</div>
 
 <tmpl_if scope_note>
 > Scope Note: <tmpl_var scope_note>
