@@ -140,22 +140,29 @@ sub mk_folder {
   # TODO type public/intern
   my $type           = 'dummy';
   my $folderdata_raw = $folder->get_folderdata_raw;
-  ##print Dumper $folderdata_raw;
 
   # main loop
   foreach my $lang (@LANGUAGES) {
-    my $label = $folder->get_folderlabel($lang);
+    my $label            = $folder->get_folderlabel($lang);
+    my $collection_title = $TITLE{collection}{$collection}{$lang};
+    my $backlink         = "../../about.$lang.html";
+    if ( $collection eq 'sh' or $collection eq 'wa' ) {
+      $backlink = '../../' . $backlink;
+    }
 
     my %tmpl_var = (
-      "is_$lang"  => 1,
-      provenance  => $TITLE{provenance}{hh}{$lang},
-      coll        => $TITLE{collection}{$collection}{$lang},
-      label       => $label,
-      folder_uri  => $folder->get_folder_uri,
-      dfgview_url => $folder->get_dfgview_url,
-      fid         => "$collection/$folder_nk",
-      doc_counts  => $folder->get_doc_counts,
-      modified    => $folder->get_modified,
+      "is_$lang"     => 1,
+      provenance     => $TITLE{provenance}{hh}{$lang},
+      coll           => $collection_title,
+      label          => $label,
+      folder_uri     => $folder->get_folder_uri,
+      dfgview_url    => $folder->get_dfgview_url,
+      fid            => "$collection/$folder_nk",
+      doc_counts     => $folder->get_doc_counts,
+      backlink       => $backlink,
+      backlink_title => $collection_title
+        . ( $lang eq 'de' ? '-Mappen' : ' folders' ),
+      modified => $folder->get_modified,
     );
 
     if ( $folderdata_raw->{temporal} ) {

@@ -105,7 +105,6 @@ sub mk_collectionlist {
         ##print $folder->get_folderlabel($lang), "\n";
         my $from_to = ( $folder->get_folderdata_raw )->{fromTo}
           || ( $folder->get_folderdata_raw )->{dateOfBirthAndDeath};
-        print "$from_to\n" if $from_to;
         my $path = $folder->get_folder_hashed_path->relative($collection)
           ->child("about.$lang.html");
         my %entry = (
@@ -127,7 +126,7 @@ sub mk_collectionlist {
       provenance     => $TITLE{provenance}{hh}{$lang},
       label          => $TITLE{collection}{$collection}{$lang},
       backlink       => "../about.$lang.html",
-      backlink_title => ($lang eq 'de' ? 'Mappen' : 'folders'),
+      backlink_title => ( $lang eq 'de' ? 'Mappen' : 'folders' ),
       tab_loop       => \@tabs,
       startchar_loop => \@startchar_entries,
     );
