@@ -21,7 +21,7 @@ use Readonly;
 use ZBW::PM20x::Folder;
 
 Readonly my $FOLDER_DOCROOT => $ZBW::PM20x::Folder::FOLDER_ROOT;
-Readonly my $FOLDER_WEBROOT => path('/pm20/web/folder.new');
+Readonly my $FOLDER_WEBROOT => path('/pm20/web/folder');
 Readonly my $IMAGEDATA_ROOT => path('/pm20/data/imagedata');
 Readonly my @COLLECTIONS    => qw/ co pe sh wa /;
 

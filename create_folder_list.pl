@@ -25,7 +25,7 @@ binmode( STDOUT, ":utf8" );
 $Data::Dumper::Sortkeys = 1;
 
 Readonly my $FOLDER_ROOT    => $ZBW::PM20x::Folder::FOLDER_ROOT;
-Readonly my $FOLDER_WEBROOT => path('/pm20/web/folder.new');
+Readonly my $FOLDER_WEBROOT => path('/pm20/web/folder');
 Readonly my $IMAGEDATA_ROOT => path('/pm20/data/imagedata');
 Readonly my %TITLE          => %{ YAML::LoadFile('archive_titles.yaml') };
 Readonly my @COLLECTIONS    => qw/ co pe sh wa /;
@@ -126,6 +126,8 @@ sub mk_collectionlist {
       "is_$lang"     => 1,
       provenance     => $TITLE{provenance}{hh}{$lang},
       label          => $TITLE{collection}{$collection}{$lang},
+      backlink       => "../about.$lang.html",
+      backlink_title => ($lang eq 'de' ? 'Mappen' : 'folders'),
       tab_loop       => \@tabs,
       startchar_loop => \@startchar_entries,
     );
