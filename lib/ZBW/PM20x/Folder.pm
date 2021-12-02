@@ -456,8 +456,7 @@ sub get_document_hashed_path {
   my $self   = shift or croak('param missing');
   my $doc_id = shift or croak('param missing');
 
-  my $stub = substr( $doc_id, 0, 3 ) . 'xx';
-  my $path = $self->get_folder_hashed_path->child($stub)->child($doc_id);
+  my $path = $self->get_folder_hashed_path->child($doc_id);
 
   return $path;
 }
