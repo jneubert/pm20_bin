@@ -125,8 +125,8 @@ sub mk_collectionlist {
       "is_$lang"     => 1,
       provenance     => $TITLE{provenance}{hh}{$lang},
       label          => $TITLE{collection}{$collection}{$lang},
-      backlink       => "../about.$lang.html",
-      backlink_title => ( $lang eq 'de' ? 'Mappen' : 'folders' ),
+      backlink       => "../../about.$lang.html",
+      backlink_title => 'Home',
       tab_loop       => \@tabs,
       startchar_loop => \@startchar_entries,
     );
