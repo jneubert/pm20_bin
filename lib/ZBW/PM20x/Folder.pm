@@ -16,7 +16,7 @@ use Readonly;
 use Scalar::Util qw(looks_like_number reftype);
 use ZBW::PM20x::Vocab;
 
-Readonly my $FOLDER_URI_ROOT  => 'https://purl.org/pressemappe20/folder/';
+Readonly my $FOLDER_URI_ROOT  => 'http://purl.org/pressemappe20/folder/';
 Readonly our $FOLDER_ROOT     => path('/pm20/folder');
 Readonly our $FOLDERDATA_FILE => path('../data/rdf/pm20.extended.jsonld');
 ##Readonly our $FOLDERDATA_FILE =>
@@ -145,6 +145,25 @@ sub new {
   return $self;
 }
 
+=item new_from_uri { $uri }
+
+Return a new folder object from an folder URI.
+
+=cut
+
+sub new_from_uri {
+  my $class = shift or croak('param missing');
+  my $uri   = shift or croak('param missing');
+
+  $uri =~ m!$FOLDER_URI_ROOT(co|pe|sh|wa)/(\d{6}(,\d{6})?)$!
+    or croak("$uri is not a valid folder uri");
+  my $collection = $1;
+  my $folder_nk  = $2;
+
+  my $folder = $class->new( $collection, $folder_nk );
+  return $folder;
+}
+
 =back
 
 =head1 Instance methods
@@ -224,6 +243,21 @@ sub get_folderlabel {
   $label = encode_entities( $label, '<>&"' );
 
   return $label;
+}
+
+=item get_relpath_to_folder ( $folder )
+
+Get relative filesystem path to another folder.
+
+=cut
+
+sub get_relpath_to_folder {
+  my $self    = shift or croak('param missing');
+  my $folder2 = shift or croak('param missing');
+
+  my $rel_path =
+    $folder2->get_folder_hashed_path->relative( $self->get_folder_hashed_path );
+  return $rel_path;
 }
 
 =item get_doc_counts ()

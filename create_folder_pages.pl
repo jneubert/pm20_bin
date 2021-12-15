@@ -208,8 +208,7 @@ sub mk_folder {
       $tmpl_var{note} = join( "<br>", @notes );
     }
 
-    $tmpl_var{company_relations_loop} =
-      get_company_relations( $lang, $folderdata_raw );
+    $tmpl_var{company_relations_loop} = get_company_relations( $lang, $folder );
     if ( $folderdata_raw->{location} ) {
       $tmpl_var{location} =
         get_field_values( $lang, $folderdata_raw, 'location' );
@@ -284,19 +283,23 @@ sub get_field_values {
 }
 
 sub get_company_relations {
-  my $lang           = shift || die "param missing";
-  my $folderdata_raw = shift || die "param missing";
+  my $lang   = shift || die "param missing";
+  my $folder = shift || die "param missing";
 
   my @field_entries;
+  my $folderdata_raw = $folder->get_folderdata_raw;
   foreach my $field_ref (@company_relations) {
     my $field_name = $field_ref->{field};
     next unless $folderdata_raw->{$field_name};
 
     foreach my $occ ( @{ $folderdata_raw->{$field_name} } ) {
+      my $folder2 = ZBW::PM20x::Folder->new_from_uri( $occ->{url} );
+      my $path =
+        $folder->get_relpath_to_folder($folder2)->child("/about.$lang.html");
       my %entry = (
         field_label => $field_ref->{label}{$lang},
         name        => $occ->{name},
-        url         => $occ->{url},
+        url         => "$path",
       );
       push( @field_entries, \%entry );
     }
