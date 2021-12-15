@@ -30,7 +30,7 @@ $Data::Dumper::Sortkeys = 1;
 Readonly my $FOLDER_ROOT_URI => 'https://purl.org/pressemappe20/folder/';
 Readonly my $IMAGE_ROOT_URI  => 'https://pm20.zbw.eu/folder/';
 Readonly my $PDF_ROOT_URI    => 'http://zbw.eu/beta/pm20pdf/';
-Readonly my $METS_ROOT       => path('../web/mets');
+Readonly my $METS_ROOT       => path('../web/folder');
 Readonly my $IMAGEDATA_ROOT  => path('../data/imagedata');
 Readonly my %RES_EXT         => (
   DEFAULT => '_B.JPG',
@@ -175,9 +175,9 @@ sub build_res_files {
       # create url according to dir structure
       my $img_url;
       $img_url =
-          "$IMAGE_ROOT_URI$collection/"
-        . $imagedata{docs}{$doc_id}{rp}
-        . "/$page$RES_EXT{$res}";
+          $IMAGE_ROOT_URI
+        . $folder->get_document_hashed_path($doc_id)
+        . "/PIC/$page$RES_EXT{$res}";
 
       my %entry = (
         img_id  => get_img_id( $folder_nk, $doc_id, $page_no, $res ),
