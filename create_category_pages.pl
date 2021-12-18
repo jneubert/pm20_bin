@@ -34,6 +34,7 @@ Readonly my $WEB_ROOT        => path('../web/category');
 Readonly my $KLASSDATA_ROOT  => path('../data/klassdata');
 Readonly my $FOLDERDATA_ROOT => path('../data/folderdata');
 Readonly my $TEMPLATE_ROOT   => path('../etc/html_tmpl');
+Readonly my $TO_ROOT         => path('../../../..');
 
 my %PROV = (
   hwwa => {
@@ -322,8 +323,11 @@ foreach my $category_type ( keys %{$definitions_ref} ) {
         }
 
         # main entry
-        my $line         = '';
-        my $uri          = $entry->{pm20}->{value};
+        my $line = '';
+        my $uri  = $entry->{pm20}->{value};
+        my $relpath =
+          $TO_ROOT->child('folder')->child( $folder->get_folder_hashed_path )
+          ->child("about.$lang.html");
         my $syspage_link = "../../../$detail_type/about.$lang.html#"
           . $detail_voc->siglink($detail_id);
         my $catpage_link =
@@ -336,7 +340,7 @@ foreach my $category_type ( keys %{$definitions_ref} ) {
           . $folder->get_folderlabel($lang)
           . '" target="_blank">'
           . "$entry->{docs}->{value} $linktitle{documents}{$lang}</a>) "
-          . "([$linktitle{folder}{$lang}]($uri))";
+          . "([$linktitle{folder}{$lang}]($relpath))";
 
         # additional indent for Sondermappen
         if ( $signature =~ $SM_QR and $firstletter ne 'q' ) {
