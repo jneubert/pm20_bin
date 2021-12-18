@@ -289,7 +289,6 @@ foreach my $category_type ( keys %{$definitions_ref} ) {
       my $detail_id_old   = '';
       my $firstletter_old = '';
       foreach my $entry (@entries) {
-        ##print Dumper $entry;exit;
 
         # extract ids for master and detail from folder id
         my $folder_nk;
@@ -324,7 +323,6 @@ foreach my $category_type ( keys %{$definitions_ref} ) {
 
         # main entry
         my $line = '';
-        my $uri  = $entry->{pm20}->{value};
         my $relpath =
           $TO_ROOT->child('folder')->child( $folder->get_folder_hashed_path )
           ->child("about.$lang.html");
