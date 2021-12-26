@@ -140,13 +140,29 @@ sub mk_folder {
   # TODO type public/intern
   my $type           = 'dummy';
   my $folderdata_raw = $folder->get_folderdata_raw;
+  #
+  # wikidata link (use only first one)
+  my $wdlink;
+  for my $exact_match ( @{ $folderdata_raw->{exactMatch} } ) {
+    next if $wdlink;
+    my $uri = $exact_match->{'@id'};
+    next unless $uri =~ m/wikidata\.org/;
+    $wdlink = $uri;
+  }
 
   # main loop
   foreach my $lang (@LANGUAGES) {
     my $label            = $folder->get_folderlabel($lang);
     my $collection_title = $TITLE{collection}{$collection}{$lang};
     my $backlink         = "../../about.$lang.html";
-    if ( $collection eq 'sh' or $collection eq 'wa' ) {
+    my $backlink_title =
+      $collection_title . ( $lang eq 'de' ? '-Mappen' : ' folders' );
+    if ( $collection eq 'sh' ) {
+      $backlink = "../../../../../../category/about.$lang.html";
+      $backlink_title =
+        $lang eq 'de' ? 'Mappen nach Systematik' : 'Folders by category system';
+    }
+    if ( $collection eq 'wa' ) {
       $backlink = '../../' . $backlink;
     }
 
@@ -160,10 +176,13 @@ sub mk_folder {
       fid            => "$collection/$folder_nk",
       doc_counts     => $folder->get_doc_counts,
       backlink       => $backlink,
-      backlink_title => $collection_title
-        . ( $lang eq 'de' ? '-Mappen' : ' folders' ),
-      modified => $folder->get_modified,
+      backlink_title => $backlink_title,
+      modified       => $folder->get_modified,
     );
+
+    if ($wdlink) {
+      $tmpl_var{wdlink} = $wdlink;
+    }
 
     if ( $folderdata_raw->{temporal} ) {
       $tmpl_var{holdings} = join( '<br>', @{ $folderdata_raw->{temporal} } );
