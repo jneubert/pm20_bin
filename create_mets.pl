@@ -29,7 +29,7 @@ $Data::Dumper::Sortkeys = 1;
 # to image files (spares redirect for every file)
 Readonly my $FOLDER_ROOT_URI => 'https://purl.org/pressemappe20/folder/';
 Readonly my $IMAGE_ROOT_URI  => 'https://pm20.zbw.eu/folder/';
-Readonly my $PDF_ROOT_URI    => 'http://zbw.eu/beta/pm20pdf/';
+Readonly my $PDF_ROOT_URI    => 'https://pm20.zbw.eu/pdf/';
 Readonly my $METS_ROOT       => path('../web/folder');
 Readonly my $IMAGEDATA_ROOT  => path('../data/imagedata');
 Readonly my %RES_EXT         => (
@@ -220,7 +220,7 @@ sub build_phys_struct {
       my %entry = (
         i        => $i,
         phys_id  => "phys_$i",
-        page_uri => 'http://dummy.org',
+        page_uri => "https://pm20.zbw.eu/error/folder_page_not_addressable",
 
         # TODO size_loop -> res_loop
         size_loop => \@size_loop,
