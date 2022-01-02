@@ -1,7 +1,8 @@
+## Please see file perltidy.ERR
 #!/bin/env perl
 # nbt, 2020-04-20
 
-# Create symlinks for ranges of film images in web.public
+# Create .htaccess files that *allow* access for listed film images
 # plus an overview page
 # (requires a checked.yaml file in the film directory)
 # see https://pm20intern.zbw.eu/film/meta
@@ -25,9 +26,9 @@ use YAML::Tiny;
 
 binmode( STDOUT, ":utf8" );
 
-my $film_root      = path('/disc1/pm20/film/');
-my $pub_film_root  = path('/disc1/pm20/web.public/film/');
-my $klassdata_root = path('/disc1/pm20/data/klassdata/');
+my $film_root      = path('/pm20/film/');
+my $pub_film_root  = path('/pm20/web/film/');
+my $klassdata_root = path('/pm20/data/klassdata/');
 
 my ( $holding, $film_id, $dir );
 
@@ -66,13 +67,13 @@ if ( defined $film_id ) {
   $film_id =~ m/(S|W|A|F)(\d{4})(H|K)/ or die "Film id $film_id not valid\n";
   $dir = $film_root->child($holding)->child($film_id);
   link_film($dir);
+
 } else {
 
   # all directories of the holding
   $film_root->child($holding)->visit( \&link_film );
+  create_overview_page( $holding, \%pub_film_sect );
 }
-
-create_overview_page( $holding, \%pub_film_sect );
 
 ################
 
@@ -84,13 +85,13 @@ sub link_film {
   my $dir = shift or die "param missing";
   return unless -d $dir;
 
+  my $htaccess = $dir->child('.htaccess');
+  $htaccess->remove;
+
   # iterate over checked sections
+  my @img_allowed;
   my $checked_fn = $dir->child('checked.yaml');
   return unless -f $checked_fn;
-
-  # prepare target dir
-  my $target_dir = get_target_dir($dir);
-  prepare_target_dir($target_dir);
 
   my $checked = YAML::Tiny->read($checked_fn);
   foreach my $section ( @{$checked} ) {
@@ -99,33 +100,26 @@ sub link_film {
     next if not $section;
 
     parse_section( $checked_fn, $section );
-    my $count = link_section( $dir, $section );
+    my $count = add_section( $dir, \@img_allowed, $section );
 
     # fill data structure for overview page
     $section->{count} = $count;
     my ( $holding, $film_id ) = parse_dirname( $checked_fn->parent );
     push( @{ $pub_film_sect{ $section->{country} }{$film_id} }, $section );
   }
-}
 
-sub prepare_target_dir {
-  my $target_dir = shift or die "param missing";
-
-  # create empty public film directory or purge symlinks from it
-  if ( !-d $target_dir ) {
-    $target_dir->mkpath;
-  } else {
-    foreach my $symlink ( $target_dir->children ) {
-      next unless -l $symlink;
-      $symlink->remove;
-    }
+  # create .htaccess file
+  my $fh = $htaccess->openw_raw;
+  foreach my $file (@img_allowed) {
+    print $fh "SetEnvIf Request_URI \"$file\$\" allowedURL\n";
   }
-  return $dir;
+  close $fh;
 }
 
-sub link_section {
-  my $dir     = shift or die "param missing";
-  my $section = shift or die "param missing";
+sub add_section {
+  my $dir             = shift or die "param missing";
+  my $img_allowed_ref = shift or die "param missing";
+  my $section         = shift or die "param missing";
 
   # TODO extend for half films
   my $count = 0;
@@ -144,22 +138,12 @@ sub link_section {
 
     # check if a the source file is locked
     next if is_locked($src);
+    push( @{$img_allowed_ref}, $img_fn );
     $count++;
 
-    # build target file name and create as symlink
-    my $target_dir = get_target_dir($dir);
-    my $target     = $target_dir->child($img_fn);
-    symlink( $src, $target ) or die "Could not create symlink $target: $!\n";
-
-    print "$i: $src\n";
+    print $i+ 0, ": $src\n";
   }
   return $count;
-}
-
-sub get_target_dir {
-  my $dir = shift or die "param missing";
-
-  return $pub_film_root->child( $dir->relative($film_root) );
 }
 
 sub is_locked {
@@ -211,7 +195,7 @@ sub create_overview_page {
   my $holding       = shift or die "param missing";
   my $pub_film_sect = shift or die "param missing";
 
-  (my $holding_shortname = $holding ) =~ s/\//_/;
+  ( my $holding_shortname = $holding ) =~ s/\//_/;
   my %page_title = (
     de => 'Veröffentlichte Abschnitte aus digitalisierten Rollfilmen',
     en => 'Published sections from digitized roll films',
