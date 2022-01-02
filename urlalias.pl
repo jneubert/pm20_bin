@@ -32,6 +32,21 @@ print $alias_fh <<"EOF";
 /doc/holding/\tBestandsübersicht
 /category/geo/\tMappen nach Ländersystematik
 /category/subject/\tMappen nach Sachsystematik
+/awstats/awstats.pl\tStatistics
+/folder/pe/\tPersonen-Archiv
+/folder/co/\tFirmen/Institutionen-Archiv
+/folder/sh/\tLänder-Sach-Archiv
+/folder/wa/\tWaren-Archiv
+/report/pe/persons_with_metadata\tReport Personen mit Metadaten
+/report/pe/persons\tReport Personen
+/report/pe/companies_with_metadata\tReport Firmen mit Metadaten
+/report/co/companies\tReport Firmen
+/report/co/companies_with_reports\tReport Firmen mit Geschaftsberichten
+/report/\tReports
+/about-pm20/legal\tRechtlichtes
+/about-pm20/\tÜber PM20
+/report/\tReports
+/doc/\tDokumentation
 EOF
 
 # collections
@@ -44,7 +59,8 @@ foreach my $collection (qw/ co pe sh wa /) {
   foreach my $folder_nk ( sort keys %{$imagedata_ref} ) {
     my $folder = ZBW::PM20x::Folder->new( $collection, $folder_nk );
 
-    print $alias_fh '/mets/' . $folder->get_folder_hashed_path() . "/\t"
+    print $alias_fh '/folder/'
+      . $folder->get_folder_hashed_path() . "/\t"
       . ( $folder->get_folderlabel('de') || 'label_missing' ), "\n";
   }
 }
@@ -52,15 +68,21 @@ foreach my $collection (qw/ co pe sh wa /) {
 # categories
 foreach my $vocab (qw/ geo subject /) {
   my $klassdata_file = $KLASSDATA_ROOT->child("${vocab}_by_signature.de.json");
-  my $klassdata_ref = decode_json( $klassdata_file->slurp );
-  foreach my $entry (@{$klassdata_ref->{results}{bindings}}) {
-    my $uri = defined $entry->{category} ? $entry->{category}{value} : $entry->{country}{value};
-    my $label = defined $entry->{categoryLabel} ? $entry->{categoryLabel}{value} : $entry->{countryLabel}{value};
+  my $klassdata_ref  = decode_json( $klassdata_file->slurp );
+  foreach my $entry ( @{ $klassdata_ref->{results}{bindings} } ) {
+    my $uri =
+      defined $entry->{category}
+      ? $entry->{category}{value}
+      : $entry->{country}{value};
+    my $label =
+      defined $entry->{categoryLabel}
+      ? $entry->{categoryLabel}{value}
+      : $entry->{countryLabel}{value};
     my $signature = $entry->{signature}{value};
-    (my $id = $uri) =~ s|.+/(\d{6})$|$1|;
+    ( my $id = $uri ) =~ s|.+/(\d{6})$|$1|;
     print $alias_fh "/category/$vocab/i/$id/\t$signature $label\n";
   }
-  
+
 }
 
 close($alias_fh);
