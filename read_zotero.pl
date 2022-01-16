@@ -93,7 +93,11 @@ foreach my $film_id ( sort keys %film ) {
   foreach my $location (@items) {
     my %data = %{ $film{$film_id}{item}{$location} };
     print
-"\t$data{id}\t$data{lr}\t$data{geo_sig} $data{subject_sig}\t$data{geo} : $data{subject}\n";
+"\t$data{id}\t$data{lr}\t$data{geo_sig} $data{subject_sig}";
+    if ($data{keyword}) {
+      print " - $data{keyword}";
+    }
+    print "\t$data{geo} : $data{subject}\n";
   }
 }
 
