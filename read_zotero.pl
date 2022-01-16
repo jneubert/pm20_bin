@@ -16,6 +16,8 @@ Readonly my $PM20_GROUP => '4548009';
 
 binmode( STDOUT, ":utf8" );
 
+my ( %type_count, $good_count, $error_count );
+
 # initialize a lookup table for short notations and a supporting translate
 # table from long to short notations (from web)
 my ( $translate_geo,     $lookup_geo )     = get_lookup_tables('ag');
@@ -34,18 +36,28 @@ foreach my $entry ( @{ $data->{results} } ) {
 
 # second level are items (sections) within the films
 foreach my $film_id ( sort keys %film ) {
+
+  # for now, only use "Sach" films
   next unless $film_id =~ m/^S/;
 
+  # read film data
   my $film_data = $zclient->listCollectionItemsTop(
     collectionKey => $film{$film_id}{key},
     group         => $PM20_GROUP,
+    limit         => 100,
   ) or die "error reading $film_id; $!\n";
 
   my %item_film;
   foreach my $entry ( @{ $film_data->{results} } ) {
 
     # skip entries for single publications
-    next unless $entry->{data}{itemType} eq 'document';
+    my $type = $entry->{data}{itemType};
+    if ( $type =~ m/^Document$/i ) {
+      $type_count{Document}++;
+    } else {
+      $type_count{$type}++;
+      next;
+    }
 
     my %item;
     my $location = $entry->{data}{archiveLocation};
@@ -58,12 +70,16 @@ foreach my $film_id ( sort keys %film ) {
 
       if ( parse_signature( $location, \%item ) ) {
         $item_film{$location} = \%item;
+        $good_count++;
       }
     } else {
       warn "$location: strange location\n";
+      $error_count++;
       next;
     }
   }
+
+  # save complete film
   $film{$film_id}{item} = \%item_film;
 }
 
@@ -71,14 +87,18 @@ foreach my $film_id ( sort keys %film ) {
 foreach my $film_id ( sort keys %film ) {
   next unless $film_id =~ m/^S/;
 
-  print "\n$film_id\n";
+  my @items = sort keys %{ $film{$film_id}{item} };
+  print "\n$film_id (" . scalar(@items) . " items)\n";
 
-  foreach my $location ( sort keys %{ $film{$film_id}{item} } ) {
+  foreach my $location (@items) {
     my %data = %{ $film{$film_id}{item}{$location} };
     print
 "\t$data{id}\t$data{lr}\t$data{geo_sig} $data{subject_sig}\t$data{geo} : $data{subject}\n";
   }
 }
+
+print Dumper \%type_count;
+print "$good_count good document items, $error_count errors\n";
 
 ##############################
 
@@ -95,6 +115,7 @@ sub parse_signature {
     $keyword     = $3;
   } else {
     warn "$location: strange signature $signature\n";
+    $error_count++;
     return;
   }
   #
@@ -130,6 +151,7 @@ sub parse_signature {
     }
     return 1;
   } else {
+    $error_count++;
     return;
   }
 }
