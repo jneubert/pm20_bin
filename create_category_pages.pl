@@ -15,7 +15,6 @@
 use strict;
 use warnings;
 use utf8;
-binmode( STDOUT, ":encoding(UTF-8)" );
 
 use lib './lib';
 
@@ -29,6 +28,8 @@ use Scalar::Util qw(looks_like_number reftype);
 use YAML;
 use ZBW::PM20x::Folder;
 use ZBW::PM20x::Vocab;
+
+binmode( STDOUT, ":encoding(UTF-8)" );
 
 Readonly my $WEB_ROOT        => path('../web/category');
 Readonly my $KLASSDATA_ROOT  => path('../data/klassdata');
