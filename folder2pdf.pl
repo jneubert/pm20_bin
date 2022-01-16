@@ -4,6 +4,8 @@
 # Create a PM20 folder PDF from METS und JPEGs
 # to be called with the PDF url and a log file name for ipc communication
 
+# based on https://github.com/myollie/img2pdf
+
 # data strcuture extracted from METS: list of articles
 
 #   [ { id => $id, label => $label, jpg_list => \@jpg_list }, ... ]
@@ -19,29 +21,30 @@ use Path::Tiny;
 use Readonly;
 use XML::LibXML;
 
-Readonly my $PDF_ROOT      => '/srv/pm20pdf/';
-Readonly my $METS_URL_ROOT => 'http://zbw.eu/beta/pm20mets/';
-Readonly my $PDF_URL_ROOT  => 'http://zbw.eu/beta/pm20pdf/';
+Readonly my $PDF_ROOT      => path('/pm20/cache/pdf/folder');
+Readonly my $METS_ROOT     => path('/pm20/web/folder');
+Readonly my $METS_URL_ROOT => 'https://pm20.zbw.eu/folder/';
+Readonly my $PDF_URL_ROOT  => 'https://pm20.zbw.eu/pdf/';
 
 # read param
-my $pdf_url = $ARGV[0];
+my $pdf_url  = $ARGV[0];
 my $log_file = $ARGV[1] or die "usage: $0 pdf_url log\n";
 
 # compute mets url
-my $mets_url = compute_mets_url($pdf_url);
+my $mets_file = compute_mets_file($pdf_url);
 my $pdf_path = compute_pdf_path($pdf_url);
 
-open(my $log, ">$log_file") or die "cannot open $log_file: $!\n";
+open( my $log, ">$log_file" ) or die "cannot open $log_file: $!\n";
 $log->autoflush;
 
 # create pdf
 print $log "Get list of documents and pages from METS file\n";
-my $document_list_ref = parse_mets($mets_url);
+my $document_list_ref = parse_mets($mets_file);
 if ( not $document_list_ref or $document_list_ref eq {} ) {
-  print $log "Error: METS file $mets_url not found or empty\n";
+  print $log "Error: METS file $mets_file not found or empty\n";
   exit;
 }
-
+print "$pdf_path\n";exit;
 build_pdf( $document_list_ref, $pdf_path );
 
 print $log "Done\n";
@@ -59,20 +62,21 @@ sub url_ok {
   }
 }
 
-sub compute_mets_url {
+sub compute_mets_file {
   my $pdf_url = shift or die "param missing\n";
 
-  ( my $mets_url = $pdf_url ) =~ s/^$PDF_URL_ROOT/$METS_URL_ROOT/;
-  $mets_url =~ s/\.pdf/.xml/;
+  (my $dir = $pdf_url) =~ s/^$PDF_URL_ROOT//;
+  $dir =~ s;(.*)/[^/]+$;$1;;
+  my $mets_file = $METS_ROOT->child($dir)->child('public.mets.en.xml');
 
-  return $mets_url;
+  return $mets_file;
 }
 
 sub compute_pdf_path {
   my $pdf_url = shift or die "param missing\n";
 
   ( my $pdf_path = $pdf_url ) =~ s/^$PDF_URL_ROOT//;
-  $pdf_path = $PDF_ROOT . $pdf_path;
+  $pdf_path = $PDF_ROOT->child($pdf_path);
 
   return $pdf_path;
 }
@@ -83,6 +87,7 @@ sub parse_mets {
   # Parse mets file
   my $dom = eval { XML::LibXML->load_xml( location => $mets_url ); };
   if ($@) {
+    print "$mets_url xxx\n";
     return undef;
   }
 
@@ -122,7 +127,7 @@ sub parse_mets {
     $docpagelink{$document_id} = []
       if ( not exists $docpagelink{$document_id} );
 
-    push( $docpagelink{$document_id}, $page{$page_id} );
+    push( @{ $docpagelink{$document_id} }, $page{$page_id} );
   }
 
   # get the documents
@@ -160,7 +165,7 @@ sub build_pdf {
 
   print $log "Download pages\n";
   my @files;
-  my $tempdir = File::Temp::tempdir('/srv/tmp/.folder2pdfXXXXXXXX');
+  my $tempdir = File::Temp::tempdir('/tmp/.folder2pdfXXXXXXXX');
   foreach my $doc ( @{$document_list_ref} ) {
 
     # skip certan document type like business reports
