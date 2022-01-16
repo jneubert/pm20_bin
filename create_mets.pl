@@ -116,10 +116,17 @@ sub mk_folder {
     next unless $doclist_ref and scalar( @{$doclist_ref} ) gt 0;
 
     foreach my $lang (@LANGUAGES) {
-      my $label = $folder->get_folderlabel($lang);
+      my $label = encode_entities_numeric( $folder->get_folderlabel($lang) );
+
+      # feedback mailto
+      my $mailto =
+          "&#109;&#97;ilto&#58;p%72essema%70pe&#50;0&#64;&#37;&#55;Ab%77&#46;eu"
+        . "?subject=Feedback%20zu%20PM20%20$label"
+        . "&amp;body=%0D%0A%0D%0A%0D%0A---%0D%0A"
+        . "https://pm20.zbw.eu/dfgview/$collection/$folder_nk";
 
       my %tmpl_var = (
-        pref_label    => encode_entities_numeric($label),
+        pref_label    => $label,
         uri           => "$FOLDER_ROOT_URI$collection/$folder_nk",
         folder_nk     => $folder_nk,
         file_grp_loop => build_file_grp( $type, $folder ),
@@ -127,6 +134,7 @@ sub mk_folder {
         log_loop      => build_log_struct( $type, $lang, $folder ),
         link_loop     => build_link( $type, $folder ),
         pdf_url       => $pdf_url,
+        mailto        => $mailto,
       );
       $tmpl->param( \%tmpl_var );
 
