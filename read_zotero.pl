@@ -31,9 +31,9 @@ Readonly my %SET => (
 binmode( STDOUT, ":utf8" );
 
 my $set;
-if ($ARGV[0]) {
+if ( $ARGV[0] ) {
   $set = $ARGV[0];
-  if (not defined $SET{$set}) {
+  if ( not defined $SET{$set} ) {
     usage();
     exit 1;
   }
@@ -44,20 +44,23 @@ if ($ARGV[0]) {
 
 my $collection = $SET{$set}{collection};
 
-my ( %type_count, $good_count, $error_count );
+my ( %qid, %type_count, $good_count, $error_count );
 
 # initialize a lookup table for short notations and a supporting translate
 # table from long to short notations (from web)
 my ( $translate_geo,     $lookup_geo )     = get_lookup_tables('ag');
 my ( $translate_subject, $lookup_subject ) = get_lookup_tables('je');
+my ( $translate_company, $lookup_company ) = get_company_lookup_tables();
 
 # all Zotero information is read from the web
 my $zclient = WWW::Zotero->new();
 
 # top level in Zotero are films
 my %film;
-my $data = $zclient->listCollectionsTop( group => $PM20_GROUP )
-  or die "error reading top: $!\n";
+my $data = $zclient->listCollectionsTop(
+  group => $PM20_GROUP,
+  limit => 100,
+) or die "error reading top: $!\n";
 foreach my $entry ( @{ $data->{results} } ) {
   $film{ $entry->{data}{name} }{key} = $entry->{data}{key};
 }
@@ -81,7 +84,7 @@ foreach my $film_id ( sort keys %film ) {
     # skip entries for single publications
     my $type = $entry->{data}{itemType};
     if ( $type =~ m/^Document$/i ) {
-      $type_count{Document}++;
+      $type_count{document}++;
     } else {
       $type_count{$type}++;
       next;
@@ -95,6 +98,10 @@ foreach my $film_id ( sort keys %film ) {
       $item{date}      = $entry->{data}{date};
       $item{id}        = $1;
       $item{lr}        = $3 || 'L';
+
+      if ( defined $entry->{data}{libraryCatalog} ) {
+        $item{qid} = $entry->{data}{libraryCatalog};
+      }
 
       if ( $SET{$set}{parser}->( $location, \%item ) ) {
         $item_film{$location} = \%item;
@@ -120,11 +127,20 @@ foreach my $film_id ( sort keys %film ) {
 
   foreach my $location (@items) {
     my %data = %{ $film{$film_id}{item}{$location} };
-    print "\t$data{id}\t$data{lr}\t$data{geo_sig} $data{subject_sig}";
-    if ( $data{keyword} ) {
-      print " - $data{keyword}";
+    if ( $collection eq 'sh' ) {
+      print "\t$data{id}\t$data{lr}\t$data{geo_sig} $data{subject_sig}";
+      if ( $data{keyword} ) {
+        print " - $data{keyword}";
+      }
+      print "\t$data{geo} : $data{subject}\n";
+    } elsif ( $collection eq 'co' ) {
+      print "\t$data{id}\t$data{lr}\t$data{signature}";
+      if ( $data{pm20Id} ) {
+        print "\t$data{pm20Id}\t$data{company_name}\n";
+      } else {
+        print "\t$data{qid}\n";
+      }
     }
-    print "\t$data{geo} : $data{subject}\n";
   }
 }
 
@@ -191,7 +207,17 @@ sub parse_co_signature {
   my $location = shift or die "param missing";
   my $item_ref = shift or die "param missing";
 
-  return 1;
+  my $signature = $item_ref->{signature};
+  if ( defined $lookup_company->{$signature} ) {
+    $item_ref->{company_name} = $lookup_company->{$signature}{label};
+    $item_ref->{pm20Id}       = $lookup_company->{$signature}{pm20Id};
+  } elsif ( $item_ref->{qid} ) {
+    $qid{ $item_ref->{qid} } = 1;
+  } else {
+    warn "$location: $signature not recognized\n";
+    $error_count++;
+    return;
+  }
 }
 
 sub get_lookup_tables {
@@ -245,8 +271,53 @@ EOF
   return \%translate, \%lookup;
 }
 
+sub get_company_lookup_tables {
+
+  # retrieve info by SPARQL query
+  my $query = <<EOF;
+PREFIX dc: <http://purl.org/dc/elements/1.1/>
+PREFIX dct: <http://purl.org/dc/terms/>
+PREFIX zbwext: <http://zbw.eu/namespaces/zbw-extensions/>
+PREFIX skos: <http://www.w3.org/2004/02/skos/core#>
+#
+SELECT ?pm20Id ?notation ?label
+WHERE {
+  ?pm20 a zbwext:CompanyFolder ;
+        dct:identifier ?pm20Id ;
+        skos:notation ?notation ;
+        skos:prefLabel ?label .
+}
+EOF
+
+  my $endpoint = 'http://zbw.eu/beta/sparql/pm20/query';
+  my $client   = REST::Client->new;
+  $client->POST(
+    $endpoint,
+    $query,
+    {
+      'Content-type' => 'application/sparql-query; charset=utf8',
+      Accept         => 'application/sparql-results+json',
+    }
+  );
+
+  if ( $client->responseCode ne '200' ) {
+    warn "Could not execute query for company: ", $client->responseCode, "\n";
+    return;
+  }
+  my $result_data = decode_json( $client->responseContent() );
+
+  my ( %translate, %lookup );
+  foreach my $entry ( @{ $result_data->{results}{bindings} } ) {
+    $lookup{ $entry->{notation}{value} }{label}  = $entry->{label}{value};
+    $lookup{ $entry->{notation}{value} }{pm20Id} = $entry->{pm20Id}{value};
+  }
+
+  # %translate is currently empty
+  return \%translate, \%lookup;
+}
+
 sub usage {
-  print "usage: $0 { ", join(" | ", sort keys %SET), " }\n";
+  print "usage: $0 { ", join( " | ", sort keys %SET ), " }\n";
 }
 
 # from set_ifis_short_notation.pl
