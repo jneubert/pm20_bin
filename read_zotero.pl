@@ -14,7 +14,35 @@ use WWW::Zotero;
 Readonly my $USER       => '224220';
 Readonly my $PM20_GROUP => '4548009';
 
+# TODO extend to other holdings beyond Hamburg and sh or co
+Readonly my %SET => (
+  'h1_sh' => {
+    collection => 'sh',
+    film_qr    => qr{S\d{4}H(_[12])?},
+    parser     => \&parse_sh_signature,
+  },
+  'h1_co' => {
+    collection => 'co',
+    film_qr    => qr{[AF]\d{4}H(_[12])?},
+    parser     => \&parse_co_signature,
+  },
+);
+
 binmode( STDOUT, ":utf8" );
+
+my $set;
+if ($ARGV[0]) {
+  $set = $ARGV[0];
+  if (not defined $SET{$set}) {
+    usage();
+    exit 1;
+  }
+} else {
+  usage();
+  exit 1;
+}
+
+my $collection = $SET{$set}{collection};
 
 my ( %type_count, $good_count, $error_count );
 
@@ -37,8 +65,8 @@ foreach my $entry ( @{ $data->{results} } ) {
 # second level are items (sections) within the films
 foreach my $film_id ( sort keys %film ) {
 
-  # for now, only use "Sach" films
-  next unless $film_id =~ m/^S/;
+  # only work on films of a specific set
+  next unless $film_id =~ $SET{$set}{film_qr};
 
   # read film data
   my $film_data = $zclient->listCollectionItemsTop(
@@ -68,7 +96,7 @@ foreach my $film_id ( sort keys %film ) {
       $item{id}        = $1;
       $item{lr}        = $3 || 'L';
 
-      if ( parse_signature( $location, \%item ) ) {
+      if ( $SET{$set}{parser}->( $location, \%item ) ) {
         $item_film{$location} = \%item;
         $good_count++;
       }
@@ -85,16 +113,15 @@ foreach my $film_id ( sort keys %film ) {
 
 # output for debugging
 foreach my $film_id ( sort keys %film ) {
-  next unless $film_id =~ m/^S/;
+  next unless $film_id =~ $SET{$set}{film_qr};
 
   my @items = sort keys %{ $film{$film_id}{item} };
   print "\n$film_id (" . scalar(@items) . " items)\n";
 
   foreach my $location (@items) {
     my %data = %{ $film{$film_id}{item}{$location} };
-    print
-"\t$data{id}\t$data{lr}\t$data{geo_sig} $data{subject_sig}";
-    if ($data{keyword}) {
+    print "\t$data{id}\t$data{lr}\t$data{geo_sig} $data{subject_sig}";
+    if ( $data{keyword} ) {
       print " - $data{keyword}";
     }
     print "\t$data{geo} : $data{subject}\n";
@@ -106,7 +133,7 @@ print "$good_count good document items, $error_count errors\n";
 
 ##############################
 
-sub parse_signature {
+sub parse_sh_signature {
   my $location = shift or die "param missing";
   my $item_ref = shift or die "param missing";
 
@@ -160,6 +187,13 @@ sub parse_signature {
   }
 }
 
+sub parse_co_signature {
+  my $location = shift or die "param missing";
+  my $item_ref = shift or die "param missing";
+
+  return 1;
+}
+
 sub get_lookup_tables {
   my $graph = shift or die "param missing";
 
@@ -209,6 +243,10 @@ EOF
     $translate{ $entry->{long}{value} }      = $entry->{notation}{value};
   }
   return \%translate, \%lookup;
+}
+
+sub usage {
+  print "usage: $0 { ", join(" | ", sort keys %SET), " }\n";
 }
 
 # from set_ifis_short_notation.pl
