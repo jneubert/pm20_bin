@@ -11,8 +11,9 @@ use Readonly;
 use REST::Client;
 use WWW::Zotero;
 
-Readonly my $USER       => '224220';
-Readonly my $PM20_GROUP => '4548009';
+Readonly my $USER          => '224220';
+Readonly my $PM20_GROUP    => '4548009';
+Readonly my $FILMDATA_STUB => '/pm20/data/filmdata/zotero.';
 
 # TODO extend to other holdings beyond Hamburg and sh or co
 Readonly my %SET => (
@@ -44,7 +45,7 @@ if ( $ARGV[0] ) {
 
 my $collection = $SET{$set}{collection};
 
-my ( %qid, %type_count, $good_count, $error_count );
+my ( %qid, %type_count, $good_count, $error_count, $film_count );
 
 # initialize a lookup table for short notations and a supporting translate
 # table from long to short notations (from web)
@@ -70,6 +71,7 @@ foreach my $film_id ( sort keys %film ) {
 
   # only work on films of a specific set
   next unless $film_id =~ $SET{$set}{film_qr};
+  $film_count++;
 
   # read film data
   my $film_data = $zclient->listCollectionItemsTop(
@@ -118,6 +120,12 @@ foreach my $film_id ( sort keys %film ) {
   $film{$film_id}{item} = \%item_film;
 }
 
+# save data (only if output dir exists)
+my $output = path("$FILMDATA_STUB$set.json");
+if ( -d $output->parent ) {
+  $output->spew( encode_json( \%film ) );
+}
+
 # output for debugging
 foreach my $film_id ( sort keys %film ) {
   next unless $film_id =~ $SET{$set}{film_qr};
@@ -145,7 +153,8 @@ foreach my $film_id ( sort keys %film ) {
 }
 
 print Dumper \%type_count;
-print "$good_count good document items, $error_count errors\n";
+print
+"$good_count good document items, $error_count errors from $film_count films from $set\n";
 
 ##############################
 
