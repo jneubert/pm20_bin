@@ -14,36 +14,40 @@ use WWW::Zotero;
 Readonly my $USER          => '224220';
 Readonly my $PM20_GROUP    => '4548009';
 Readonly my $FILMDATA_STUB => '/pm20/data/filmdata/zotero.';
+Readonly my @VALID_SUBSETS => qw/ h1_sh h1_co /;
 
 # TODO extend to other holdings beyond Hamburg and sh or co
-Readonly my %SET => (
-  'h1_sh' => {
-    collection => 'sh',
-    film_qr    => qr{S\d{4}H(_[12])?},
-    parser     => \&parse_sh_signature,
-  },
-  'h1_co' => {
-    collection => 'co',
-    film_qr    => qr{[AF]\d{4}H(_[12])?},
-    parser     => \&parse_co_signature,
+Readonly my %CONF => (
+  'h' => {
+    co => {
+      film_qr => qr{[AF]\d{4}H(_[12])?},
+      parser  => \&parse_co_signature,
+    },
+    sh => {
+      film_qr => qr{S\d{4}H(_[12])?},
+      parser  => \&parse_sh_signature,
+    },
   },
 );
 
 binmode( STDOUT, ":utf8" );
+$Data::Dumper::Sortkeys = 1;
 
-my $set;
-if ( $ARGV[0] ) {
-  $set = $ARGV[0];
-  if ( not defined $SET{$set} ) {
+my ( $provenance, $filming, $collection, $subset, %conf );
+if ( $ARGV[0] and $ARGV[0] =~ m/(h|k)(1|2)_(co|sh|wa)/ ) {
+  $provenance = $1;
+  $filming    = $2;
+  $collection = $3;
+  $subset     = "$provenance${filming}_$collection";
+  if ( not grep( /^$subset$/, @VALID_SUBSETS ) ) {
     usage();
     exit 1;
   }
+  %conf = %{ $CONF{$provenance}{$collection} };
 } else {
   usage();
   exit 1;
 }
-
-my $collection = $SET{$set}{collection};
 
 my ( %qid, %type_count, $good_count, $error_count, $film_count );
 
@@ -70,7 +74,7 @@ foreach my $entry ( @{ $data->{results} } ) {
 foreach my $film_id ( sort keys %film ) {
 
   # only work on films of a specific set
-  next unless $film_id =~ $SET{$set}{film_qr};
+  next unless $film_id =~ $conf{film_qr};
   $film_count++;
 
   # read film data
@@ -105,7 +109,7 @@ foreach my $film_id ( sort keys %film ) {
         $item{qid} = $entry->{data}{libraryCatalog};
       }
 
-      if ( $SET{$set}{parser}->( $location, \%item ) ) {
+      if ( $conf{parser}->( $location, \%item ) ) {
         $item_film{$location} = \%item;
         $good_count++;
       }
@@ -121,14 +125,14 @@ foreach my $film_id ( sort keys %film ) {
 }
 
 # save data (only if output dir exists)
-my $output = path("$FILMDATA_STUB$set.json");
+my $output = path("$FILMDATA_STUB$subset.json");
 if ( -d $output->parent ) {
   $output->spew( encode_json( \%film ) );
 }
 
 # output for debugging
 foreach my $film_id ( sort keys %film ) {
-  next unless $film_id =~ $SET{$set}{film_qr};
+  next unless $film_id =~ $conf{film_qr};
 
   my @items = sort keys %{ $film{$film_id}{item} };
   print "\n$film_id (" . scalar(@items) . " items)\n";
@@ -154,7 +158,7 @@ foreach my $film_id ( sort keys %film ) {
 
 print Dumper \%type_count;
 print
-"$good_count good document items, $error_count errors from $film_count films from $set\n";
+"$good_count good document items, $error_count errors in $film_count films from $subset\n";
 
 ##############################
 
@@ -326,7 +330,7 @@ EOF
 }
 
 sub usage {
-  print "usage: $0 { ", join( " | ", sort keys %SET ), " }\n";
+  print "usage: $0 { " . join( ' | ', @VALID_SUBSETS ) . " }\n";
 }
 
 # from set_ifis_short_notation.pl
