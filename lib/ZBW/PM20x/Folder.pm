@@ -483,7 +483,8 @@ sub get_dfgview_url {
 
 =item get_document_hashed_path ()
 
-Return a path fragment for a folder's document with intermediate (hashed) directories.
+Return a path fragment for a folder's document with intermediate (hashed)
+directories for web access.
 
 =cut
 
@@ -492,6 +493,24 @@ sub get_document_hashed_path {
   my $doc_id = shift or croak('param missing');
 
   my $path = $self->get_folder_hashed_path->child($doc_id);
+
+  return $path;
+}
+
+=item get_document_hashed_fspath ()
+
+Return a path fragment for a folder's document with intermediate (hashed)
+directories for file system access (with additional intermediate dir).
+
+=cut
+
+sub get_document_hashed_fspath {
+  my $self   = shift or croak('param missing');
+  my $doc_id = shift or croak('param missing');
+
+  my $stub = $doc_id;
+  $stub =~ s/^(\d\d\d)\d\d/$1xx/;
+  my $path = $self->get_folder_hashed_path->child($stub)->child($doc_id);
 
   return $path;
 }
@@ -523,7 +542,7 @@ sub get_doclist {
       # skip if .htaccess in document directory exists
       if ( $type eq 'public' ) {
         my $lockfile = $FOLDER_ROOT->child(
-          $self->get_document_hashed_path($doc_id)->child('.htaccess') );
+          $self->get_document_hashed_fspath($doc_id)->child('.htaccess') );
         next if -f $lockfile;
       }
       push( @{$doclist_ref}, $doc_id );

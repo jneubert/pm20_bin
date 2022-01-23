@@ -117,7 +117,8 @@ sub new {
           $cat{$id}{$field} = $category->{$field};
         }
 
-   # map optional multivalued language-independent jsonld fields to hash entries
+        # map optional multivalued language-independent jsonld fields to hash
+        # entries
         @fields = qw / exactMatch /;
         foreach my $field (@fields) {
           foreach my $entry ( _as_array( $category->{$field} ) ) {
@@ -413,6 +414,21 @@ sub start_sig {
       return;
     }
   }
+}
+
+=item lookup_signature ( $signature )
+
+Look up a term id by signature, undef if not defined.
+
+=cut
+
+sub lookup_signature {
+  my $self      = shift or croak('param missing');
+  my $signature = shift or croak('param missing');
+
+  my $term_id = $lookup{$signature};
+
+  return $term_id;
 }
 
 =back
