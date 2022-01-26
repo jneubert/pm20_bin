@@ -426,7 +426,7 @@ sub lookup_signature {
   my $self      = shift or croak('param missing');
   my $signature = shift or croak('param missing');
 
-  my $term_id = $lookup{$signature};
+  my $term_id = $self->{nta}{$signature};
 
   return $term_id;
 }
