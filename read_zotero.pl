@@ -73,6 +73,10 @@ foreach my $entry ( @{ $data->{results} } ) {
 # second level are items (sections) within the films
 foreach my $film_id ( sort keys %film ) {
 
+  # restrict to example A12/Polen
+  next if ( $film_id lt 'S0220H_2' );
+  next if ( $film_id gt 'S0236H_1' );
+
   # only work on films of a specific set
   next unless $film_id =~ $conf{film_qr};
   $film_count++;
@@ -85,7 +89,11 @@ foreach my $film_id ( sort keys %film ) {
   ) or die "error reading $film_id; $!\n";
 
   my %item_film;
-  foreach my $entry ( @{ $film_data->{results} } ) {
+  my @entries = @{ $film_data->{results} };
+  foreach my $entry (
+    sort { $a->{data}{archiveLocation} cmp $b->{data}{archiveLocation} }
+    @entries )
+  {
 
     # skip entries for single publications
     my $type = $entry->{data}{itemType};
@@ -104,15 +112,14 @@ foreach my $film_id ( sort keys %film ) {
       $item{date}      = $entry->{data}{date};
       $item{id}        = $1;
       $item{lr}        = $3 || 'L';
+      ( $item{subject_strng} = $entry->{data}{title} ) =~ s/^.+? : (.+)$/$1/;
 
       if ( defined $entry->{data}{libraryCatalog} ) {
         $item{qid} = $entry->{data}{libraryCatalog};
       }
 
-      if ( $conf{parser}->( $location, \%item ) ) {
-        $item_film{$location} = \%item;
-        $good_count++;
-      }
+      $conf{parser}->( $location, \%item );
+      $item_film{$location} = \%item;
     } else {
       warn "$location: strange location\n";
       $error_count++;
@@ -139,12 +146,15 @@ foreach my $film_id ( sort keys %film ) {
 
   foreach my $location (@items) {
     my %data = %{ $film{$film_id}{item}{$location} };
+
+    next unless $data->{valid_sig};
+
     if ( $collection eq 'sh' ) {
-      print "\t$data{id}\t$data{lr}\t$data{geo_sig} $data{subject_sig}";
+      print "\t$data{id}\t$data{lr}\t$data{geo}{notation} $data{subject}{notation}";
       if ( $data{keyword} ) {
         print " - $data{keyword}";
       }
-      print "\t$data{geo} : $data{subject}\n";
+      print "\t$data{geo}{label}{de} : $data{subject}{label}{de}\n";
     } elsif ( $collection eq 'co' ) {
       print "\t$data{id}\t$data{lr}\t$data{signature}";
       if ( $data{pm20Id} ) {
@@ -180,39 +190,36 @@ sub parse_sh_signature {
   }
   #
   # lookup geo
-  my ( $geo, $subject );
   if ( defined $lookup_geo->{$geo_sig} ) {
-    $geo = $lookup_geo->{$geo_sig}{de};
+    $item_ref->{geo} = $lookup_geo->{$geo_sig};
   } elsif ( defined $translate_geo->{$geo_sig} ) {
     $geo_sig = $translate_geo->{$geo_sig};
-    $geo     = $lookup_geo->{$geo_sig}{de};
+    $item_ref->{geo} = $lookup_geo->{$geo_sig};
   } else {
     warn "$location: $geo_sig not recognized\n";
   }
 
   # lookup subject
   if ( defined $lookup_subject->{$subject_sig} ) {
-    $subject = $lookup_subject->{$subject_sig}{de};
+    $item_ref->{subject} = $lookup_subject->{$subject_sig};
   } elsif ( defined $translate_subject->{$subject_sig} ) {
     $subject_sig = $translate_subject->{$subject_sig};
-    $subject     = $lookup_subject->{$subject_sig}{de};
+    $item_ref->{subject} = $lookup_subject->{$subject_sig};
   } else {
     warn "$location: $subject_sig not recognized\n";
   }
 
+  if ($keyword) {
+    $item_ref->{keyword} = $keyword;
+  }
+
   # both parts must be valid
-  if ( defined $geo and defined $subject ) {
-    $item_ref->{geo_sig}     = $geo_sig;
-    $item_ref->{geo}         = $geo;
-    $item_ref->{subject_sig} = $subject_sig;
-    $item_ref->{subject}     = $subject;
-    if ($keyword) {
-      $item_ref->{keyword} = $keyword;
-    }
-    return 1;
+  if ( defined $item_ref->{geo} and defined $item_ref->{subject} ) {
+    $item_ref->{valid_sig} = 1;
+    $good_count++;
   } else {
+    $item_ref->{valid_sig} = 0;
     $error_count++;
-    return;
   }
 }
 
@@ -224,12 +231,13 @@ sub parse_co_signature {
   if ( defined $lookup_company->{$signature} ) {
     $item_ref->{company_name} = $lookup_company->{$signature}{label};
     $item_ref->{pm20Id}       = $lookup_company->{$signature}{pm20Id};
+    $good_count++;
   } elsif ( $item_ref->{qid} ) {
     $qid{ $item_ref->{qid} } = 1;
+    $good_count++;
   } else {
     warn "$location: $signature not recognized\n";
     $error_count++;
-    return;
   }
 }
 
@@ -240,11 +248,13 @@ sub get_lookup_tables {
   my $query = <<EOF;
 PREFIX zbwext: <http://zbw.eu/namespaces/zbw-extensions/>
 PREFIX skos: <http://www.w3.org/2004/02/skos/core#>
+PREFIX dct: <http://purl.org/dc/terms/>
 #
-SELECT ?notation ?long ?labelEn ?labelDe
+SELECT ?notation ?long ?id ?labelEn ?labelDe
 WHERE {
   graph <http://zbw.eu/beta/GRAPH/ng> {
     ?pm20ag skos:notation ?notation ;
+            dct:identifier ?id ;
             zbwext:notationLong ?long ;
             skos:prefLabel ?labelLangEn ;
             skos:prefLabel ?labelLangDe .
@@ -277,9 +287,11 @@ EOF
 
   my ( %translate, %lookup );
   foreach my $entry ( @{ $result_data->{results}{bindings} } ) {
-    $lookup{ $entry->{notation}{value} }{de} = $entry->{labelDe}{value};
-    $lookup{ $entry->{notation}{value} }{en} = $entry->{labelEn}{value};
-    $translate{ $entry->{long}{value} }      = $entry->{notation}{value};
+    $lookup{ $entry->{notation}{value} }{label}{de} = $entry->{labelDe}{value};
+    $lookup{ $entry->{notation}{value} }{label}{en} = $entry->{labelEn}{value};
+    $lookup{ $entry->{notation}{value} }{notation}  = $entry->{notation}{value};
+    $lookup{ $entry->{notation}{value} }{id}        = $entry->{id}{value};
+    $translate{ $entry->{long}{value} }             = $entry->{notation}{value};
   }
   return \%translate, \%lookup;
 }
