@@ -74,8 +74,8 @@ foreach my $entry ( @{ $data->{results} } ) {
 foreach my $film_id ( sort keys %film ) {
 
   # restrict to example A12/Polen
-  next if ( $film_id lt 'S0220H_2' );
-  next if ( $film_id gt 'S0236H_1' );
+  ##next if ( $film_id lt 'S0220H_2' );
+  ##next if ( $film_id gt 'S0236H_1' );
 
   # only work on films of a specific set
   next unless $film_id =~ $conf{film_qr};
@@ -113,9 +113,12 @@ foreach my $film_id ( sort keys %film ) {
       $item{id}               = $1;
       $item{lr}               = $3 || 'L';
 
-      # get string version of the subject
+      # get string version of the subject or company name
       if ( $entry->{data}{title} =~ m/^.+? : (.+)$/ ) {
         $item{subject_string} = $1;
+      }
+      if ( $collection eq 'co' ) {
+        $item{company_string} = $entry->{data}{title};
       }
 
       if ( defined $entry->{data}{libraryCatalog} ) {
@@ -151,7 +154,7 @@ foreach my $film_id ( sort keys %film ) {
   foreach my $location (@items) {
     my %data = %{ $film{$film_id}{item}{$location} };
 
-    next unless $data->{valid_sig};
+    next unless $data{valid_sig};
 
     if ( $collection eq 'sh' ) {
       print
@@ -232,16 +235,21 @@ sub parse_co_signature {
   my $location = shift or die "param missing";
   my $item_ref = shift or die "param missing";
 
-  my $signature = $item_ref->{signature};
+  my $signature = $item_ref->{signature_string};
   if ( defined $lookup_company->{$signature} ) {
     $item_ref->{company_name} = $lookup_company->{$signature}{label};
     $item_ref->{pm20Id}       = $lookup_company->{$signature}{pm20Id};
+    $item_ref->{signature}    = $signature;
+    $item_ref->{valid_sig}    = 1;
     $good_count++;
   } elsif ( $item_ref->{qid} ) {
     $qid{ $item_ref->{qid} } = 1;
+    $item_ref->{signature}   = $signature;
+    $item_ref->{valid_sig}   = 1;
     $good_count++;
   } else {
     warn "$location: $signature not recognized\n";
+    $item_ref->{valid_sig} = 0;
     $error_count++;
   }
 }
