@@ -55,8 +55,10 @@ my %position;
 parse_zotero($subset);
 parse_filmlist($subset);
 
-##print Dumper \%position;
+# debug info
+##path('/tmp/ein.json')->spew( encode_json(\%position) );
 
+my $olditem_ref = { geo => {}, subject => {},};
 foreach my $film ( sort keys %position ) {
 
   # compute image numbers and link paths
@@ -66,7 +68,8 @@ foreach my $film ( sort keys %position ) {
   foreach my $file (@files) {
     my $img_nr = $file->basename('.jpg');
     $img_nr =~ s/[SAF]\d{4}(\d{4})[HK]/$1/;
-    $image{$img_nr} = $file->relative('/pm20/web')->parent->child($img_nr)->absolute('/');
+    $image{$img_nr} =
+      $file->relative('/pm20/web')->parent->child($img_nr)->absolute('/');
   }
   $image{'0000'} = undef;
   $image{'9999'} = undef;
@@ -80,7 +83,8 @@ foreach my $film ( sort keys %position ) {
         my %item = %{ $position{$film}{$img_nr} };
         ## skip items without identified geo
         next if not defined $item{geo};
-        push( @links, get_item_tag( $lang, $img_nr, \%item ) );
+        push( @links, get_item_tag( $lang, $img_nr, \%item, $olditem_ref ) );
+        $olditem_ref = \%item;
       }
       if ( defined $image{$img_nr} ) {
         push( @links,
@@ -89,7 +93,8 @@ foreach my $film ( sort keys %position ) {
     }
 
     # save links
-    $film_dir->child("links.$lang.html.frag")->spew_utf8( join( "\n", @links ) );
+    $film_dir->child("links.$lang.html.frag")
+      ->spew_utf8( join( "\n", @links ) );
   }
 }
 
@@ -101,12 +106,16 @@ sub parse_zotero {
   my %film =
     %{ decode_json( $FILMDATA_ROOT->child("zotero.$subset.json")->slurp ) };
 
+  # Zotero film collections may contain part _1 and _2 of a film, so
+  # we have to parse the id for the actual film directory
   foreach my $film ( sort keys %film ) {
     foreach my $item_key ( sort keys %{ $film{$film}{item} } ) {
       my $item = $film{$film}{item}{$item_key};
       my $page = $item->{id};
       $page =~ s/.*?\/(\d{4})$/$1/;
-      $position{$film}{$page} = $item;
+      my $film_part = $item->{id};
+      $film_part =~ s/.+?\/([AFS].+?)\/\d{4}$/$1/;
+      $position{$film_part}{$page} = $item;
     }
   }
 }
@@ -119,12 +128,10 @@ sub parse_filmlist {
 
   foreach my $entry (@filmlist) {
     next if ( $entry->{online} ne '' );
+    ## non-existing film number
+    next if ( $entry->{film_id} eq 'S0371H' );
 
     my $film = $entry->{film_id};
-
-    # restrict to example A12/Polen
-    next if ( $film lt 'S0220H_2' );
-    next if ( $film gt 'S0236H_1' );
 
     POS:
     foreach my $pos ( 'start', 'end' ) {
@@ -149,6 +156,7 @@ sub parse_filmlist {
       $sig{subject} =~ s/q Nr /q Sm/;
 
       foreach my $voc ( sort keys %sig ) {
+        next unless $sig{$voc};
 
         my $id = $vocab{$voc}->lookup_signature( $sig{$voc} );
         if ($id) {
@@ -161,7 +169,8 @@ sub parse_filmlist {
           }
         } else {
           if ( $voc eq 'geo' ) {
-            die "$film: $pos geo signature $sig{geo} not recognized\n";
+            ## TODO die
+            warn "FATAL $film: $pos geo signature $sig{geo} not recognized\n";
           } else {
             warn "$film: $pos signature $sig{$voc} not found\n";
           }
@@ -172,15 +181,24 @@ sub parse_filmlist {
 }
 
 sub get_item_tag {
-  my $lang     = shift or die "param missing";
-  my $img_nr   = shift or die "param missing";
-  my $item_ref = shift or die "param missing";
-  my %item     = %{$item_ref};
+  my $lang        = shift or die "param missing";
+  my $img_nr      = shift or die "param missing";
+  my $item_ref    = shift or die "param missing";
+  my $olditem_ref = shift or die "param missing";
+  my %item        = %{$item_ref};
 
-  my $tag = "<a id='tag_$img_nr'";
+  # label for new geo in bold
+  my $geolabel = $item{geo}{label}{$lang};
+  if ( $item_ref->{geo}{id} ne $olditem_ref->{geo}{id} and $img_nr ne '9999') {
+    ##if (defined $olditem_ref->{geo}{id}) {
+    ##  print Dumper $olditem_ref, $item_ref; exit;
+    ##}
+    $geolabel = "<b>$geolabel</b>";
+  }
+
   my ( $label, $title );
   if ( defined $item{subject} ) {
-    $label = "$item{geo}{label}{$lang} : $item{subject}{label}{$lang}";
+    $label = "$geolabel : $item{subject}{label}{$lang}";
     $title = "$item{geo}{signature} $item{subject}{signature}";
     if ( defined $item{keyword} ) {
       $label .= " - $item{keyword}";
@@ -188,11 +206,10 @@ sub get_item_tag {
     }
   } else {
     $label =
-        "$item{geo}{label}{$lang}"
-      . " : <span class='unrecognized'>$item{subject_string}</span>";
+      "$geolabel : <span class='unrecognized'>$item{subject_string}</span>";
     $title = "$item{signature_string}";
   }
-  $tag .= " title='$title'>$label</a> &#160;";
+  my $tag = "<a id='tag_$img_nr' title='$title'>$label</a> &#160;";
 
   return $tag;
 }
