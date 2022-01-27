@@ -6,7 +6,7 @@ use strict;
 use warnings;
 use utf8;
 
-use Carp qw/ cluck confess/;
+use Carp qw/ cluck confess croak /;
 use Data::Dumper;
 use Exporter;
 use JSON;
