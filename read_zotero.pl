@@ -108,11 +108,15 @@ foreach my $film_id ( sort keys %film ) {
     my $location = $entry->{data}{archiveLocation};
     if ( $location =~ m;film/(.+\d)(/(L|R))?$; ) {
 
-      $item{signature} = $entry->{data}{callNumber};
-      $item{date}      = $entry->{data}{date};
-      $item{id}        = $1;
-      $item{lr}        = $3 || 'L';
-      ( $item{subject_strng} = $entry->{data}{title} ) =~ s/^.+? : (.+)$/$1/;
+      $item{signature_string} = $entry->{data}{callNumber};
+      $item{date}             = $entry->{data}{date};
+      $item{id}               = $1;
+      $item{lr}               = $3 || 'L';
+
+      # get string version of the subject
+      if ( $entry->{data}{title} =~ m/^.+? : (.+)$/ ) {
+        $item{subject_string} = $1;
+      }
 
       if ( defined $entry->{data}{libraryCatalog} ) {
         $item{qid} = $entry->{data}{libraryCatalog};
@@ -150,7 +154,8 @@ foreach my $film_id ( sort keys %film ) {
     next unless $data->{valid_sig};
 
     if ( $collection eq 'sh' ) {
-      print "\t$data{id}\t$data{lr}\t$data{geo}{notation} $data{subject}{notation}";
+      print
+"\t$data{id}\t$data{lr}\t$data{geo}{signature} $data{subject}{signature}";
       if ( $data{keyword} ) {
         print " - $data{keyword}";
       }
@@ -177,7 +182,7 @@ sub parse_sh_signature {
   my $item_ref = shift or die "param missing";
 
   # split into geo and subject part (plus optional keyword)
-  my $signature = $item_ref->{signature};
+  my $signature = $item_ref->{signature_string};
   my ( $geo_sig, $subject_sig, $keyword );
   if ( $signature =~ m/^(\S+)\s(.+?)(?: (?:\-|\|) (.+))?$/ ) {
     $geo_sig     = $1;
@@ -289,7 +294,7 @@ EOF
   foreach my $entry ( @{ $result_data->{results}{bindings} } ) {
     $lookup{ $entry->{notation}{value} }{label}{de} = $entry->{labelDe}{value};
     $lookup{ $entry->{notation}{value} }{label}{en} = $entry->{labelEn}{value};
-    $lookup{ $entry->{notation}{value} }{notation}  = $entry->{notation}{value};
+    $lookup{ $entry->{notation}{value} }{signature} = $entry->{notation}{value};
     $lookup{ $entry->{notation}{value} }{id}        = $entry->{id}{value};
     $translate{ $entry->{long}{value} }             = $entry->{notation}{value};
   }
