@@ -7,7 +7,6 @@
 # based on https://github.com/myollie/img2pdf
 
 # data strcuture extracted from METS: list of articles
-
 #   [ { id => $id, label => $label, jpg_list => \@jpg_list }, ... ]
 
 use strict;
@@ -45,7 +44,6 @@ if ( not $document_list_ref or $document_list_ref eq {} ) {
   print $log "Error: METS file $mets_file not found or empty\n";
   exit;
 }
-print "$pdf_path\n";exit;
 build_pdf( $document_list_ref, $pdf_path );
 
 print $log "Done\n";
@@ -161,25 +159,20 @@ sub build_pdf {
       $page_count++;
     }
   }
-  ##print "Creating $pdf_path from $page_count files for ",
-  ##  scalar( @{$document_list_ref} ), " documents\n";
+  print $log "Creating $pdf_path from $page_count files for ",
+    scalar( @{$document_list_ref} ), " documents\n";
 
-  print $log "Download pages\n";
+  print $log "Transform to list of page file names\n";
   my @files;
-  my $tempdir = File::Temp::tempdir('/tmp/.folder2pdfXXXXXXXX');
   foreach my $doc ( @{$document_list_ref} ) {
 
     # skip certan document type like business reports
     next if $doc->{label} =~ m/^Gesch/;
 
-    # get all jpg files for document and save as temporary
     foreach my $file ( @{ $doc->{pages} } ) {
-
-      my $response = HTTP::Tiny->new->get($file);
-      die "Can't download $file\n" unless $response->{success};
-      my ( $temp_fh, $temp_fn ) = File::Temp::tempfile( DIR => $tempdir );
-      path($temp_fn)->spew( { binmode => ':raw' }, $response->{content} );
-      push( @files, $temp_fn );
+      ## transform URL to file name
+      $file = $METS_ROOT->child(path($file)->relative($METS_URL_ROOT));
+      push( @files, $file );
       print $log "+";
     }
   }
