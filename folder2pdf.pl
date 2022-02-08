@@ -6,6 +6,9 @@
 
 # based on https://github.com/myollie/img2pdf
 
+# all created files and directories have to be world r/w in order to
+# allow for manual cleanup
+
 # data strcuture extracted from METS: list of articles
 #   [ { id => $id, label => $label, jpg_list => \@jpg_list }, ... ]
 
@@ -21,7 +24,7 @@ use Path::Tiny;
 use Readonly;
 use XML::LibXML;
 
-Readonly my $PDF_ROOT      => path('/pm20/cache/pdf/folder');
+Readonly my $PDF_ROOT      => path('/pm20/cache/pdf');
 Readonly my $METS_ROOT     => path('/pm20/web/folder');
 Readonly my $METS_URL_ROOT => 'https://pm20.zbw.eu/folder/';
 Readonly my $PDF_URL_ROOT  => 'https://pm20.zbw.eu/pdf/';
@@ -32,7 +35,7 @@ my $log_file = $ARGV[1] or die "usage: $0 pdf_url log\n";
 
 # compute mets url
 my $mets_file = compute_mets_file($pdf_url);
-my $pdf_path = compute_pdf_path($pdf_url);
+my $pdf_path  = compute_pdf_path($pdf_url);
 
 open( my $log, ">$log_file" ) or die "cannot open $log_file: $!\n";
 $log->autoflush;
@@ -64,7 +67,7 @@ sub url_ok {
 sub compute_mets_file {
   my $pdf_url = shift or die "param missing\n";
 
-  (my $dir = $pdf_url) =~ s/^$PDF_URL_ROOT//;
+  ( my $dir = $pdf_url ) =~ s/^$PDF_URL_ROOT//;
   $dir =~ s;(.*)/[^/]+$;$1;;
   my $mets_file = $METS_ROOT->child($dir)->child('public.mets.en.xml');
 
@@ -144,7 +147,6 @@ sub parse_mets {
     );
     push( @document_list, \%entry );
   }
-  ##print Dumper \@document_list;
   return \@document_list;
 }
 
@@ -162,7 +164,6 @@ sub build_pdf {
   print $log "Creating $pdf_path from $page_count files for ",
     scalar( @{$document_list_ref} ), " documents\n";
 
-  print $log "Transform to list of page file names\n";
   my @files;
   foreach my $doc ( @{$document_list_ref} ) {
 
@@ -171,19 +172,18 @@ sub build_pdf {
 
     foreach my $file ( @{ $doc->{pages} } ) {
       ## transform URL to file name
-      $file = $METS_ROOT->child(path($file)->relative($METS_URL_ROOT));
+      $file = $METS_ROOT->child( path($file)->relative($METS_URL_ROOT) );
       push( @files, $file );
-      print $log "+";
     }
   }
 
   # create directory
-  path($pdf_path)->parent->mkpath;
+  path($pdf_path)->parent->mkpath( { chmod => 0777 } );
 
   # concat temp files to pdf
   print $log "\nConcatenate pages to pdf file ...\n";
   my @args = ( 'img2pdf', '-o', $pdf_path, @files );
   system(@args) == 0
     or print $log "Error: system @args failed: $?";
-
+  $pdf_path->chmod(0777);
 }

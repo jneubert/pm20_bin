@@ -13,22 +13,23 @@ use CGI::Push qw(:standard);
 use Data::Dumper;
 use File::Temp;
 use Path::Tiny;
-##use Plack::Request;
-##use Plack::Response;
 use Readonly;
 
-Readonly my $PDF_ROOT      => '/srv/pm20pdf/';
-Readonly my $METS_URL_ROOT => 'http://zbw.eu/beta/pm20mets/';
-Readonly my $PDF_URL_ROOT  => 'http://zbw.eu/beta/pm20pdf/';
+Readonly my $PDF_URL_ROOT => 'https://pm20.zbw.eu/pdf/';
 
-# init
+# init cgi object
 my $q = CGI->new;
 
-##$File::Temp::KEEP_ALL = 1;
-my $tempdir  = File::Temp::tempdir('/srv/tmp/.folder2pdfXXXXXXXX');
-my $log_file = "$tempdir/build.log";
+# cleanup cache by apache user
+##`/bin/rm -rf /pm20/cache/pdf/*`;
+##exit;
 
-# init log to avoid race condition
+# init log file
+$File::Temp::KEEP_ALL = 1;
+my $tempdir = File::Temp::tempdir('/tmp/.folder2pdfXXXXXXXX');
+chmod( 0755, $tempdir );
+my $log_file = "$tempdir/build.log";
+## init log here to avoid race condition
 path($log_file)->touch;
 
 # read param
@@ -47,9 +48,6 @@ if ( not $pdf_url =~ m/^$PDF_URL_ROOT([a-z0-9\/\.])+$/ ) {
   exit;
 }
 
-##print "Content-type: text/plain\n\n";
-##print "Creating folder pdf ...\n";
-
 # fork this process
 my $pid = fork();
 die "Fork failed: $!" if !defined $pid;
@@ -60,10 +58,14 @@ if ( $pid == 0 ) {
   open STDIN,  "</dev/null";
   open STDOUT, ">/dev/null";
   open STDERR, ">/dev/null";
-  ##system('bash -c \'(sleep 10; touch ./test_file)\'&');
-  system("perl /usr/local/bin/folder2pdf.pl $pdf_url $log_file \&");
+  system("/usr/bin/perl /pm20/bin/folder2pdf.pl $pdf_url $log_file \&");
   exit;
 }
+
+##my $wait_return_value = wait;
+##if ($wait_return_value != $pid) {
+##  die "Der Child-Prozess wurde nicht ordnungsgemäß beendet!\n $?";
+##}
 
 do_push(
   -next_page => \&next_page,
@@ -86,9 +88,10 @@ sub last_page {
 
   # redirect to the newly created file
   return $q->header(
-    -refresh => "5; URL=$pdf_url",
+    -refresh => "1; URL=$pdf_url",
     -type    => 'text/html'
-  ), 'Done. Please reload, if PDF is not downloaded automatically.';
+    ),
+    'Done. Please reload, if PDF is not downloaded automatically.';
 }
 
 ####################
