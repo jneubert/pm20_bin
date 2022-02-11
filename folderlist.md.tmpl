@@ -9,6 +9,11 @@ fn-stub: about
 ### <tmpl_var provenance>
 # <tmpl_var label><tmpl_if is_de>-Mappen</tmpl_if><tmpl_if is_en> folders</tmpl_if>
 
+<tmpl_if collection_wa>
+<tmpl_if is_de>Für eine strukturiertere Auswahl, siehe <a href="http://webopac.hwwa.de/pressemappe20/Digiview_MENU.cfm?T=W&W=x">PM20 Altanwendung</a>.</tmpl_if>
+<tmpl_if is_en>For a more structured selection, see <a href="http://webopac.hwwa.de/pressemappe20/Digiview_MENU.cfm?T=W&W=x">PM20 legacy application</a>.</tmpl_if>
+</tmpl_if>
+
 <div class="spacer">&#160;</div>
 
 <tmpl_loop tab_loop>[<tmpl_var startchar>](#id_<tmpl_var startchar>)&#160;
