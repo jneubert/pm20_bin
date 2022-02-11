@@ -32,8 +32,10 @@ Readonly my %TITLE          => %{ YAML::LoadFile('archive_titles.yaml') };
 Readonly my @COLLECTIONS    => qw/ co pe sh wa /;
 Readonly my @LANGUAGES      => qw/ en de /;
 
-my $tmpl =
-  HTML::Template->new( filename => '../etc/html_tmpl/folderlist.md.tmpl' );
+my $tmpl = HTML::Template->new(
+  filename => '../etc/html_tmpl/folderlist.md.tmpl',
+  utf8     => 1,
+);
 
 my ( $imagedata_file, $imagedata_ref );
 
@@ -123,13 +125,14 @@ sub mk_collectionlist {
       push( @startchar_entries, \%entry );
     }
     my %tmpl_var = (
-      "is_$lang"     => 1,
-      provenance     => $TITLE{provenance}{hh}{$lang},
-      label          => $TITLE{collection}{$collection}{$lang},
-      backlink       => "../../about.$lang.html",
-      backlink_title => 'Home',
-      tab_loop       => \@tabs,
-      startchar_loop => \@startchar_entries,
+      "is_$lang"               => 1,
+      "collection_$collection" => 1,
+      provenance               => $TITLE{provenance}{hh}{$lang},
+      label                    => $TITLE{collection}{$collection}{$lang},
+      backlink                 => "../../about.$lang.html",
+      backlink_title           => 'Home',
+      tab_loop                 => \@tabs,
+      startchar_loop           => \@startchar_entries,
     );
     $tmpl->clear_params;
     $tmpl->param( \%tmpl_var );
