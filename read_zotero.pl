@@ -62,80 +62,99 @@ my $zclient = WWW::Zotero->new();
 
 # top level in Zotero are films
 my %film;
-my $data = $zclient->listCollectionsTop(
-  group => $PM20_GROUP,
-  limit => 100,
-) or die "error reading top: $!\n";
-foreach my $entry ( @{ $data->{results} } ) {
-  $film{ $entry->{data}{name} }{key} = $entry->{data}{key};
-}
 
-# second level are items (sections) within the films
-foreach my $film_id ( sort keys %film ) {
 
-  # restrict to example A12/Polen
-  ##next if ( $film_id lt 'S0220H_2' );
-  ##next if ( $film_id gt 'S0236H_1' );
+my $limit = 100;
+my $start = 0;
+my $more = 1;
+while ($more) {
 
-  # only work on films of a specific set
-  next unless $film_id =~ $conf{film_qr};
-  $film_count++;
+  my $data = $zclient->listCollectionsTop(
+    group => $PM20_GROUP,
+    limit => $limit,
+    start => $start,
+  ) or die "error reading top: $!\n";
 
-  # read film data
-  my $film_data = $zclient->listCollectionItemsTop(
-    collectionKey => $film{$film_id}{key},
-    group         => $PM20_GROUP,
-    limit         => 100,
-  ) or die "error reading $film_id; $!\n";
-
-  my %item_film;
-  my @entries = @{ $film_data->{results} };
-  foreach my $entry (
-    sort { $a->{data}{archiveLocation} cmp $b->{data}{archiveLocation} }
-    @entries )
-  {
-
-    # skip entries for single publications
-    my $type = $entry->{data}{itemType};
-    if ( $type =~ m/^Document$/i ) {
-      $type_count{document}++;
-    } else {
-      $type_count{$type}++;
-      next;
-    }
-
-    my %item;
-    my $location = $entry->{data}{archiveLocation};
-    if ( $location =~ m;film/(.+\d)(/(L|R))?$; ) {
-
-      $item{signature_string} = $entry->{data}{callNumber};
-      $item{date}             = $entry->{data}{date};
-      $item{id}               = $1;
-      $item{lr}               = $3 || 'L';
-
-      # get string version of the subject or company name
-      if ( $entry->{data}{title} =~ m/^.+? : (.+)$/ ) {
-        $item{subject_string} = $1;
-      }
-      if ( $collection eq 'co' ) {
-        $item{company_string} = $entry->{data}{title};
-      }
-
-      if ( defined $entry->{data}{libraryCatalog} ) {
-        $item{qid} = $entry->{data}{libraryCatalog};
-      }
-
-      $conf{parser}->( $location, \%item );
-      $item_film{$location} = \%item;
-    } else {
-      warn "$location: strange location\n";
-      $error_count++;
-      next;
-    }
+  foreach my $entry ( @{ $data->{results} } ) {
+    $film{ $entry->{data}{name} }{key} = $entry->{data}{key};
   }
 
-  # save complete film
-  $film{$film_id}{item} = \%item_film;
+  # is there more data?
+  if ( $data->{total} - ( $start + $limit ) gt 0 ) {
+    $start = $start + $limit;
+  } else {
+    $more = 0;
+  }
+
+  # second level are items (sections) within the films
+  foreach my $film_id ( sort keys %film ) {
+
+    # restrict to example A12/Polen
+    ##next if ( $film_id lt 'S0220H_2' );
+    ##next if ( $film_id lt 'S0220H_2' );
+    #next if ( $film_id ne 'S0205H' );
+
+    # only work on films of a specific set
+    next unless $film_id =~ $conf{film_qr};
+    $film_count++;
+
+    # read film data
+    my $film_data = $zclient->listCollectionItemsTop(
+      collectionKey => $film{$film_id}{key},
+      group         => $PM20_GROUP,
+      limit         => 100,
+    ) or die "error reading $film_id; $!\n";
+
+    my %item_film;
+    my @entries = @{ $film_data->{results} };
+    foreach my $entry (
+      sort { $a->{data}{archiveLocation} cmp $b->{data}{archiveLocation} }
+      @entries )
+    {
+
+      # skip entries for single publications
+      my $type = $entry->{data}{itemType};
+      if ( $type =~ m/^Document$/i ) {
+        $type_count{document}++;
+      } else {
+        $type_count{$type}++;
+        next;
+      }
+
+      my %item;
+      my $location = $entry->{data}{archiveLocation};
+      if ( $location =~ m;film/(.+\d)(/(L|R))?$; ) {
+
+        $item{signature_string} = $entry->{data}{callNumber};
+        $item{date}             = $entry->{data}{date};
+        $item{id}               = $1;
+        $item{lr}               = $3 || 'L';
+
+        # get string version of the subject or company name
+        if ( $entry->{data}{title} =~ m/^.+? : (.+)$/ ) {
+          $item{subject_string} = $1;
+        }
+        if ( $collection eq 'co' ) {
+          $item{company_string} = $entry->{data}{title};
+        }
+
+        if ( defined $entry->{data}{libraryCatalog} ) {
+          $item{qid} = $entry->{data}{libraryCatalog};
+        }
+
+        $conf{parser}->( $location, \%item );
+        $item_film{$location} = \%item;
+      } else {
+        warn "$location: strange location\n";
+        $error_count++;
+        next;
+      }
+    }
+
+    # save complete film
+    $film{$film_id}{item} = \%item_film;
+  }
+
 }
 
 # save data (only if output dir exists)
@@ -157,8 +176,11 @@ foreach my $film_id ( sort keys %film ) {
     next unless $data{valid_sig};
 
     if ( $collection eq 'sh' ) {
-      print
-"\t$data{id}\t$data{lr}\t$data{geo}{signature} $data{subject}{signature}";
+      my $signature = $data{geo}{signature};
+      print "\t$data{id}\t$data{lr}\t$signature";
+      if ($data{subject}{signature}) {
+        print " $data{subject}{signature}";
+      }
       if ( $data{keyword} ) {
         print " - $data{keyword}";
       }
@@ -185,9 +207,10 @@ sub parse_sh_signature {
   my $item_ref = shift or die "param missing";
 
   # split into geo and subject part (plus optional keyword)
+  # (allow for geo only, too)
   my $signature = $item_ref->{signature_string};
   my ( $geo_sig, $subject_sig, $keyword );
-  if ( $signature =~ m/^(\S+)\s(.+?)(?: (?:\-|\|) (.+))?$/ ) {
+  if ( $signature =~ m/^(\S+)(?:\s+(.+?))?(?: (?:\-|\|) (.+))?$/ ) {
     $geo_sig     = $1;
     $subject_sig = $2;
     $keyword     = $3;
@@ -196,7 +219,7 @@ sub parse_sh_signature {
     $error_count++;
     return;
   }
-  #
+
   # lookup geo
   if ( defined $lookup_geo->{$geo_sig} ) {
     $item_ref->{geo} = $lookup_geo->{$geo_sig};
@@ -208,7 +231,11 @@ sub parse_sh_signature {
   }
 
   # lookup subject
-  if ( defined $lookup_subject->{$subject_sig} ) {
+  if ( not $subject_sig ) {
+    ## only geo signature is now valid
+    $item_ref->{subject} = undef;
+    warn "$location: Only geo, no subject signature\n";
+  } elsif ( defined $lookup_subject->{$subject_sig} ) {
     $item_ref->{subject} = $lookup_subject->{$subject_sig};
   } elsif ( defined $translate_subject->{$subject_sig} ) {
     $subject_sig = $translate_subject->{$subject_sig};
