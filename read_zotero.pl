@@ -63,10 +63,9 @@ my $zclient = WWW::Zotero->new();
 # top level in Zotero are films
 my %film;
 
-
 my $limit = 100;
 my $start = 0;
-my $more = 1;
+my $more  = 1;
 while ($more) {
 
   my $data = $zclient->listCollectionsTop(
@@ -75,8 +74,13 @@ while ($more) {
     start => $start,
   ) or die "error reading top: $!\n";
 
+  print "\nCollection slice from $start\n\n";
+
+  # hash of films in the current slice
+  my %collection;
   foreach my $entry ( @{ $data->{results} } ) {
-    $film{ $entry->{data}{name} }{key} = $entry->{data}{key};
+    $collection{ $entry->{data}{key} } = $entry->{data}{name};
+    ##$film{ $entry->{data}{name} }{key} = $entry->{data}{key};
   }
 
   # is there more data?
@@ -87,23 +91,33 @@ while ($more) {
   }
 
   # second level are items (sections) within the films
-  foreach my $film_id ( sort keys %film ) {
+  foreach my $key (
+    sort { $collection{$a} cmp $collection{$b} }
+    keys %collection
+    )
+  {
+    my $film_name = $collection{$key};
 
     # restrict to example A12/Polen
-    ##next if ( $film_id lt 'S0220H_2' );
-    ##next if ( $film_id lt 'S0220H_2' );
-    #next if ( $film_id ne 'S0205H' );
+    ##next if ( $film_name lt 'S0220H_2' );
+    ##next if ( $film_name lt 'S0220H_2' );
+    ##next if ( $film_name ne 'S0205H' );
 
     # only work on films of a specific set
-    next unless $film_id =~ $conf{film_qr};
+    next unless $film_name =~ $conf{film_qr};
     $film_count++;
 
     # read film data
     my $film_data = $zclient->listCollectionItemsTop(
-      collectionKey => $film{$film_id}{key},
+      collectionKey => $key,
       group         => $PM20_GROUP,
-      limit         => 100,
-    ) or die "error reading $film_id; $!\n";
+      limit         => $limit,
+    ) or die "error reading $film_name: $!\n";
+
+    if ( $film_data->{total} > $limit ) {
+      warn "COLLECTION WITH $film_data->{total} (MORE THAN limit $limit)"
+        . "ENTRIES: $film_name\n";
+    }
 
     my %item_film;
     my @entries = @{ $film_data->{results} };
@@ -144,6 +158,10 @@ while ($more) {
 
         $conf{parser}->( $location, \%item );
         $item_film{$location} = \%item;
+      } elsif ( not $location ) {
+        warn "location missing: ", Dumper $entry->{data};
+        $error_count++;
+        next;
       } else {
         warn "$location: strange location\n";
         $error_count++;
@@ -152,7 +170,7 @@ while ($more) {
     }
 
     # save complete film
-    $film{$film_id}{item} = \%item_film;
+    $film{$film_name}{item} = \%item_film;
   }
 
 }
@@ -164,21 +182,21 @@ if ( -d $output->parent ) {
 }
 
 # output for debugging
-foreach my $film_id ( sort keys %film ) {
-  next unless $film_id =~ $conf{film_qr};
+foreach my $film_name ( sort keys %film ) {
+  next unless $film_name =~ $conf{film_qr};
 
-  my @items = sort keys %{ $film{$film_id}{item} };
-  print "\n$film_id (" . scalar(@items) . " items)\n";
+  my @items = sort keys %{ $film{$film_name}{item} };
+  print "\n$film_name (" . scalar(@items) . " items)\n";
 
   foreach my $location (@items) {
-    my %data = %{ $film{$film_id}{item}{$location} };
+    my %data = %{ $film{$film_name}{item}{$location} };
 
     next unless $data{valid_sig};
 
     if ( $collection eq 'sh' ) {
       my $signature = $data{geo}{signature};
       print "\t$data{id}\t$data{lr}\t$signature";
-      if ($data{subject}{signature}) {
+      if ( $data{subject}{signature} ) {
         print " $data{subject}{signature}";
       }
       if ( $data{keyword} ) {
@@ -234,7 +252,7 @@ sub parse_sh_signature {
   if ( not $subject_sig ) {
     ## only geo signature is now valid
     $item_ref->{subject} = undef;
-    warn "$location: Only geo, no subject signature\n";
+    ##warn "$location: $signature - only geo, no subject signature\n";
   } elsif ( defined $lookup_subject->{$subject_sig} ) {
     $item_ref->{subject} = $lookup_subject->{$subject_sig};
   } elsif ( defined $translate_subject->{$subject_sig} ) {
