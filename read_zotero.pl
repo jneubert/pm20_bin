@@ -61,8 +61,10 @@ my ( $translate_company, $lookup_company ) = get_company_lookup_tables();
 my $zclient = WWW::Zotero->new();
 
 # top level in Zotero are films
-my %film;
+# (undivided film numbers - no S0123H_1/2 here!)
+my (%collection, %film);
 
+# read in slices, due to limit in Zotero API
 my $limit = 100;
 my $start = 0;
 my $more  = 1;
@@ -74,10 +76,7 @@ while ($more) {
     start => $start,
   ) or die "error reading top: $!\n";
 
-  print "\nCollection slice from $start\n\n";
-
   # hash of films in the current slice
-  my %collection;
   foreach my $entry ( @{ $data->{results} } ) {
     $collection{ $entry->{data}{key} } = $entry->{data}{name};
     ##$film{ $entry->{data}{name} }{key} = $entry->{data}{key};
@@ -89,6 +88,7 @@ while ($more) {
   } else {
     $more = 0;
   }
+}
 
   # second level are items (sections) within the films
   foreach my $key (
@@ -172,8 +172,6 @@ while ($more) {
     # save complete film
     $film{$film_name}{item} = \%item_film;
   }
-
-}
 
 # save data (only if output dir exists)
 my $output = path("$FILMDATA_STUB$subset.json");
