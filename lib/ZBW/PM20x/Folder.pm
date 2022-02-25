@@ -263,7 +263,7 @@ sub get_relpath_to_folder {
 
 =item get_doc_counts ()
 
-Return a string with free and total document counts
+Return a string with free and total document counts, undef if none of them defined.
 
 =cut
 
@@ -277,16 +277,16 @@ sub get_doc_counts {
   my $doc_counts = '';
   if ( exists $folderdata_raw->{freeDocCount} ) {
     $doc_counts = $folderdata_raw->{freeDocCount};
-  } else {
-    warn "no freeDocCount for $fid $label\n";
   }
   $doc_counts .= ' / ';
   if ( exists $folderdata_raw->{totalDocCount} ) {
     $doc_counts .= $folderdata_raw->{totalDocCount};
-  } else {
-    warn "no totalDocCount for $fid $label\n";
   }
-  return $doc_counts;
+  if ( $doc_counts ne ' / ' ) {
+    return $doc_counts;
+  } else {
+    return;
+  }
 }
 
 =item get_wdlink ()
