@@ -77,75 +77,105 @@ sub mk_all {
 sub mk_collectionlist {
   my $collection = shift or die "param missing";
 
-  foreach my $lang (@LANGUAGES) {
+  # two types of lists are created for co and pe collection
+  my @list_types = ('with_docs');
+  if ( $collection eq 'co' or $collection eq 'pe' ) {
+    push( @list_types, 'without_docs' );
+  }
+  foreach my $list_type (@list_types) {
+    foreach my $lang (@LANGUAGES) {
 
-    # create partial lists keyed by start character
-
-    # collect start characters
-    my %abc;
-    foreach my $folder_nk ( sort @{ $collection_ids{$collection} } ) {
-      my $folder = ZBW::PM20x::Folder->new( $collection, $folder_nk );
-      my $label  = $folder->get_folderlabel($lang);
-      ## skip undefined folders (warning in Folder.pm)
-      next unless $label;
-
-      $label =~ s/&quot;//g;
-      my $startchar = uc( substr( $label, 0, 1 ) );
-      push( @{ $abc{$startchar} }, $folder );
-    }
-
-    # iterate through list of start characters
-    my $uc = Unicode::Collate->new();
-    my ( @tabs, @startchar_entries );
-    foreach my $startchar ( sort { $uc->cmp( $a, $b ) } keys %abc ) {
-      push( @tabs, { startchar => $startchar } );
-      my @folders;
-      my @folder_list =
-        sort {
-        $uc->cmp( $a->get_folderlabel($lang), $b->get_folderlabel($lang) )
-        } @{ $abc{$startchar} };
-      foreach my $folder (@folder_list) {
+      # create a hash of folder lists keyed by start character
+      my %abc;
+      foreach my $folder_nk ( sort @{ $collection_ids{$collection} } ) {
+        my $folder = ZBW::PM20x::Folder->new( $collection, $folder_nk );
+        if ( $folder->get_doc_counts ) {
+          if ( $list_type eq 'without_docs' ) {
+            next;
+          }
+        } else {
+          if ( $list_type eq 'with_docs' ) {
+            next;
+          }
+        }
         my $label = $folder->get_folderlabel($lang);
         ## skip undefined folders (warning in Folder.pm)
         next unless $label;
 
-        ##print $folder->get_folderlabel($lang), "\n";
-        my $from_to = ( $folder->get_folderdata_raw )->{fromTo}
-          || ( $folder->get_folderdata_raw )->{dateOfBirthAndDeath};
-        my $path = $folder->get_folder_hashed_path->relative($collection)
-          ->child("about.$lang.html");
-        my %entry = (
-          label   => $label,
-          path    => "$path",
-          from_to => $from_to,
-        );
-        push( @folders, \%entry );
+        $label =~ s/&quot;//g;
+        my $startchar = uc( substr( $label, 0, 1 ) );
+        push( @{ $abc{$startchar} }, $folder );
       }
-      my %entry = (
-        "is_$lang"  => 1,
-        startchar   => $startchar,
-        folder_loop => \@folders,
-      );
-      push( @startchar_entries, \%entry );
-    }
-    my %tmpl_var = (
-      "is_$lang"               => 1,
-      provenance               => $TITLE{provenance}{hh}{$lang},
-      label                    => $TITLE{collection}{$collection}{$lang},
-      backlink                 => "../../about.$lang.html",
-      backlink_title           => 'Home',
-      tab_loop                 => \@tabs,
-      startchar_loop           => \@startchar_entries,
-    );
-    if ( $collection eq 'wa' ) {
-      $tmpl_var{collection_wa} = 1;
-    }
-    $tmpl->clear_params;
-    $tmpl->param( \%tmpl_var );
 
-    # write file
-    my $out = $FOLDER_WEBROOT->child($collection)->child("about.$lang.md");
-    $out->spew_utf8( $tmpl->output );
+      # iterate through list of start characters
+      my $uc = Unicode::Collate->new();
+      my ( @tabs, @startchar_entries );
+      foreach my $startchar ( sort { $uc->cmp( $a, $b ) } keys %abc ) {
+        push( @tabs, { startchar => $startchar } );
+        my @folders;
+        my @folder_list =
+          sort {
+          $uc->cmp( $a->get_folderlabel($lang), $b->get_folderlabel($lang) )
+          } @{ $abc{$startchar} };
+        foreach my $folder (@folder_list) {
+          my $label = $folder->get_folderlabel($lang);
+          ## skip undefined folders (warning in Folder.pm)
+          next unless $label;
+
+          ##print $folder->get_folderlabel($lang), "\n";
+          my $from_to = ( $folder->get_folderdata_raw )->{fromTo}
+            || ( $folder->get_folderdata_raw )->{dateOfBirthAndDeath};
+          my $path = $folder->get_folder_hashed_path->relative($collection)
+            ->child("about.$lang.html");
+          my %entry = (
+            label   => $label,
+            path    => "$path",
+            from_to => $from_to,
+          );
+          push( @folders, \%entry );
+        }
+        my %entry = (
+          "is_$lang"  => 1,
+          startchar   => $startchar,
+          folder_loop => \@folders,
+        );
+        push( @startchar_entries, \%entry );
+      }
+      my $label = $TITLE{collection}{$collection}{$lang};
+      $label .= $lang eq 'de' ? ' Mappen' : ' folders';
+      my %tmpl_var = (
+        "is_$lang"     => 1,
+        provenance     => $TITLE{provenance}{hh}{$lang},
+        label          => $label,
+        backlink       => "../../about.$lang.html",
+        backlink_title => 'Home',
+        tab_loop       => \@tabs,
+        startchar_loop => \@startchar_entries,
+        fn_stub        => 'about',
+      );
+      if ( $collection eq 'pe' or $collection eq 'co' ) {
+        $tmpl_var{"is_$list_type"} = 1;
+        if ( $list_type eq 'without_docs' ) {
+          $tmpl_var{label} .=
+            $lang eq 'de'
+            ? ' ohne digitalisierte Dokumente'
+            : ' without digitized documents';
+          $tmpl_var{backlink}       = "about.$lang.html";
+          $tmpl_var{backlink_title} = $label;
+          $tmpl_var{fn_stub}        = 'without_docs';
+        }
+      }
+      if ( $collection eq 'wa' ) {
+        $tmpl_var{collection_wa} = 1;
+      }
+      $tmpl->clear_params;
+      $tmpl->param( \%tmpl_var );
+
+      # write file
+      my $name = $list_type eq 'with_docs' ? 'about' : $list_type;
+      my $out  = $FOLDER_WEBROOT->child($collection)->child("$name.$lang.md");
+      $out->spew_utf8( $tmpl->output );
+    }
   }
 }
 
