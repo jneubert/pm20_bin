@@ -12,7 +12,11 @@ fn-stub: about
 
 <div class="spacer">&#160;</div>
 
+<tmpl_if doc_counts>
 <a class="btn" href="<tmpl_var dfgview_url>"><tmpl_if is_de>Dokumente anzeigen</tmpl_if><tmpl_if is_en>View documents</tmpl_if></a> &#160; (<tmpl_var doc_counts>)
+<tmpl_else>
+_<tmpl_if is_de>Für diese Mappe gibt es nur Metadaten, keine digitalisierten Dokumente.</tmpl_if><tmpl_if is_en>Only metadata for this folder, no digitized documents.</tmpl_if>_
+</tmpl_if>
 
 <div class="spacer">&#160;</div>
 
