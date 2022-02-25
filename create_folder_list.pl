@@ -25,6 +25,7 @@ use ZBW::PM20x::Folder;
 binmode( STDOUT, ":utf8" );
 $Data::Dumper::Sortkeys = 1;
 
+Readonly my $FOLDER_DATA    => path('/pm20/data/rdf/pm20.extended.jsonld');
 Readonly my $FOLDER_ROOT    => $ZBW::PM20x::Folder::FOLDER_ROOT;
 Readonly my $FOLDER_WEBROOT => path('/pm20/web/folder');
 Readonly my $IMAGEDATA_ROOT => path('/pm20/data/imagedata');
@@ -37,14 +38,16 @@ my $tmpl = HTML::Template->new(
   utf8     => 1,
 );
 
-my ( $imagedata_file, $imagedata_ref );
+my %collection_ids;
 
 # check arguments
 if ( scalar(@ARGV) == 1 ) {
   if ( $ARGV[0] =~ m:^(co|pe|wa)$: ) {
+    load_ids( \%collection_ids );
     my $collection = $1;
     mk_collectionlist($collection);
   } elsif ( $ARGV[0] =~ m:^(co|pe)/(\d{6}): ) {
+    load_ids( \%collection_ids );
     my $collection = $1;
     my $folder_nk  = $2;
     mk_folder( $collection, $folder_nk );
@@ -53,6 +56,7 @@ if ( scalar(@ARGV) == 1 ) {
     my $folder_nk  = $2;
     mk_folder( $collection, $folder_nk );
   } elsif ( $ARGV[0] eq 'ALL' ) {
+    load_ids( \%collection_ids );
     mk_all();
   } else {
     &usage;
@@ -73,14 +77,13 @@ sub mk_all {
 sub mk_collectionlist {
   my $collection = shift or die "param missing";
 
-  # load input files
-  load_files($collection);
-
   foreach my $lang (@LANGUAGES) {
 
     # create partial lists keyed by start character
+
+    # collect start characters
     my %abc;
-    foreach my $folder_nk ( sort keys %{$imagedata_ref} ) {
+    foreach my $folder_nk ( sort @{ $collection_ids{$collection} } ) {
       my $folder = ZBW::PM20x::Folder->new( $collection, $folder_nk );
       my $label  = $folder->get_folderlabel($lang);
       ## skip undefined folders (warning in Folder.pm)
@@ -91,6 +94,7 @@ sub mk_collectionlist {
       push( @{ $abc{$startchar} }, $folder );
     }
 
+    # iterate through list of start characters
     my $uc = Unicode::Collate->new();
     my ( @tabs, @startchar_entries );
     foreach my $startchar ( sort { $uc->cmp( $a, $b ) } keys %abc ) {
@@ -126,7 +130,6 @@ sub mk_collectionlist {
     }
     my %tmpl_var = (
       "is_$lang"               => 1,
-      "collection_$collection" => 1,
       provenance               => $TITLE{provenance}{hh}{$lang},
       label                    => $TITLE{collection}{$collection}{$lang},
       backlink                 => "../../about.$lang.html",
@@ -134,6 +137,9 @@ sub mk_collectionlist {
       tab_loop                 => \@tabs,
       startchar_loop           => \@startchar_entries,
     );
+    if ( $collection eq 'wa' ) {
+      $tmpl_var{collection_wa} = 1;
+    }
     $tmpl->clear_params;
     $tmpl->param( \%tmpl_var );
 
@@ -143,11 +149,15 @@ sub mk_collectionlist {
   }
 }
 
-sub load_files {
-  my $collection = shift || die "param missing";
+sub load_ids {
+  my $coll_id_ref = shift;
 
-  $imagedata_file = $IMAGEDATA_ROOT->child("${collection}_image.json");
-  $imagedata_ref  = decode_json( $imagedata_file->slurp );
+  # create a list of numerical keys for each collection
+  my $data = decode_json( $FOLDER_DATA->slurp );
+  foreach my $entry ( @{ $data->{'@graph'} } ) {
+    $entry->{identifier} =~ m/^(co|pe|sh|wa)\/(\d{6}(?:,\d{6})?)$/;
+    push( @{ $coll_id_ref->{$1} }, $2 );
+  }
 }
 
 sub usage {
