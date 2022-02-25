@@ -24,16 +24,19 @@ use ZBW::PM20x::Folder;
 
 $Data::Dumper::Sortkeys = 1;
 
+Readonly my $FOLDER_DATA    => path('/pm20/data/rdf/pm20.extended.jsonld');
 Readonly my $FOLDER_ROOT    => $ZBW::PM20x::Folder::FOLDER_ROOT;
 Readonly my $FOLDER_WEBROOT => path('/pm20/web/folder');
-Readonly my $IMAGEDATA_ROOT => path('/pm20/data/imagedata');
 Readonly my %TITLE          => %{ YAML::LoadFile('archive_titles.yaml') };
 Readonly my @COLLECTIONS    => qw/ co pe sh wa /;
 Readonly my @LANGUAGES      => qw/ en de /;
 
-my $tmpl = HTML::Template->new( filename => '../etc/html_tmpl/folder.md.tmpl' );
+my $tmpl = HTML::Template->new(
+  filename => '../etc/html_tmpl/folder.md.tmpl',
+  utf8     => 1
+);
 
-my ( $imagedata_file, $imagedata_ref );
+my %collection_ids;
 
 our @company_relations = (
   {
@@ -77,6 +80,7 @@ our @company_relations = (
 if ( scalar(@ARGV) == 1 ) {
   if ( $ARGV[0] =~ m:^(co|pe|wa|sh)$: ) {
     my $collection = $1;
+    load_ids( \%collection_ids );
     mk_collection($collection);
   } elsif ( $ARGV[0] =~ m:^(co|pe)/(\d{6}): ) {
     my $collection = $1;
@@ -87,6 +91,7 @@ if ( scalar(@ARGV) == 1 ) {
     my $folder_nk  = $2;
     mk_folder( $collection, $folder_nk );
   } elsif ( $ARGV[0] eq 'ALL' ) {
+    load_ids( \%collection_ids );
     mk_all();
   } else {
     &usage;
@@ -107,10 +112,7 @@ sub mk_all {
 sub mk_collection {
   my $collection = shift or die "param missing";
 
-  # load input files
-  load_files($collection);
-
-  foreach my $folder_nk ( sort keys %{$imagedata_ref} ) {
+  foreach my $folder_nk ( sort @{ $collection_ids{$collection} } ) {
     mk_folder( $collection, $folder_nk );
   }
 }
@@ -121,20 +123,14 @@ sub mk_folder {
 
   my $folder = ZBW::PM20x::Folder->new( $collection, $folder_nk );
 
-  # check if folder dir exists
+  # check if folder dir exists in the source tree
   my $rel_path  = $folder->get_folder_hashed_path();
   my $full_path = $FOLDER_ROOT->child($rel_path);
-  if ( not -d $full_path ) {
+  if ( $folder->get_doc_counts and not -d $full_path ) {
     die "$full_path does not exist\n";
   }
 
-  # open files if necessary
-  # (check with arbitrary entry)
-  if ( not defined $imagedata_ref ) {
-    load_files($collection);
-  }
-
-  # create folder dir (including hashed level)
+  # create folder dir (including hashed level) in the web tree
   my $folder_dir = $FOLDER_WEBROOT->child($rel_path);
   $folder_dir->mkpath;
 
@@ -175,10 +171,10 @@ sub mk_folder {
       folder_uri     => $folder->get_folder_uri,
       dfgview_url    => $folder->get_dfgview_url,
       fid            => "$collection/$folder_nk",
-      doc_counts     => $folder->get_doc_counts,
       backlink       => $backlink,
       backlink_title => $backlink_title,
       modified       => $folder->get_modified,
+      doc_counts     => $folder->get_doc_counts || undef,
     );
 
     if ($wdlink) {
@@ -251,11 +247,15 @@ sub mk_folder {
   }
 }
 
-sub load_files {
-  my $collection = shift || die "param missing";
+sub load_ids {
+  my $coll_id_ref = shift;
 
-  $imagedata_file = $IMAGEDATA_ROOT->child("${collection}_image.json");
-  $imagedata_ref  = decode_json( $imagedata_file->slurp );
+  # create a list of numerical keys for each collection
+  my $data = decode_json( $FOLDER_DATA->slurp );
+  foreach my $entry ( @{ $data->{'@graph'} } ) {
+    $entry->{identifier} =~ m/^(co|pe|sh|wa)\/(\d{6}(?:,\d{6})?)$/;
+    push( @{ $coll_id_ref->{$1} }, $2 );
+  }
 }
 
 sub usage {
