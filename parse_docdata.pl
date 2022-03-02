@@ -35,13 +35,10 @@ $Data::Dumper::Sortkeys = 1;
 Readonly my $FOLDER_ROOT    => path('../folder');
 Readonly my $IMAGEDATA_ROOT => path('../data/imagedata');
 Readonly my $DOCDATA_ROOT   => path('../data/docdata');
+Readonly my @COLLECTIONS    => qw/ co pe sh wa /;
 Readonly my $BEACON_ROOT    => path('../data/beacon');
-
-Readonly my $BEACON_HEADER =>
+Readonly my $BEACON_HEADER  =>
   "#FORMAT: BEACON\n#PREFIX: http://purl.org/pressemappe20/folder/\n\n";
-
-##Readonly my @COLLECTIONS => qw/ co pe sh wa /;
-Readonly my @COLLECTIONS => qw/ sh pe /;
 
 $log->info('Start run');
 foreach my $collection (@COLLECTIONS) {
