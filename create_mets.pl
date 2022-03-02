@@ -1,6 +1,8 @@
 #!/bin/perl
 # nbt, 31.1.2018
 
+# TODO extend download file name with collection
+
 # traverses folder roots in order to create internal and external
 # DFG-Viewer-suitable METS/MODS files per folder
 
