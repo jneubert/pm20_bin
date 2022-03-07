@@ -1,0 +1,31 @@
+{
+
+  "@context": "http://iiif.io/api/image/2/context.json",
+  "@id": "<tmpl_var name='image_uri'>",
+  "protocol": "http://iiif.io/api/image",
+  "width": <tmpl_var name='width_A'>,
+  "height": <tmpl_var name='height_A'>,
+  "sizes": [
+    {
+      "width": <tmpl_var name='width_A'>,
+      "height": <tmpl_var name='height_A'>
+    },
+    {
+      "width": <tmpl_var name='width_B'>,
+      "height": <tmpl_var name='height_B'>
+    },
+    {
+      "width": <tmpl_var name='width_C'>,
+      "height": <tmpl_var name='height_C'>
+    }
+  ],
+  "profile": [
+    "http://iiif.io/api/image/2/level0.json",
+    {
+      "supports": [
+        "cors",
+        "baseUriRedirect"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,50 @@
+{
+  "@context": "http://iiif.io/api/presentation/2/context.json",
+  "@id": "<tmpl_var name='manifest_uri'>",
+  "@type": "sc:Manifest",
+  "label": "<tmpl_var name='folder_label'>",
+  "related": "<tmpl_var name='folder_uri'>",
+  "attribution": "Provided by ZBW - Leibniz Information Centre for Economics",
+  "logo": "https://www.zbw.eu/fileadmin/images/press/logos/logo-zbw.gif",
+  "sequences": [
+    {
+      "@type": "sc:Sequence",
+      "@id": "<tmpl_var name='folder_uri'>/s/0",
+      "canvases": [
+<tmpl_loop name='main_loop'>
+        {
+          "@id": "<tmpl_var name='img_uri'>/c/<tmpl_var name='image_no'>",
+          "@type": "sc:Canvas",
+          "label": "<tmpl_var name='canvas_label'>",
+
+          "height": <tmpl_var name='height'>,
+          "width": <tmpl_var name='width'>,
+          "thumbnail": {
+            "@id": "<tmpl_var name='thumb_uri'>",
+            "format": "image/jpeg"
+          },
+          "images": [
+            {
+              "@id": "<tmpl_var name='img_uri'>/i/<tmpl_var name='image_no'>",
+              "on": "<tmpl_var name='img_uri'>/c/<tmpl_var name='image_no'>",
+              "@type": "oa:Annotation",
+              "@context": "http://iiif.io/api/presentation/2/context.json",
+              "motivation": "sc:painting",
+              "resource": {
+                "@id": "<tmpl_var name='real_max_url'>",
+                "@type": "dctypes:Image",
+                "service": {
+                  "@context":  "http://iiif.io/api/image/2/context.json",
+                  "@id": "<tmpl_var name='img_uri'>",
+                  "profile": "http://iiif.io/api/image/2/level0.json"
+                }
+              }
+            }
+          ]
+        }<tmpl_unless name='__last__'>,</tmpl_unless>
+</tmpl_loop>
+      ]
+    }
+  ]
+}
+
