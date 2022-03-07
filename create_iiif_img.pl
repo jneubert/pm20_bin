@@ -1,7 +1,7 @@
 #!/bin/perl
 # nbt, 31.1.2018
 
-# traverses image share and  folder roots
+# traverses image share and folder roots
 
 use strict;
 use warnings;
@@ -17,11 +17,9 @@ use Path::Tiny;
 $Data::Dumper::Sortkeys = 1;
 
 # TODO different root uri for public/non-public file?
-##my $pm20_root_uri = 'http://pm20.zbw.eu/folder/';
-my $pm20_root_uri = 'http://zbw.eu/beta/tmp/';
-my $iiif_root     = path('../var/iiif/');
-##my $iiif_root       = path('/disc1/pm20/folder');
-my $imagedata_root = path('../var/imagedata');
+my $pm20_root_uri  = 'https://pm20.zbw.eu/folder/';
+my $iiif_root      = path('/pm20/folder');
+my $imagedata_root = path('../data/imagedata');
 
 my %res_ext = (
   A => '_A.JPG',
@@ -81,7 +79,7 @@ foreach my $holding_name ( sort keys %holding ) {
       foreach my $page ( @{ $imagedata_ref->{$folder_id}{docs}{$doc_id}{pg} } )
       {
         my $max_image_fn = get_max_image_fn( $folder_id, $doc_id, $page );
-        my $image_id = substr( $page, 24, 4 );
+        my $image_id     = substr( $page, 24, 4 );
         my $image_uri =
           get_image_uri( $holding_name, $folder_id, $doc_id, $image_id );
         my $image_dir =
@@ -99,7 +97,7 @@ foreach my $holding_name ( sort keys %holding ) {
           $info_tmpl_var{"height_$res"} = $height;
 
           # add rewrite
-          push( @rewrites, { "full" => $real_url } ) if ( $res eq 'A');
+          push( @rewrites, { "full" => $real_url } ) if ( $res eq 'A' );
           push( @rewrites, { "$width,$height" => $real_url } );
           push( @rewrites, { "$width,"        => $real_url } );
         }

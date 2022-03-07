@@ -16,14 +16,14 @@ use Path::Tiny;
 $Data::Dumper::Sortkeys = 1;
 
 ##my $pm20_root_uri = 'http://pm20.zbw.eu/folder/';
-my $pm20_root_uri   = 'http://zbw.eu/beta/tmp/';
+my $pm20_root_uri   = 'https://pm20.zbw.eu/folder/';
 my $folder_root_uri = 'http://purl.org/pressemappe20/folder/';
-my $pdf_root_uri    = 'http://zbw.eu/beta/pm20pdf/';
-my $iiif_root       = path('../var/iiif/');
+my $pdf_root_uri    = 'https://pm20.zbw.eu/pdf/folder/';
+my $iiif_root       = path('../web/folder/');
 ##my $iiif_root       = path('/disc1/pm20/folder');
-my $imagedata_root  = path('../var/imagedata');
-my $docdata_root    = path('../var/docdata');
-my $folderdata_root = path('../var/folderdata');
+my $imagedata_root  = path('../data/imagedata');
+my $docdata_root    = path('../data/docdata');
+my $folderdata_root = path('../data/folderdata');
 my $urlalias_file   = path("$folderdata_root/urlalias.pm20mets.txt");
 
 my %res_ext = (
@@ -214,14 +214,14 @@ sub build_canvases {
 
   my @main_loop;
   my $i = 1;
-  foreach my $doc_id ( sort keys $docdata{free} ) {
+  foreach my $doc_id ( sort keys %{ $docdata{free} } ) {
     my $page_no = 0;
     foreach my $page ( @{ $imagedata{docs}{$doc_id}{pg} } ) {
 
       my $real_max_url =
         get_image_real_url( $holding_name, $folder_id, $doc_id, $page, 'A' );
       my $max_image_fn = get_max_image_fn( $folder_id, $doc_id, $page );
-      my $image_id = substr( $page, 24, 4 );
+      my $image_id     = substr( $page, 24, 4 );
       my $image_uri =
         get_image_uri( $holding_name, $folder_id, $doc_id, $image_id );
       my $image_dir =
