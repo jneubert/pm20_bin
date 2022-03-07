@@ -24,7 +24,6 @@ my $iiif_root       = path('../web/folder/');
 my $imagedata_root  = path('../data/imagedata');
 my $docdata_root    = path('../data/docdata');
 my $folderdata_root = path('../data/folderdata');
-my $urlalias_file   = path("$folderdata_root/urlalias.pm20mets.txt");
 
 my %res_ext = (
   A => '_A.JPG',
@@ -82,23 +81,19 @@ my (
   $docdata_ref,  $imagedata_ref,  $imagesize_ref,  $folderdata_ref
 );
 
-## TODO reaktivate
-# remove old alias file
-##open( my $url_fh, '>', $urlalias_file );
-
-foreach my $holding_name ( sort keys %holding ) {
+foreach my $collection ( sort keys %holding ) {
 
   # TODO reactivate
-  next unless $holding_name eq 'co';
+  next unless $collection eq 'co';
 
   # load input files
-  $docdata_file    = $docdata_root->child("${holding_name}_docdata.json");
+  $docdata_file    = $docdata_root->child("${collection}_docdata.json");
   $docdata_ref     = decode_json( $docdata_file->slurp );
-  $imagedata_file  = $imagedata_root->child("${holding_name}_image.json");
+  $imagedata_file  = $imagedata_root->child("${collection}_image.json");
   $imagedata_ref   = decode_json( $imagedata_file->slurp );
-  $imagesize_file  = $imagedata_root->child("${holding_name}_size.json");
+  $imagesize_file  = $imagedata_root->child("${collection}_size.json");
   $imagesize_ref   = decode_json( $imagesize_file->slurp );
-  $folderdata_file = $folderdata_root->child("${holding_name}_label.json");
+  $folderdata_file = $folderdata_root->child("${collection}_label.json");
   $folderdata_ref  = decode_json( $folderdata_file->slurp );
 
   foreach my $folder_id ( sort keys %{$docdata_ref} ) {
@@ -110,27 +105,26 @@ foreach my $holding_name ( sort keys %holding ) {
     next unless exists $docdata_ref->{$folder_id}{free};
 
     my $label =
-      get_folderlabel( $folder_id, $holding{$holding_name}{type_label} );
-    my $folder_uri =
-      "$folder_root_uri$holding{$holding_name}{prefix}$folder_id";
+      get_folderlabel( $folder_id, $holding{$collection}{type_label} );
+    my $folder_uri = "$folder_root_uri$holding{$collection}{prefix}$folder_id";
     my $pdf_url =
         $pdf_root_uri
-      . "$holding_name/"
+      . "$collection/"
       . get_folder_relative_path($folder_id)
       . "/${folder_id}.pdf";
 
     # create iiif manifest
     my %manifest_tmpl_var = (
       folder_label => $label,
-      manifest_uri => "$pm20_root_uri$holding_name/$folder_id/manifest.json",
+      manifest_uri => "$pm20_root_uri$collection/$folder_id/manifest.json",
       folder_uri   => $folder_uri,
-      main_loop    => build_canvases( $holding_name, $folder_id, $folder_uri ),
+      main_loop    => build_canvases( $collection, $folder_id, $folder_uri ),
     );
     $manifest_tmpl->param( \%manifest_tmpl_var );
-    write_manifest( $holding_name, $folder_id, $manifest_tmpl );
+    write_manifest( $collection, $folder_id, $manifest_tmpl );
 
     # create url aliases for awstats
-    ##print $url_fh "/beta/pm20mets/$holding_name/"
+    ##print $url_fh "/beta/pm20mets/$collection/"
     ##  . get_folder_relative_path($folder_id)
     ##  . "/${folder_id}.xml\t$label\n";
   }
@@ -155,39 +149,39 @@ sub get_max_image_fn {
 }
 
 sub get_image_uri {
-  my $holding_name = shift || die "param missing";
-  my $folder_id    = shift || die "param missing";
-  my $doc_id       = shift || die "param missing";
-  my $image_id     = shift || die "param missing";
+  my $collection = shift || die "param missing";
+  my $folder_id  = shift || die "param missing";
+  my $doc_id     = shift || die "param missing";
+  my $image_id   = shift || die "param missing";
 
-  return "$pm20_root_uri${holding_name}/${folder_id}/${doc_id}/${image_id}";
+  return "$pm20_root_uri${collection}/${folder_id}/${doc_id}/${image_id}";
 }
 
 sub get_image_dir {
-  my $holding_name = shift || die "param missing";
-  my $folder_id    = shift || die "param missing";
-  my $doc_id       = shift || die "param missing";
-  my $image_id     = shift || die "param missing";
+  my $collection = shift || die "param missing";
+  my $folder_id  = shift || die "param missing";
+  my $doc_id     = shift || die "param missing";
+  my $image_id   = shift || die "param missing";
 
   my $image_dir =
-    $iiif_root->child($holding_name)->child($folder_id)->child($doc_id)
+    $iiif_root->child($collection)->child($folder_id)->child($doc_id)
     ->child($image_id);
   $image_dir->mkpath;
   return $image_dir;
 }
 
 sub get_image_real_url {
-  my $holding_name = shift || die "param missing";
-  my $folder_id    = shift || die "param missing";
-  my $doc_id       = shift || die "param missing";
-  my $page         = shift || die "param missing";
-  my $res          = shift || die "param missing";
+  my $collection = shift || die "param missing";
+  my $folder_id  = shift || die "param missing";
+  my $doc_id     = shift || die "param missing";
+  my $page       = shift || die "param missing";
+  my $res        = shift || die "param missing";
 
   my %imagedata = %{ $imagedata_ref->{$folder_id} };
 
   # create url according to dir structure
   my $url =
-      $holding{$holding_name}{url_stub}{ $imagedata{root} }
+      $holding{$collection}{url_stub}{ $imagedata{root} }
     . $imagedata{docs}{$doc_id}{rp} . '/'
     . $page
     . $res_ext{$res};
@@ -205,9 +199,9 @@ sub get_dim {
 }
 
 sub build_canvases {
-  my $holding_name = shift || die "param missing";
-  my $folder_id    = shift || die "param missing";
-  my $folder_uri   = shift || die "param missing";
+  my $collection = shift || die "param missing";
+  my $folder_id  = shift || die "param missing";
+  my $folder_uri = shift || die "param missing";
 
   my %imagedata = %{ $imagedata_ref->{$folder_id} };
   my %docdata   = %{ $docdata_ref->{$folder_id} };
@@ -219,13 +213,13 @@ sub build_canvases {
     foreach my $page ( @{ $imagedata{docs}{$doc_id}{pg} } ) {
 
       my $real_max_url =
-        get_image_real_url( $holding_name, $folder_id, $doc_id, $page, 'A' );
+        get_image_real_url( $collection, $folder_id, $doc_id, $page, 'A' );
       my $max_image_fn = get_max_image_fn( $folder_id, $doc_id, $page );
       my $image_id     = substr( $page, 24, 4 );
       my $image_uri =
-        get_image_uri( $holding_name, $folder_id, $doc_id, $image_id );
+        get_image_uri( $collection, $folder_id, $doc_id, $image_id );
       my $image_dir =
-        get_image_dir( $holding_name, $folder_id, $doc_id, $image_id );
+        get_image_dir( $collection, $folder_id, $doc_id, $image_id );
       my ( $width, $height ) = get_dim( $max_image_fn, 'A' );
       my %entry = (
         image_no     => $page_no,
@@ -246,7 +240,7 @@ sub build_canvases {
 }
 
 sub write_manifest {
-  my $holding_name  = shift || die "param missing";
+  my $collection    = shift || die "param missing";
   my $folder_id     = shift || die "param missing";
   my $manifest_tmpl = shift || die "param missing";
 
@@ -254,7 +248,7 @@ sub write_manifest {
 
   my $json = $manifest_tmpl->output;
 
-  my $manifest_dir = $iiif_root->child($holding_name)->child($folder_id);
+  my $manifest_dir = $iiif_root->child($collection)->child($folder_id);
   $manifest_dir->mkpath;
   my $manifest_file = $manifest_dir->child('manifest.json');
   $manifest_file->spew($json);

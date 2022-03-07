@@ -58,15 +58,15 @@ my $info_tmpl =
 
 my ( $imagedata_file, $imagesize_file, $imagedata_ref, $imagesize_ref, );
 
-foreach my $holding_name ( sort keys %holding ) {
+foreach my $collection ( sort keys %holding ) {
 
   # TODO reactivate
-  next unless $holding_name eq 'co';
+  next unless $collection eq 'co';
 
   # load input files
-  $imagedata_file = $imagedata_root->child("${holding_name}_image.json");
+  $imagedata_file = $imagedata_root->child("${collection}_image.json");
   $imagedata_ref  = decode_json( $imagedata_file->slurp );
-  $imagesize_file = $imagedata_root->child("${holding_name}_size.json");
+  $imagesize_file = $imagedata_root->child("${collection}_size.json");
   $imagesize_ref  = decode_json( $imagesize_file->slurp );
 
   foreach my $folder_id ( sort keys %{$imagedata_ref} ) {
@@ -81,9 +81,9 @@ foreach my $holding_name ( sort keys %holding ) {
         my $max_image_fn = get_max_image_fn( $folder_id, $doc_id, $page );
         my $image_id     = substr( $page, 24, 4 );
         my $image_uri =
-          get_image_uri( $holding_name, $folder_id, $doc_id, $image_id );
+          get_image_uri( $collection, $folder_id, $doc_id, $image_id );
         my $image_dir =
-          get_image_dir( $holding_name, $folder_id, $doc_id, $image_id );
+          get_image_dir( $collection, $folder_id, $doc_id, $image_id );
         my @rewrites;
 
         # create iiif info
@@ -91,8 +91,7 @@ foreach my $holding_name ( sort keys %holding ) {
         foreach my $res ( keys %res_ext ) {
           my ( $width, $height ) = get_dim( $max_image_fn, $res );
           my $real_url =
-            get_image_real_url( $holding_name, $folder_id, $doc_id, $page,
-            $res );
+            get_image_real_url( $collection, $folder_id, $doc_id, $page, $res );
           $info_tmpl_var{"width_$res"}  = $width;
           $info_tmpl_var{"height_$res"} = $height;
 
@@ -131,39 +130,39 @@ sub get_max_image_fn {
 }
 
 sub get_image_dir {
-  my $holding_name = shift || die "param missing";
-  my $folder_id    = shift || die "param missing";
-  my $doc_id       = shift || die "param missing";
-  my $image_id     = shift || die "param missing";
+  my $collection = shift || die "param missing";
+  my $folder_id  = shift || die "param missing";
+  my $doc_id     = shift || die "param missing";
+  my $image_id   = shift || die "param missing";
 
   my $image_dir =
-    $iiif_root->child($holding_name)->child($folder_id)->child($doc_id)
+    $iiif_root->child($collection)->child($folder_id)->child($doc_id)
     ->child($image_id);
   $image_dir->mkpath;
   return $image_dir;
 }
 
 sub get_image_uri {
-  my $holding_name = shift || die "param missing";
-  my $folder_id    = shift || die "param missing";
-  my $doc_id       = shift || die "param missing";
-  my $image_id     = shift || die "param missing";
+  my $collection = shift || die "param missing";
+  my $folder_id  = shift || die "param missing";
+  my $doc_id     = shift || die "param missing";
+  my $image_id   = shift || die "param missing";
 
-  return "$pm20_root_uri${holding_name}/${folder_id}/${doc_id}/${image_id}";
+  return "$pm20_root_uri${collection}/${folder_id}/${doc_id}/${image_id}";
 }
 
 sub get_image_real_url {
-  my $holding_name = shift || die "param missing";
-  my $folder_id    = shift || die "param missing";
-  my $doc_id       = shift || die "param missing";
-  my $page         = shift || die "param missing";
-  my $res          = shift || die "param missing";
+  my $collection = shift || die "param missing";
+  my $folder_id  = shift || die "param missing";
+  my $doc_id     = shift || die "param missing";
+  my $page       = shift || die "param missing";
+  my $res        = shift || die "param missing";
 
   my %imagedata = %{ $imagedata_ref->{$folder_id} };
 
   # create url according to dir structure
   my $url =
-      $holding{$holding_name}{url_stub}{ $imagedata{root} }
+      $holding{$collection}{url_stub}{ $imagedata{root} }
     . $imagedata{docs}{$doc_id}{rp} . '/'
     . $page
     . $res_ext{$res};
