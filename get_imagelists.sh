@@ -3,7 +3,7 @@
 
 # Get all document images from the PM20 file system - use "*_A.JPG" as indicator
 
-DOCIMAGEROOT=/pm20/document
+DOCIMAGEROOT=/pm20/folder
 
 for collection in co pe sh wa ; do
   output=/pm20/data/imagedata/${collection}_image.lst
