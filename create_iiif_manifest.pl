@@ -26,10 +26,11 @@ use ZBW::PM20x::Folder;
 $Data::Dumper::Sortkeys = 1;
 
 Readonly my $PM20_ROOT_URI   => 'https://pm20.zbw.eu/folder/';
+Readonly my $IIIF_ROOT_URI   => 'https://pm20.zbw.eu/iiif/folder/';
 Readonly my $FOLDER_ROOT_URI => 'http://purl.org/pressemappe20/folder/';
 Readonly my $PDF_ROOT_URI    => 'https://pm20.zbw.eu/pdf/folder/';
 ## manifest files exist in the web tree
-Readonly my $IIIF_ROOT       => path('/pm20/iiif/folder/');
+Readonly my $IIIF_ROOT       => path('/pm20/iiif/folder');
 Readonly my $IMAGEDATA_ROOT  => path('/pm20/data/imagedata');
 Readonly my $DOCDATA_ROOT    => path('/pm20/data/docdata');
 Readonly my $FOLDERDATA_ROOT => path('/pm20/data/folderdata');
@@ -40,39 +41,6 @@ Readonly my %RES_EXT         => (
 );
 Readonly my @LANGUAGES   => qw/ en de /;
 Readonly my @COLLECTIONS => qw/ co pe sh wa /;
-
-my %holding = (
-  co => {
-    type_label => 'Firma',
-    prefix     => 'co/',
-    url_stub   => {
-      '/mnt/inst/F' => 'http://webopac.hwwa.de/DigiInst/F/',
-      '/mnt/fors/F' => 'http://webopac.hwwa.de/DigiInst2/F/',
-      '/mnt/pers/A' => 'http://webopac.hwwa.de/DigiInst/A/',
-    },
-  },
-  pe => {
-    type_label => 'Person',
-    prefix     => 'pe/',
-    url_stub   => {
-      '/mnt/digidata/P' => 'http://webopac.hwwa.de/DigiPerson/P/',
-    },
-  },
-  sh => {
-    type_label => 'Sach',
-    prefix     => 'sa/',
-    url_stub   => {
-      '/mnt/sach/S' => 'http://webopac.hwwa.de/DigiSach/S/',
-    },
-  },
-  wa => {
-    type_label => 'Ware',
-    prefix     => 'wa/',
-    url_stub   => {
-      '/mnt/ware/W' => 'http://webopac.hwwa.de/DigiWare/W/',
-    },
-  },
-);
 
 my $tmpl = HTML::Template->new(
   filename          => '../etc/html_tmpl/static_manifest.json.tmpl',
@@ -155,8 +123,17 @@ sub mk_folder {
     my $doclist_ref = $folder->get_doclist($type);
     next unless $doclist_ref and scalar( @{$doclist_ref} ) gt 0;
 
-    foreach my $lang (@LANGUAGES) {
+    my $folder_uri = $folder->get_folder_uri;
+    my %tmpl_var   = (
+      manifest_uri => "${IIIF_ROOT_URI}$collection/$folder_nk/manifest.json",
+      folder_uri   => $folder_uri,
+      main_loop    => build_canvases($folder),
+    );
+
+    #TODO: languages
+    foreach my $lang ('de') {
       my $label = encode_entities_numeric( $folder->get_folderlabel($lang) );
+      $tmpl_var{folder_label} = $label;
 
       # feedback mailto
       my $mailto =
@@ -165,18 +142,12 @@ sub mk_folder {
         . "&amp;body=%0D%0A%0D%0A%0D%0A---%0D%0A"
         . "https://pm20.zbw.eu/dfgview/$collection/$folder_nk";
 
-      my $folder_uri = $folder->get_folder_uri;
-      my %tmpl_var   = (
-        folder_label => $label,
-        manifest_uri => "$PM20_ROOT_URI$collection/$folder_nk/manifest.json",
-        folder_uri   => $folder_uri,
-        main_loop    => build_canvases($folder),
-##        mailto        => $mailto,
-      );
-      $tmpl->param( \%tmpl_var );
-
-      write_manifest( $type, $lang, $folder, $tmpl );
+      ##$tmpl_var{mailto} = $mailto;
     }
+
+    $tmpl->param( \%tmpl_var );
+
+    write_manifest( $type, $folder, $tmpl );
   }
 }
 
@@ -212,18 +183,15 @@ sub get_image_uri {
   my $doc_id     = shift || die "param missing";
   my $image_id   = shift || die "param missing";
 
-  return "$PM20_ROOT_URI${collection}/${folder_nk}/${doc_id}/${image_id}";
+  return "${IIIF_ROOT_URI}$collection/${folder_nk}/${doc_id}/${image_id}";
 }
 
 sub get_image_dir {
-  my $collection = shift || die "param missing";
-  my $folder_nk  = shift || die "param missing";
-  my $doc_id     = shift || die "param missing";
-  my $image_id   = shift || die "param missing";
+  my $folder   = shift || die "param missing";
+  my $doc_id   = shift || die "param missing";
+  my $image_id = shift || die "param missing";
 
-  my $image_dir =
-    $IIIF_ROOT->child($collection)->child($folder_nk)->child($doc_id)
-    ->child($image_id);
+  my $image_dir = get_manifest_dir($folder)->child($doc_id)->child($image_id);
   $image_dir->mkpath;
   return $image_dir;
 }
@@ -255,7 +223,9 @@ sub get_dim {
 sub build_canvases {
   my $folder = shift || die "param missing";
 
-  my $folder_nk = $folder->{nk};
+  my $collection = $folder->{collection};
+  my $folder_nk  = $folder->{folder_nk};
+
   my %imagedata = %{ $imagedata_ref->{$folder_nk} };
   my %docdata   = %{ $docdata_ref->{$folder_nk} };
 
@@ -270,12 +240,11 @@ sub build_canvases {
       my $image_id     = substr( $page, 24, 4 );
       my $image_uri =
         get_image_uri( $collection, $folder_nk, $doc_id, $image_id );
-      my $image_dir =
-        get_image_dir( $collection, $folder_nk, $doc_id, $image_id );
+      my $image_dir = get_image_dir( $folder, $doc_id, $image_id );
       my ( $width, $height ) = get_dim( $max_image_fn, 'A' );
       my %entry = (
         image_no     => $page_no,
-        canvas_label => get_doclabel( $doc_id, $docdata{info}{$doc_id} ),
+        canvas_label => $folder->get_doclabel( 'de', $doc_id ),
         thumb_uri    => "$image_uri/thumbnail.jpg",
         img_uri      => $image_uri,
         real_max_url => $real_max_url,
@@ -291,15 +260,22 @@ sub build_canvases {
   return \@main_loop;
 }
 
+sub get_manifest_dir {
+  my $folder = shift || die "param missing";
+
+  my $dir =
+    $IIIF_ROOT->child( $folder->{collection} )->child( $folder->{folder_nk} );
+  $dir->mkpath;
+
+  return $dir;
+}
+
 sub write_manifest {
   my $type   = shift || die "param missing";
-  my $lang   = shift || die "param missing";
   my $folder = shift || die "param missing";
   my $tmpl   = shift || die "param missing";
 
-  my $hashed_path   = $folder->get_folder_hashed_path();
-  my $manifest_dir  = $IIIF_ROOT->child($hashed_path);
-  my $manifest_file = $manifest_dir->child("$type.manifest.$lang.json");
+  my $manifest_file = get_manifest_dir($folder)->child("$type.manifest.json");
   $manifest_file->spew_utf8( $tmpl->output );
 }
 
@@ -322,49 +298,6 @@ sub get_folderlabel {
       ( split( /::/, $docdata{info}{"00001"}{NFIRM} ) )[1];
   } else {
     $label = "$type_label $folder_nk";
-  }
-  return convert_label($label);
-}
-
-sub get_doclabel {
-  my $doc_id    = shift || die "param missing";
-  my $field_ref = shift || die "param missing";
-
-  my $label;
-  if ( $field_ref->{TIT} ) {
-    ( $label = $field_ref->{TIT} ) =~ s/^t=//;
-    if ( $field_ref->{AUT} ) {
-      ( $label = $field_ref->{AUT} . ": " . $label ) =~ s/^v=//;
-    }
-  }
-  if ( $field_ref->{NQUE} ) {
-    my $src = $field_ref->{NQUE};
-    if ( $field_ref->{DATE} ) {
-      $src = "$src, $field_ref->{DATE}";
-    }
-    if ($label) {
-      $label = "$label ($src)";
-    } else {
-      $label = $src;
-    }
-  }
-  if ( not $label ) {
-    if ( $field_ref->{ART} ) {
-      if ( $field_ref->{ART} =~ m/::.+/ ) {
-        $label = ( split( /::/, $field_ref->{ART} ) )[1] . ' ' . $doc_id;
-      } else {
-        $label = $field_ref->{ART} . ' ' . $doc_id;
-      }
-    } else {
-      $label = "Dok $doc_id";
-    }
-  }
-  if ( $field_ref->{PAG} ) {
-    if ( $field_ref->{PAG} > 1 ) {
-      $label .= " ($field_ref->{PAG} S.)";
-    }
-  } else {
-    warn "Missing PAG for $doc_id: ", Dumper $field_ref;
   }
   return convert_label($label);
 }
