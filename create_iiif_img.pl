@@ -1,10 +1,15 @@
 #!/bin/perl
 # nbt, 31.1.2018
 
-# traverses image share and folder roots
+# traverses image share and folder roots, creates (for each page)
+# - info.json
+# - .htaccess
+# - thumbnail
 
 use strict;
 use warnings;
+
+use lib './lib';
 
 use Data::Dumper;
 use Encode;
@@ -13,44 +18,19 @@ use HTML::Template;
 use Image::Thumbnail;
 use JSON;
 use Path::Tiny;
+use Readonly;
+use ZBW::PM20x::Folder;
 
 $Data::Dumper::Sortkeys = 1;
 
-# TODO different root uri for public/non-public file?
-my $pm20_root_uri  = 'https://pm20.zbw.eu/folder/';
-my $iiif_root      = path('/pm20/folder');
-my $imagedata_root = path('../data/imagedata');
-
-my %res_ext = (
+Readonly my $PM20_ROOT_URI  => 'https://pm20.zbw.eu/folder/';
+Readonly my $IIIF_ROOT      => path('/pm20/iiif/folder/');
+Readonly my $IMAGEDATA_ROOT => path('/pm20/data/imagedata');
+Readonly my @COLLECTIONS    => qw/ co pe sh wa /;
+Readonly my %RES_EXT        => (
   A => '_A.JPG',
   B => '_B.JPG',
   C => '_C.JPG',
-);
-
-my %holding = (
-
-  co => {
-    url_stub => {
-      '/mnt/inst/F' => 'http://webopac.hwwa.de/DigiInst/F/',
-      '/mnt/fors/F' => 'http://webopac.hwwa.de/DigiInst2/F/',
-      '/mnt/pers/A' => 'http://webopac.hwwa.de/DigiInst/A/',
-    },
-  },
-  pe => {
-    url_stub => {
-      '/mnt/digidata/P' => 'http://webopac.hwwa.de/DigiPerson/P/',
-    },
-  },
-  sh => {
-    url_stub => {
-      '/mnt/sach/S' => 'http://webopac.hwwa.de/DigiSach/S/',
-    },
-  },
-  wa => {
-    url_stub => {
-      '/mnt/ware/W' => 'http://webopac.hwwa.de/DigiWare/W/',
-    },
-  },
 );
 
 my $info_tmpl =
@@ -58,40 +38,41 @@ my $info_tmpl =
 
 my ( $imagedata_file, $imagesize_file, $imagedata_ref, $imagesize_ref, );
 
-foreach my $collection ( sort keys %holding ) {
+foreach my $collection (@COLLECTIONS) {
 
   # TODO reactivate
   next unless $collection eq 'co';
 
   # load input files
-  $imagedata_file = $imagedata_root->child("${collection}_image.json");
+  $imagedata_file = $IMAGEDATA_ROOT->child("${collection}_image.json");
   $imagedata_ref  = decode_json( $imagedata_file->slurp );
-  $imagesize_file = $imagedata_root->child("${collection}_size.json");
+  $imagesize_file = $IMAGEDATA_ROOT->child("${collection}_size.json");
   $imagesize_ref  = decode_json( $imagesize_file->slurp );
 
-  foreach my $folder_id ( sort keys %{$imagedata_ref} ) {
+  foreach my $folder_nk ( sort keys %{$imagedata_ref} ) {
 
     # TODO reactivate
-    next unless $folder_id eq "019784";
+    next unless $folder_nk eq "019784";
+    my $folder = ZBW::PM20x::Folder->new( $collection, $folder_nk );
 
-    foreach my $doc_id ( keys %{ $imagedata_ref->{$folder_id}{docs} } ) {
+    foreach my $doc_id ( keys %{ $imagedata_ref->{$folder_nk}{docs} } ) {
 
-      foreach my $page ( @{ $imagedata_ref->{$folder_id}{docs}{$doc_id}{pg} } )
+      foreach my $page ( @{ $imagedata_ref->{$folder_nk}{docs}{$doc_id}{pg} } )
       {
-        my $max_image_fn = get_max_image_fn( $folder_id, $doc_id, $page );
+        my $max_image_fn = get_max_image_fn( $folder_nk, $doc_id, $page );
         my $image_id     = substr( $page, 24, 4 );
         my $image_uri =
-          get_image_uri( $collection, $folder_id, $doc_id, $image_id );
+          get_image_uri( $collection, $folder_nk, $doc_id, $image_id );
         my $image_dir =
-          get_image_dir( $collection, $folder_id, $doc_id, $image_id );
+          get_image_dir( $collection, $folder_nk, $doc_id, $image_id );
+
         my @rewrites;
 
         # create iiif info
         my %info_tmpl_var = ( image_uri => $image_uri, );
-        foreach my $res ( keys %res_ext ) {
+        foreach my $res ( keys %RES_EXT ) {
           my ( $width, $height ) = get_dim( $max_image_fn, $res );
-          my $real_url =
-            get_image_real_url( $collection, $folder_id, $doc_id, $page, $res );
+          my $real_url = get_image_real_url( $folder, $doc_id, $page, $res );
           $info_tmpl_var{"width_$res"}  = $width;
           $info_tmpl_var{"height_$res"} = $height;
 
@@ -117,11 +98,11 @@ foreach my $collection ( sort keys %holding ) {
 ####################
 
 sub get_max_image_fn {
-  my $folder_id = shift || die "param missing";
+  my $folder_nk = shift || die "param missing";
   my $doc_id    = shift || die "param missing";
   my $page      = shift || die "param missing";
 
-  my %imagedata = %{ $imagedata_ref->{$folder_id} };
+  my %imagedata = %{ $imagedata_ref->{$folder_nk} };
 
   return
       $imagedata{root} . '/'
@@ -131,12 +112,12 @@ sub get_max_image_fn {
 
 sub get_image_dir {
   my $collection = shift || die "param missing";
-  my $folder_id  = shift || die "param missing";
+  my $folder_nk  = shift || die "param missing";
   my $doc_id     = shift || die "param missing";
   my $image_id   = shift || die "param missing";
 
   my $image_dir =
-    $iiif_root->child($collection)->child($folder_id)->child($doc_id)
+    $IIIF_ROOT->child($collection)->child($folder_nk)->child($doc_id)
     ->child($image_id);
   $image_dir->mkpath;
   return $image_dir;
@@ -144,28 +125,24 @@ sub get_image_dir {
 
 sub get_image_uri {
   my $collection = shift || die "param missing";
-  my $folder_id  = shift || die "param missing";
+  my $folder_nk  = shift || die "param missing";
   my $doc_id     = shift || die "param missing";
   my $image_id   = shift || die "param missing";
 
-  return "$pm20_root_uri${collection}/${folder_id}/${doc_id}/${image_id}";
+  return "$PM20_ROOT_URI$collection/${folder_nk}/${doc_id}/${image_id}";
 }
 
 sub get_image_real_url {
-  my $collection = shift || die "param missing";
-  my $folder_id  = shift || die "param missing";
-  my $doc_id     = shift || die "param missing";
-  my $page       = shift || die "param missing";
-  my $res        = shift || die "param missing";
-
-  my %imagedata = %{ $imagedata_ref->{$folder_id} };
+  my $folder = shift || die "param missing";
+  my $doc_id = shift || die "param missing";
+  my $page   = shift || die "param missing";
+  my $res    = shift || die "param missing";
 
   # create url according to dir structure
   my $url =
-      $holding{$collection}{url_stub}{ $imagedata{root} }
-    . $imagedata{docs}{$doc_id}{rp} . '/'
-    . $page
-    . $res_ext{$res};
+      $PM20_ROOT_URI
+    . $folder->get_document_hashed_path($doc_id)->child('PIC')
+    ->child( $page . $RES_EXT{$res} );
 
   return $url;
 }
