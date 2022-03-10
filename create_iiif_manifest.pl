@@ -29,10 +29,10 @@ Readonly my $PM20_ROOT_URI   => 'https://pm20.zbw.eu/folder/';
 Readonly my $FOLDER_ROOT_URI => 'http://purl.org/pressemappe20/folder/';
 Readonly my $PDF_ROOT_URI    => 'https://pm20.zbw.eu/pdf/folder/';
 ## manifest files exist in the web tree
-Readonly my $IIIF_ROOT       => path('../web/folder/');
-Readonly my $IMAGEDATA_ROOT  => path('../data/imagedata');
-Readonly my $DOCDATA_ROOT    => path('../data/docdata');
-Readonly my $FOLDERDATA_ROOT => path('../data/folderdata');
+Readonly my $IIIF_ROOT       => path('/pm20/iiif/folder/');
+Readonly my $IMAGEDATA_ROOT  => path('/pm20/data/imagedata');
+Readonly my $DOCDATA_ROOT    => path('/pm20/data/docdata');
+Readonly my $FOLDERDATA_ROOT => path('/pm20/data/folderdata');
 Readonly my %RES_EXT         => (
   A => '_A.JPG',
   B => '_B.JPG',
@@ -170,7 +170,7 @@ sub mk_folder {
         folder_label => $label,
         manifest_uri => "$PM20_ROOT_URI$collection/$folder_nk/manifest.json",
         folder_uri   => $folder_uri,
-        main_loop    => build_canvases( $collection, $folder_nk, $folder_uri ),
+        main_loop    => build_canvases($folder),
 ##        mailto        => $mailto,
       );
       $tmpl->param( \%tmpl_var );
@@ -194,11 +194,11 @@ sub load_files {
 }
 
 sub get_max_image_fn {
-  my $folder_id = shift || die "param missing";
+  my $folder_nk = shift || die "param missing";
   my $doc_id    = shift || die "param missing";
   my $page      = shift || die "param missing";
 
-  my %imagedata = %{ $imagedata_ref->{$folder_id} };
+  my %imagedata = %{ $imagedata_ref->{$folder_nk} };
 
   return
       $imagedata{root} . '/'
@@ -208,41 +208,37 @@ sub get_max_image_fn {
 
 sub get_image_uri {
   my $collection = shift || die "param missing";
-  my $folder_id  = shift || die "param missing";
+  my $folder_nk  = shift || die "param missing";
   my $doc_id     = shift || die "param missing";
   my $image_id   = shift || die "param missing";
 
-  return "$PM20_ROOT_URI${collection}/${folder_id}/${doc_id}/${image_id}";
+  return "$PM20_ROOT_URI${collection}/${folder_nk}/${doc_id}/${image_id}";
 }
 
 sub get_image_dir {
   my $collection = shift || die "param missing";
-  my $folder_id  = shift || die "param missing";
+  my $folder_nk  = shift || die "param missing";
   my $doc_id     = shift || die "param missing";
   my $image_id   = shift || die "param missing";
 
   my $image_dir =
-    $IIIF_ROOT->child($collection)->child($folder_id)->child($doc_id)
+    $IIIF_ROOT->child($collection)->child($folder_nk)->child($doc_id)
     ->child($image_id);
   $image_dir->mkpath;
   return $image_dir;
 }
 
 sub get_image_real_url {
-  my $collection = shift || die "param missing";
-  my $folder_id  = shift || die "param missing";
-  my $doc_id     = shift || die "param missing";
-  my $page       = shift || die "param missing";
-  my $res        = shift || die "param missing";
-
-  my %imagedata = %{ $imagedata_ref->{$folder_id} };
+  my $folder = shift || die "param missing";
+  my $doc_id = shift || die "param missing";
+  my $page   = shift || die "param missing";
+  my $res    = shift || die "param missing";
 
   # create url according to dir structure
   my $url =
-      $holding{$collection}{url_stub}{ $imagedata{root} }
-    . $imagedata{docs}{$doc_id}{rp} . '/'
-    . $page
-    . $RES_EXT{$res};
+      $PM20_ROOT_URI
+    . $folder->get_document_hashed_path($doc_id)->child('PIC')
+    ->child( $page . $RES_EXT{$res} );
 
   return $url;
 }
@@ -257,12 +253,11 @@ sub get_dim {
 }
 
 sub build_canvases {
-  my $collection = shift || die "param missing";
-  my $folder_id  = shift || die "param missing";
-  my $folder_uri = shift || die "param missing";
+  my $folder = shift || die "param missing";
 
-  my %imagedata = %{ $imagedata_ref->{$folder_id} };
-  my %docdata   = %{ $docdata_ref->{$folder_id} };
+  my $folder_nk = $folder->{nk};
+  my %imagedata = %{ $imagedata_ref->{$folder_nk} };
+  my %docdata   = %{ $docdata_ref->{$folder_nk} };
 
   my @main_loop;
   my $i = 1;
@@ -270,14 +265,13 @@ sub build_canvases {
     my $page_no = 0;
     foreach my $page ( @{ $imagedata{docs}{$doc_id}{pg} } ) {
 
-      my $real_max_url =
-        get_image_real_url( $collection, $folder_id, $doc_id, $page, 'A' );
-      my $max_image_fn = get_max_image_fn( $folder_id, $doc_id, $page );
+      my $real_max_url = get_image_real_url( $folder, $doc_id, $page, 'A' );
+      my $max_image_fn = get_max_image_fn( $folder_nk, $doc_id, $page );
       my $image_id     = substr( $page, 24, 4 );
       my $image_uri =
-        get_image_uri( $collection, $folder_id, $doc_id, $image_id );
+        get_image_uri( $collection, $folder_nk, $doc_id, $image_id );
       my $image_dir =
-        get_image_dir( $collection, $folder_id, $doc_id, $image_id );
+        get_image_dir( $collection, $folder_nk, $doc_id, $image_id );
       my ( $width, $height ) = get_dim( $max_image_fn, 'A' );
       my %entry = (
         image_no     => $page_no,
@@ -310,15 +304,15 @@ sub write_manifest {
 }
 
 sub get_folderlabel {
-  my $folder_id  = shift || die "param missing";
+  my $folder_nk  = shift || die "param missing";
   my $type_label = shift || die "param missing";
 
-  my %docdata = %{ $docdata_ref->{$folder_id} };
+  my %docdata = %{ $docdata_ref->{$folder_nk} };
 
   # preferably, get data from folder data
   my $label;
-  if ( exists $folderdata_ref->{$folder_id} ) {
-    $label = $folderdata_ref->{$folder_id};
+  if ( exists $folderdata_ref->{$folder_nk} ) {
+    $label = $folderdata_ref->{$folder_nk};
   } elsif ( exists $docdata{info}{"00001"}{IPERS} ) {
     $label = $docdata{info}{"00001"}{IPERS};
   } elsif ( exists $docdata{info}{"00001"}{NFIRM}
@@ -327,7 +321,7 @@ sub get_folderlabel {
     $label =
       ( split( /::/, $docdata{info}{"00001"}{NFIRM} ) )[1];
   } else {
-    $label = "$type_label $folder_id";
+    $label = "$type_label $folder_nk";
   }
   return convert_label($label);
 }
@@ -385,9 +379,9 @@ sub convert_label {
 }
 
 sub get_folder_relative_path {
-  my $folder_id = shift || die "param missing";
+  my $folder_nk = shift || die "param missing";
 
-  my %imagedata = %{ $imagedata_ref->{$folder_id} };
+  my %imagedata = %{ $imagedata_ref->{$folder_nk} };
 
   my $folder_relative_path;
   foreach my $doc_id ( keys %{ $imagedata{docs} } ) {
