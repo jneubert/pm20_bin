@@ -24,6 +24,7 @@ use ZBW::PM20x::Folder;
 $Data::Dumper::Sortkeys = 1;
 
 Readonly my $PM20_ROOT_URI  => 'https://pm20.zbw.eu/folder/';
+Readonly my $IIIF_ROOT_URI  => 'https://pm20.zbw.eu/iiif/folder/';
 Readonly my $IIIF_ROOT      => path('/pm20/iiif/folder/');
 Readonly my $IMAGEDATA_ROOT => path('/pm20/data/imagedata');
 Readonly my @COLLECTIONS    => qw/ co pe sh wa /;
@@ -129,7 +130,7 @@ sub get_image_uri {
   my $doc_id     = shift || die "param missing";
   my $image_id   = shift || die "param missing";
 
-  return "$PM20_ROOT_URI$collection/${folder_nk}/${doc_id}/${image_id}";
+  return "$IIIF_ROOT_URI$collection/${folder_nk}/${doc_id}/${image_id}";
 }
 
 sub get_image_real_url {
