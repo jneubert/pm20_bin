@@ -466,7 +466,7 @@ sub get_folder_hashed_path {
   return $path;
 }
 
-=item get_dfgview_url ()
+=item get_dfgview_url ( $lang )
 
 Return a URL for the DFG viewer, loading the folder METS file.
 
@@ -481,7 +481,7 @@ sub get_dfgview_url {
   return "$DFGVIEW_URL_STUB/$self->{folder_id}";
 }
 
-=item get_document_hashed_path ()
+=item get_document_hashed_path ( $doc_id )
 
 Return a path fragment for a folder's document with intermediate (hashed)
 directories for web access.
@@ -497,7 +497,7 @@ sub get_document_hashed_path {
   return $path;
 }
 
-=item get_document_hashed_fspath ()
+=item get_document_hashed_fspath ( $doc_id )
 
 Return a path fragment for a folder's document with intermediate (hashed)
 directories for file system access (with additional intermediate dir).
