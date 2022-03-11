@@ -114,7 +114,7 @@ sub mk_folder {
         $info_tmpl_var{"height_$res"} = $height;
 
         # add rewrite
-        push( @rewrites, { "full"           => $real_url } ) if ( $res eq 'A' );
+        push( @rewrites, { "max"            => $real_url } ) if ( $res eq 'A' );
         push( @rewrites, { "$width,$height" => $real_url } );
         push( @rewrites, { "$width,"        => $real_url } );
       }
