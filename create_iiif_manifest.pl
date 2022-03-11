@@ -130,10 +130,11 @@ sub mk_folder {
       main_loop    => build_canvases($folder),
     );
 
-    #TODO: languages
-    foreach my $lang ('de') {
+    foreach my $lang (@LANGUAGES) {
+
+      # label
       my $label = encode_entities_numeric( $folder->get_folderlabel($lang) );
-      $tmpl_var{folder_label} = $label;
+      $tmpl_var{"folder_label_$lang"} = $label;
 
       # feedback mailto
       my $mailto =
@@ -244,7 +245,6 @@ sub build_canvases {
       my ( $width, $height ) = get_dim( $max_image_fn, 'A' );
       my %entry = (
         image_no     => $page_no,
-        canvas_label => $folder->get_doclabel( 'de', $doc_id ),
         thumb_uri    => "$image_uri/thumbnail.jpg",
         img_uri      => $image_uri,
         real_max_url => $real_max_url,
@@ -252,6 +252,12 @@ sub build_canvases {
         height       => $height,
 
       );
+      foreach my $lang (@LANGUAGES) {
+        my $label =
+          encode_entities_numeric( $folder->get_doclabel( $lang, $doc_id ) );
+        $entry{"canvas_label_$lang"} = $label;
+      }
+
       push( @main_loop, \%entry );
       $page_no++;
       $i++;
@@ -277,52 +283,6 @@ sub write_manifest {
 
   my $manifest_file = get_manifest_dir($folder)->child("$type.manifest.json");
   $manifest_file->spew_utf8( $tmpl->output );
-}
-
-sub get_folderlabel {
-  my $folder_nk  = shift || die "param missing";
-  my $type_label = shift || die "param missing";
-
-  my %docdata = %{ $docdata_ref->{$folder_nk} };
-
-  # preferably, get data from folder data
-  my $label;
-  if ( exists $folderdata_ref->{$folder_nk} ) {
-    $label = $folderdata_ref->{$folder_nk};
-  } elsif ( exists $docdata{info}{"00001"}{IPERS} ) {
-    $label = $docdata{info}{"00001"}{IPERS};
-  } elsif ( exists $docdata{info}{"00001"}{NFIRM}
-    and $docdata{info}{"00001"}{NFIRM} =~ m/::.+/ )
-  {
-    $label =
-      ( split( /::/, $docdata{info}{"00001"}{NFIRM} ) )[1];
-  } else {
-    $label = "$type_label $folder_nk";
-  }
-  return convert_label($label);
-}
-
-sub convert_label {
-  my $label = shift || die "param missing";
-
-  $label = Encode::encode( 'utf-8', $label );
-  $label = encode_entities_numeric( $label, '<>&"' );
-
-  return $label;
-}
-
-sub get_folder_relative_path {
-  my $folder_nk = shift || die "param missing";
-
-  my %imagedata = %{ $imagedata_ref->{$folder_nk} };
-
-  my $folder_relative_path;
-  foreach my $doc_id ( keys %{ $imagedata{docs} } ) {
-    my $doc_relative_path = path( $imagedata{docs}{$doc_id}{rp} );
-    $folder_relative_path = $doc_relative_path->parent(4);
-    last;
-  }
-  return $folder_relative_path;
 }
 
 sub usage {
