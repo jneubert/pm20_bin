@@ -40,7 +40,7 @@
   "items": [
 <tmpl_loop name='main_loop'>
     {
-      "id": "<tmpl_var name='img_uri'>/canvas",
+      "id": "<tmpl_var name='canvas_uri'>",
       "type": "Canvas",
       "label": {
         "en": [ "<tmpl_var name='canvas_label_en'>" ],
@@ -77,10 +77,30 @@
                 ]
 
               },
-              "target": "<tmpl_var name='img_uri'>/canvas"
+              "target": "<tmpl_var name='canvas_uri'>"
             }
           ]
         }
+      ]
+    }<tmpl_unless name='__last__'>,</tmpl_unless>
+</tmpl_loop>
+  ],
+  "structures": [
+<tmpl_loop name='doc_loop'>
+    {
+      "id": "<tmpl_var name='doc_uri'>",
+      "type": "Range",
+      "label": {
+        "en": [ "<tmpl_var name='doc_label_en'>" ],
+        "de": [ "<tmpl_var name='doc_label_de'>" ]
+      },
+      "items": [
+<tmpl_loop name="page_loop">
+        {
+          "id": "<tmpl_var name='canvas_uri'>",
+          "type": "Canvas"
+        }<tmpl_unless name='__last__'>,</tmpl_unless>
+</tmpl_loop>
       ]
     }<tmpl_unless name='__last__'>,</tmpl_unless>
 </tmpl_loop>
