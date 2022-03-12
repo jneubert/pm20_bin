@@ -103,7 +103,7 @@ sub mk_folder {
       my $image_uri =
         get_image_uri( $collection, $folder_nk, $doc_id, $page_no );
       my $image_dir =
-        get_image_dir( $collection, $folder_nk, $doc_id, $image_id );
+        get_image_dir( $collection, $folder_nk, $doc_id, $page_no );
 
       my @rewrites;
 
@@ -112,13 +112,14 @@ sub mk_folder {
       foreach my $res ( keys %RES_EXT ) {
         my ( $width, $height ) = get_dim( $max_image_fn, $res );
         my $real_url = get_image_real_url( $folder, $doc_id, $page, $res );
+        ## w,h are here only used for aspect ratio
         $info_tmpl_var{"width_$res"}  = $width;
         $info_tmpl_var{"height_$res"} = $height;
 
-        # add rewrite
+        # add rewrite for .htaccess
         push( @rewrites, { "max"            => $real_url } ) if ( $res eq 'A' );
         push( @rewrites, { "$width,$height" => $real_url } );
-        push( @rewrites, { "$width,"       => $real_url } );
+        push( @rewrites, { "$width,"        => $real_url } );
       }
       $info_tmpl->param( \%info_tmpl_var );
       write_info( $image_dir, $info_tmpl );
@@ -159,11 +160,11 @@ sub get_image_dir {
   my $collection = shift || die "param missing";
   my $folder_nk  = shift || die "param missing";
   my $doc_id     = shift || die "param missing";
-  my $image_id   = shift || die "param missing";
+  my $page_no    = shift || die "param missing";
 
   my $image_dir =
     $IIIF_ROOT->child($collection)->child($folder_nk)->child($doc_id)
-    ->child($image_id);
+    ->child($page_no);
   $image_dir->mkpath;
   return $image_dir;
 }
