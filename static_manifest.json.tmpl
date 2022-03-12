@@ -52,8 +52,7 @@
         {
           "id": "<tmpl_var name='thumb_uri'>",
           "type": "Image",
-          "format": "image/jpeg",
-          "height": 150
+          "format": "image/jpeg"
         }
       ],
       "items": [
@@ -68,13 +67,9 @@
               "body": {
                 "id": "<tmpl_var name='real_max_url'>",
                 "type": "Image",
-                "service": [
-                  {
-                    "id": "<tmpl_var name='img_uri'>",
-                    "type": "ImageService3",
-                    "profile": "level0"
-                  }
-                ]
+                "format": "image/jpeg",
+                "height": <tmpl_var name='height'>,
+                "width": <tmpl_var name='width'>
               },
               "target": "<tmpl_var name='img_uri'>/c/<tmpl_var name='image_no'>"
             }
