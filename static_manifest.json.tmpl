@@ -46,8 +46,8 @@
         "en": [ "<tmpl_var name='canvas_label_en'>" ],
         "de": [ "<tmpl_var name='canvas_label_de'>" ]
       },
-      "height": <tmpl_var name='height'>,
       "width": <tmpl_var name='width'>,
+      "height": <tmpl_var name='height'>,
       "thumbnail": [
         {
           "id": "<tmpl_var name='thumb_uri'>",
@@ -68,8 +68,14 @@
                 "id": "<tmpl_var name='real_max_url'>",
                 "type": "Image",
                 "format": "image/jpeg",
-                "height": <tmpl_var name='height'>,
-                "width": <tmpl_var name='width'>
+                "service": [
+                  {
+                    "id": "<tmpl_var name='img_uri'>",
+                   "type": "ImageService3",
+                    "profile": "level0"
+                  }
+                ]
+
               },
               "target": "<tmpl_var name='img_uri'>/canvas"
             }
