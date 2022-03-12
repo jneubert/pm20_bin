@@ -112,7 +112,6 @@ sub mk_folder {
       foreach my $res ( keys %RES_EXT ) {
         my ( $width, $height ) = get_dim( $max_image_fn, $res );
         my $real_url = get_image_real_url( $folder, $doc_id, $page, $res );
-        ## w,h are here only used for aspect ratio
         $info_tmpl_var{"width_$res"}  = $width;
         $info_tmpl_var{"height_$res"} = $height;
 

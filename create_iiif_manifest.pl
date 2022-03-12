@@ -16,7 +16,7 @@ use lib './lib';
 
 use Data::Dumper;
 use Encode;
-use HTML::Entities qw(encode_entities_numeric);
+use HTML::Entities;
 use HTML::Template;
 use JSON;
 use Path::Tiny;
@@ -124,16 +124,18 @@ sub mk_folder {
     next unless $doclist_ref and scalar( @{$doclist_ref} ) gt 0;
 
     my $folder_uri = $folder->get_folder_uri;
-    my %tmpl_var   = (
+    my ( $main_loop_ref, $doc_loop_ref ) = build_canvases($folder);
+    my %tmpl_var = (
       manifest_uri => "${IIIF_ROOT_URI}$collection/$folder_nk/manifest.json",
       folder_uri   => $folder_uri,
-      main_loop    => build_canvases($folder),
+      main_loop    => $main_loop_ref,
+      doc_loop     => $doc_loop_ref,
     );
 
     foreach my $lang (@LANGUAGES) {
 
       # label
-      my $label = encode_entities_numeric( $folder->get_folderlabel($lang) );
+      my $label = decode_entities( $folder->get_folderlabel($lang) );
       $tmpl_var{"folder_label_$lang"} = $label;
 
       # feedback mailto
@@ -178,14 +180,23 @@ sub get_max_image_fn {
     . "/${page}_A.JPG";
 }
 
+sub get_doc_uri {
+  my $collection = shift || die "param missing";
+  my $folder_nk  = shift || die "param missing";
+  my $doc_id     = shift || die "param missing";
+
+  return "${IIIF_ROOT_URI}$collection/${folder_nk}/${doc_id}";
+}
+
 sub get_image_uri {
   my $collection = shift || die "param missing";
   my $folder_nk  = shift || die "param missing";
   my $doc_id     = shift || die "param missing";
   my $page_no    = shift || die "param missing";
 
+  my $doc_uri = get_doc_uri( $collection, $folder_nk, $doc_id );
   $page_no = sprintf( "%04d", $page_no );
-  return "${IIIF_ROOT_URI}$collection/${folder_nk}/${doc_id}/${page_no}";
+  return "$doc_uri/${page_no}";
 }
 
 sub get_image_dir {
@@ -232,8 +243,16 @@ sub build_canvases {
   my %docdata   = %{ $docdata_ref->{$folder_nk} };
 
   my @main_loop;
-  my $i = 1;
+  my @doc_loop;
   foreach my $doc_id ( sort keys %{ $docdata{free} } ) {
+
+    my @page_loop;
+    my %doc_entry =
+      ( doc_uri => get_doc_uri( $collection, $folder_nk, $doc_id ), );
+    foreach my $lang (@LANGUAGES) {
+      my $label = decode_entities( $folder->get_doclabel( $lang, $doc_id ) );
+      $doc_entry{"doc_label_$lang"} = $label;
+    }
 
     # cannot be enumerated independently from file names, because in
     # create_iiif_img.pl only file names are available!
@@ -244,13 +263,16 @@ sub build_canvases {
       my $max_image_fn = get_max_image_fn( $folder_nk, $doc_id, $page );
       my $image_id     = substr( $page, 24, 4 );
       ## file name is 0 based; start page numbers with 1
-      my $page_no = sprintf( "%04d", $image_id + 1 );
+      my $page_no = $image_id + 1;
 
       my $image_uri =
         get_image_uri( $collection, $folder_nk, $doc_id, $page_no );
-      my $image_dir = get_image_dir( $folder, $doc_id, $image_id );
+      my $canvas_uri = "$image_uri/canvas";
+      my $image_dir  = get_image_dir( $folder, $doc_id, $image_id );
+      ## w,h are here only used for aspect ratio
       my ( $width, $height ) = get_dim( $max_image_fn, 'A' );
       my %entry = (
+        canvas_uri   => $canvas_uri,
         thumb_uri    => "$image_uri/thumbnail.jpg",
         img_uri      => $image_uri,
         real_max_url => $real_max_url,
@@ -258,17 +280,22 @@ sub build_canvases {
         height       => $height,
 
       );
+
       foreach my $lang (@LANGUAGES) {
-        my $label =
-          encode_entities_numeric( $folder->get_doclabel( $lang, $doc_id ) );
+        my $label = $lang eq 'en' ? 'p. ' : 'S. ';
+        $label .= "$page_no ("
+          . decode_entities( $folder->get_doclabel( $lang, $doc_id ) ) . ')';
         $entry{"canvas_label_$lang"} = $label;
       }
 
       push( @main_loop, \%entry );
+      push( @page_loop, { canvas_uri => $canvas_uri } );
       ##$page_no++;
     }
+    $doc_entry{page_loop} = \@page_loop;
+    push( @doc_loop, \%doc_entry );
   }
-  return \@main_loop;
+  return \@main_loop, \@doc_loop;
 }
 
 sub get_manifest_dir {
