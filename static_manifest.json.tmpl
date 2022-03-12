@@ -40,7 +40,7 @@
   "items": [
 <tmpl_loop name='main_loop'>
     {
-      "id": "<tmpl_var name='img_uri'>/c/<tmpl_var name='image_no'>",
+      "id": "<tmpl_var name='img_uri'>/canvas",
       "type": "Canvas",
       "label": {
         "en": [ "<tmpl_var name='canvas_label_en'>" ],
@@ -57,11 +57,11 @@
       ],
       "items": [
         {
-          "id": "<tmpl_var name='img_uri'>/ap/<tmpl_var name='image_no'>",
+          "id": "<tmpl_var name='img_uri'>/ap",
           "type": "AnnotationPage",
           "items": [
             {
-              "id": "<tmpl_var name='img_uri'>/a/<tmpl_var name='image_no'>",
+              "id": "<tmpl_var name='img_uri'>/a",
               "type": "Annotation",
               "motivation": "painting",
               "body": {
@@ -71,7 +71,7 @@
                 "height": <tmpl_var name='height'>,
                 "width": <tmpl_var name='width'>
               },
-              "target": "<tmpl_var name='img_uri'>/c/<tmpl_var name='image_no'>"
+              "target": "<tmpl_var name='img_uri'>/canvas"
             }
           ]
         }
