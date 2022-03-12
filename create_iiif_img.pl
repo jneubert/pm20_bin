@@ -98,8 +98,10 @@ sub mk_folder {
     foreach my $page ( @{ $imagedata_ref->{$folder_nk}{docs}{$doc_id}{pg} } ) {
       my $max_image_fn = get_max_image_fn( $folder_nk, $doc_id, $page );
       my $image_id     = substr( $page, 24, 4 );
+      ## file name is 0 based; start page numbers with 1
+      my $page_no = sprintf( "%04d", $image_id + 1 );
       my $image_uri =
-        get_image_uri( $collection, $folder_nk, $doc_id, $image_id );
+        get_image_uri( $collection, $folder_nk, $doc_id, $page_no );
       my $image_dir =
         get_image_dir( $collection, $folder_nk, $doc_id, $image_id );
 
@@ -110,13 +112,13 @@ sub mk_folder {
       foreach my $res ( keys %RES_EXT ) {
         my ( $width, $height ) = get_dim( $max_image_fn, $res );
         my $real_url = get_image_real_url( $folder, $doc_id, $page, $res );
-        $info_tmpl_var{"width_$res"}  = $width;
         $info_tmpl_var{"height_$res"} = $height;
+        $info_tmpl_var{"width_$res"}  = $width;
 
         # add rewrite
         push( @rewrites, { "max"            => $real_url } ) if ( $res eq 'A' );
-        push( @rewrites, { "$width,$height" => $real_url } );
-        push( @rewrites, { "$width,"        => $real_url } );
+        push( @rewrites, { "$height,$width" => $real_url } );
+        push( @rewrites, { "$height,"       => $real_url } );
       }
       $info_tmpl->param( \%info_tmpl_var );
       write_info( $image_dir, $info_tmpl );
@@ -170,9 +172,9 @@ sub get_image_uri {
   my $collection = shift || die "param missing";
   my $folder_nk  = shift || die "param missing";
   my $doc_id     = shift || die "param missing";
-  my $image_id   = shift || die "param missing";
+  my $page_no    = shift || die "param missing";
 
-  return "$IIIF_ROOT_URI$collection/${folder_nk}/${doc_id}/${image_id}";
+  return "$IIIF_ROOT_URI$collection/${folder_nk}/${doc_id}/${page_no}";
 }
 
 sub get_image_real_url {

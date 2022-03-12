@@ -182,9 +182,10 @@ sub get_image_uri {
   my $collection = shift || die "param missing";
   my $folder_nk  = shift || die "param missing";
   my $doc_id     = shift || die "param missing";
-  my $image_id   = shift || die "param missing";
+  my $page_no    = shift || die "param missing";
 
-  return "${IIIF_ROOT_URI}$collection/${folder_nk}/${doc_id}/${image_id}";
+  $page_no = sprintf( "%04d", $page_no );
+  return "${IIIF_ROOT_URI}$collection/${folder_nk}/${doc_id}/${page_no}";
 }
 
 sub get_image_dir {
@@ -233,18 +234,23 @@ sub build_canvases {
   my @main_loop;
   my $i = 1;
   foreach my $doc_id ( sort keys %{ $docdata{free} } ) {
-    my $page_no = 0;
+
+    # cannot be enumerated independently from file names, because in
+    # create_iiif_img.pl only file names are available!
+    ##my $page_no = 1;
     foreach my $page ( @{ $imagedata{docs}{$doc_id}{pg} } ) {
 
       my $real_max_url = get_image_real_url( $folder, $doc_id, $page, 'A' );
       my $max_image_fn = get_max_image_fn( $folder_nk, $doc_id, $page );
       my $image_id     = substr( $page, 24, 4 );
+      ## file name is 0 based; start page numbers with 1
+      my $page_no = sprintf( "%04d", $image_id + 1 );
+
       my $image_uri =
-        get_image_uri( $collection, $folder_nk, $doc_id, $image_id );
+        get_image_uri( $collection, $folder_nk, $doc_id, $page_no );
       my $image_dir = get_image_dir( $folder, $doc_id, $image_id );
       my ( $width, $height ) = get_dim( $max_image_fn, 'A' );
       my %entry = (
-        image_no     => $page_no,
         thumb_uri    => "$image_uri/thumbnail.jpg",
         img_uri      => $image_uri,
         real_max_url => $real_max_url,
@@ -259,8 +265,7 @@ sub build_canvases {
       }
 
       push( @main_loop, \%entry );
-      $page_no++;
-      $i++;
+      ##$page_no++;
     }
   }
   return \@main_loop;
