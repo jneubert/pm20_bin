@@ -112,13 +112,13 @@ sub mk_folder {
       foreach my $res ( keys %RES_EXT ) {
         my ( $width, $height ) = get_dim( $max_image_fn, $res );
         my $real_url = get_image_real_url( $folder, $doc_id, $page, $res );
-        $info_tmpl_var{"height_$res"} = $height;
         $info_tmpl_var{"width_$res"}  = $width;
+        $info_tmpl_var{"height_$res"} = $height;
 
         # add rewrite
         push( @rewrites, { "max"            => $real_url } ) if ( $res eq 'A' );
-        push( @rewrites, { "$height,$width" => $real_url } );
-        push( @rewrites, { "$height,"       => $real_url } );
+        push( @rewrites, { "$width,$height" => $real_url } );
+        push( @rewrites, { "$width,"       => $real_url } );
       }
       $info_tmpl->param( \%info_tmpl_var );
       write_info( $image_dir, $info_tmpl );
