@@ -19,10 +19,10 @@ use ZBW::PM20x::Vocab;
 
 Readonly my $FOLDER_URI_ROOT  => 'http://purl.org/pressemappe20/folder/';
 Readonly our $FOLDER_ROOT     => path('/pm20/folder');
-Readonly our $FOLDERDATA_FILE => path('../data/rdf/pm20.extended.jsonld');
+Readonly our $FOLDERDATA_FILE => path('/pm20/data/rdf/pm20.extended.jsonld');
 ##Readonly our $FOLDERDATA_FILE =>
 ##  path('../data/rdf/pm20.extended.examples.jsonld');
-Readonly our $DOCDATA_ROOT     => path('../data/docdata');
+Readonly our $DOCDATA_ROOT     => path('/pm20/data/docdata');
 Readonly our @ACCESS_TYPES     => qw/ public intern /;
 Readonly our $URI_STUB         => 'http://purl.org/pressemappe20/folder';
 Readonly our $DFGVIEW_URL_STUB => 'https://pm20.zbw.eu/dfgview';

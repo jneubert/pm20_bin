@@ -180,12 +180,19 @@ sub get_max_image_fn {
     . "/${page}_A.JPG";
 }
 
-sub get_doc_uri {
+sub get_doc_range_uri {
   my $collection = shift || die "param missing";
   my $folder_nk  = shift || die "param missing";
   my $doc_id     = shift || die "param missing";
 
   return "${IIIF_ROOT_URI}$collection/${folder_nk}/${doc_id}";
+}
+
+sub get_document_uri {
+  my $folder = shift || die "param missing";
+  my $doc_id = shift || die "param missing";
+
+  return $folder->get_folder_uri . "/$doc_id";
 }
 
 sub get_image_uri {
@@ -194,7 +201,7 @@ sub get_image_uri {
   my $doc_id     = shift || die "param missing";
   my $page_no    = shift || die "param missing";
 
-  my $doc_uri = get_doc_uri( $collection, $folder_nk, $doc_id );
+  my $doc_uri = get_doc_range_uri( $collection, $folder_nk, $doc_id );
   $page_no = sprintf( "%04d", $page_no );
   return "$doc_uri/${page_no}";
 }
@@ -247,8 +254,10 @@ sub build_canvases {
   foreach my $doc_id ( sort keys %{ $docdata{free} } ) {
 
     my @page_loop;
-    my %doc_entry =
-      ( doc_uri => get_doc_uri( $collection, $folder_nk, $doc_id ), );
+    my %doc_entry = (
+      doc_range_uri => get_doc_range_uri( $collection, $folder_nk, $doc_id ),
+      document_uri  => get_document_uri( $folder, $doc_id ),
+    );
     foreach my $lang (@LANGUAGES) {
       my $label = decode_entities( $folder->get_doclabel( $lang, $doc_id ) );
       $doc_entry{"doc_label_$lang"} = $label;
