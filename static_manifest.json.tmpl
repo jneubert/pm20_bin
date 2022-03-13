@@ -88,8 +88,14 @@
   "structures": [
 <tmpl_loop name='doc_loop'>
     {
-      "id": "<tmpl_var name='doc_uri'>",
+      "id": "<tmpl_var name='doc_range_uri'>",
       "type": "Range",
+      "requiredStatement": [
+        {
+          "label": { "none": [ "Persistent document URI" ] },
+          "value": { "none": [ "<tmpl_var name='document_uri'>" ] }
+        }
+      ],
       "label": {
         "en": [ "<tmpl_var name='doc_label_en'>" ],
         "de": [ "<tmpl_var name='doc_label_de'>" ]
