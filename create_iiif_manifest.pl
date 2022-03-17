@@ -119,12 +119,13 @@ sub mk_folder {
 
   foreach my $type ( 'public', 'intern' ) {
 
-    # get document list, skip if empty
-    my $doclist_ref = $folder->get_doclist($type);
-    next unless $doclist_ref and scalar( @{$doclist_ref} ) gt 0;
-
     my $folder_uri = $folder->get_folder_uri;
-    my ( $main_loop_ref, $doc_loop_ref ) = build_canvases($folder);
+
+    # get page and document structures
+    my ( $main_loop_ref, $doc_loop_ref ) = build_canvases( $folder, $type );
+    ## skip if empty
+    next if scalar(@$main_loop_ref) < 1;
+
     my %tmpl_var = (
       manifest_uri => "${IIIF_ROOT_URI}$collection/$folder_nk/manifest.json",
       folder_uri   => $folder_uri,
@@ -242,16 +243,17 @@ sub get_dim {
 
 sub build_canvases {
   my $folder = shift || die "param missing";
+  my $type   = shift || die "param missing";
 
   my $collection = $folder->{collection};
   my $folder_nk  = $folder->{folder_nk};
 
   my %imagedata = %{ $imagedata_ref->{$folder_nk} };
-  my %docdata   = %{ $docdata_ref->{$folder_nk} };
 
   my @main_loop;
   my @doc_loop;
-  foreach my $doc_id ( sort keys %{ $docdata{free} } ) {
+  my $doclist_ref = $folder->get_doclist($type);
+  foreach my $doc_id ( sort @{$doclist_ref} ) {
 
     my @page_loop;
     my %doc_entry = (
