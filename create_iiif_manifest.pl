@@ -196,6 +196,16 @@ sub get_document_uri {
   return $folder->get_folder_uri . "/$doc_id";
 }
 
+sub get_page_uri {
+  my $folder  = shift || die "param missing";
+  my $doc_id  = shift || die "param missing";
+  my $page_no = shift || die "param missing";
+
+  my $doc_uri = get_document_uri( $folder, $doc_id );
+  $page_no = sprintf( "%04d", $page_no );
+  return "$doc_uri/$page_no";
+}
+
 sub get_image_uri {
   my $collection = shift || die "param missing";
   my $folder_nk  = shift || die "param missing";
@@ -276,15 +286,22 @@ sub build_canvases {
       ## file name is 0 based; start page numbers with 1
       my $page_no = $image_id + 1;
 
+      # document uri on doc_loop/image_range structure is not displayed by
+      # Universal viewer, therefore it is added here on the canvas level
+      my $document_uri = $doc_entry{document_uri};
+      my $page_uri = get_page_uri( $folder, $doc_id, $page_no );
       my $image_uri =
         get_image_uri( $collection, $folder_nk, $doc_id, $page_no );
       my $canvas_uri = "$image_uri/canvas";
       my $image_dir  = get_image_dir( $folder, $doc_id, $image_id );
       ## w,h are here only used for aspect ratio
       my ( $width, $height ) = get_dim( $max_image_fn, 'A' );
+
       my %entry = (
         canvas_uri   => $canvas_uri,
         thumb_uri    => "$image_uri/thumbnail.jpg",
+        document_uri => $doc_entry{document_uri},
+        page_uri     => $page_uri,
         img_uri      => $image_uri,
         real_max_url => $real_max_url,
         width        => $width,
