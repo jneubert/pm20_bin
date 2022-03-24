@@ -16,6 +16,12 @@
       "de": [ "Bereitgestellt von ZBW - Leibniz Informationszentrum Wirtschaft" ]
     }
   },
+  "metadata": [
+    {
+      "label": { "en": [ "Folder home (persistent URI)" ], "de" : [ "Mappen Homepage (persistente URI)" ] },
+      "value": { "none": [ "<a href='<tmpl_var name='folder_uri'>'><tmpl_var name='folder_uri'>" ] }
+    }
+  ],
   "provider": [
     {
       "id": "https://www.zbw.eu",
@@ -55,6 +61,16 @@
           "format": "image/jpeg"
         }
       ],
+      "metadata": [
+        {
+          "label": { "en": [ "Persistent document URI" ], "de" : [ "Persistente Dokument-URI" ] },
+          "value": { "none": [ "<tmpl_var name='document_uri'>" ] }
+        },
+        {
+          "label": { "en": [ "Persistent page URI" ], "de" : [ "Persistente Seiten-URI" ] },
+          "value": { "none": [ "<tmpl_var name='page_uri'>" ] }
+        }
+      ],
       "items": [
         {
           "id": "<tmpl_var name='img_uri'>/ap",
@@ -90,9 +106,9 @@
     {
       "id": "<tmpl_var name='doc_range_uri'>",
       "type": "Range",
-      "requiredStatement": [
+      "metadata": [
         {
-          "label": { "none": [ "Persistent document URI" ] },
+          "label": { "en": [ "Persistent document URI" ], "de" : [ "Persistente Dokumenten-URI" ] },
           "value": { "none": [ "<tmpl_var name='document_uri'>" ] }
         }
       ],
