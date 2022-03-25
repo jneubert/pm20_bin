@@ -162,6 +162,8 @@ sub mk_folder {
     if ( $collection eq 'wa' ) {
       $backlink = '../../' . $backlink;
     }
+    my $x_canonical = $folder->get_folder_uri;
+    $x_canonical =~ s;http://purl.org/pressemappe20/;https://pm20.zbw.eu/;;
 
     my %tmpl_var = (
       "is_$lang"     => 1,
@@ -169,6 +171,7 @@ sub mk_folder {
       coll           => $collection_title,
       label          => $label,
       folder_uri     => $folder->get_folder_uri,
+      x_canonical    => $x_canonical,
       dfgview_url    => $folder->get_dfgview_url,
       fid            => "$collection/$folder_nk",
       backlink       => $backlink,
