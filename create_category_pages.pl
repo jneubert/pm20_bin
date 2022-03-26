@@ -403,6 +403,7 @@ sub output_category_page {
     modified        => last_modified( $master_voc, $detail_voc ),
     backlink        => "../../about.$lang.html",
     backlink_title  => $backlinktitle,
+    x_canonical     => get_canonical( $category_type, $signature ),
     provenance      => $provenance,
     wdlink          => $master_voc->wdlink($id),
     folder_count1   => $count_ref->{folder_count_first},
@@ -497,3 +498,14 @@ sub last_modified {
 
   return $last_modified;
 }
+
+sub get_canonical {
+  my $category_type = shift or croak('param missing');
+  my $signature     = shift or croak('param missing');
+
+  ( my $sig = $signature ) =~ s/ /_/g;
+  my $x_canonical = "https://pm20.zbw.eu/category/$category_type/s/$sig";
+
+  return $x_canonical;
+}
+
