@@ -163,6 +163,7 @@ sub mk_collectionlist {
           $tmpl_var{backlink}       = "about.$lang.html";
           $tmpl_var{backlink_title} = $label;
           $tmpl_var{fn_stub}        = 'without_docs';
+          $tmpl_var{robots}         = 'nofollow';
         }
       }
       if ( $collection eq 'wa' ) {
