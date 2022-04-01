@@ -26,6 +26,7 @@ $Data::Dumper::Sortkeys = 1;
 
 Readonly my $FOLDER_DATA    => path('/pm20/data/rdf/pm20.extended.jsonld');
 Readonly my $FOLDER_ROOT    => $ZBW::PM20x::Folder::FOLDER_ROOT;
+Readonly my $URL_DATA_ROOT  => path('/pm20/data/folderdata');
 Readonly my $FOLDER_WEBROOT => path('/pm20/web/folder');
 Readonly my %TITLE          => %{ YAML::LoadFile('archive_titles.yaml') };
 Readonly my @COLLECTIONS    => qw/ co pe sh wa /;
@@ -112,14 +113,21 @@ sub mk_all {
 sub mk_collection {
   my $collection = shift or die "param missing";
 
+  my @pages_for_sitemap;
   foreach my $folder_nk ( sort @{ $collection_ids{$collection} } ) {
-    mk_folder( $collection, $folder_nk );
+    mk_folder( $collection, $folder_nk, \@pages_for_sitemap );
   }
+
+  # write a list of pages to index for Google etc.
+  # (used in create_sitemap.pl
+  $URL_DATA_ROOT->child("${collection}_for_sitemap.lst")
+    ->spew( join( "\n", @pages_for_sitemap ) );
 }
 
 sub mk_folder {
   my $collection = shift || die "param missing";
   my $folder_nk  = shift || die "param missing";
+  my $pages_for_sitemap_ref  = shift || die "param missing";
 
   my $folder = ZBW::PM20x::Folder->new( $collection, $folder_nk );
 
@@ -134,7 +142,7 @@ sub mk_folder {
   my $folder_dir = $FOLDER_WEBROOT->child($rel_path);
   $folder_dir->mkpath;
 
-  # TODO type public/intern
+  # TODO type public/intern (currently not necessary)
   my $type           = 'dummy';
   my $folderdata_raw = $folder->get_folderdata_raw;
   #
@@ -246,7 +254,15 @@ sub mk_folder {
     ##print Dumper \%tmpl_var;
 
     # write  file for the folder
-    write_page( $type, $lang, $folder, $tmpl );
+    my $fn = write_page( $type, $lang, $folder, $tmpl );
+
+    # collect URLs of pages to add in sitemap
+    if ($tmpl_var{'doc_counts'}) {
+      $fn =~ s/\.md$/.html/;
+      $fn =~ s|/pm20/web/|./|;
+      push(@{$pages_for_sitemap_ref}, "$fn");
+    }
+
   }
 }
 
@@ -288,6 +304,8 @@ sub write_page {
 
   $page_file->spew_utf8($lines);
   ##print "written $page_file\n";
+
+  return $page_file;
 }
 
 sub get_field_values {
