@@ -260,21 +260,16 @@ sub build_canvases {
 
   my %imagedata = %{ $imagedata_ref->{$folder_nk} };
 
+  my %doc_info;
   my @main_loop;
   my @doc_loop;
   my $doclist_ref = $folder->get_doclist($type);
   foreach my $doc_id ( sort @{$doclist_ref} ) {
 
     my @page_loop;
+    my %doc_info  = %{ get_doc_info( $folder, $doc_id ) };
     my %doc_entry = (
-      doc_range_uri => get_doc_range_uri( $collection, $folder_nk, $doc_id ),
-      document_uri  => get_document_uri( $folder, $doc_id ),
-    );
-    foreach my $lang (@LANGUAGES) {
-      my $label =
-        decode_entities( $folder->get_doclabel( $lang, $doc_id, 'short' ) );
-      $doc_entry{"doc_label_$lang"} = $label;
-    }
+      doc_range_uri => get_doc_range_uri( $collection, $folder_nk, $doc_id ) );
 
     # cannot be enumerated independently from file names, because in
     # create_iiif_img.pl only file names are available!
@@ -301,7 +296,7 @@ sub build_canvases {
       my %entry = (
         canvas_uri   => $canvas_uri,
         thumb_uri    => "$image_uri/thumbnail.jpg",
-        document_uri => $doc_entry{document_uri},
+        document_uri => $doc_info{document_uri},
         page_uri     => $page_uri,
         img_uri      => $image_uri,
         real_max_url => $real_max_url,
@@ -315,16 +310,16 @@ sub build_canvases {
             ( $lang eq 'en' ? 'p. ' : 'S. ' )
           . $page_no
           . ( $lang eq 'en' ? ' of ' : ' von ' )
-          . decode_entities( $folder->get_doclabel( $lang, $doc_id, 'short' ) );
+          . decode_entities( $doc_info{"doc_label_$lang"} );
         $entry{"canvas_label_$lang"} = $label;
       }
 
-      push( @main_loop, \%entry );
+      push( @main_loop, { %entry, %doc_info } );
       push( @page_loop, { canvas_uri => $canvas_uri } );
       ##$page_no++;
     }
     $doc_entry{page_loop} = \@page_loop;
-    push( @doc_loop, \%doc_entry );
+    push( @doc_loop, { %doc_entry, %doc_info } );
   }
   return \@main_loop, \@doc_loop;
 }
@@ -337,6 +332,21 @@ sub get_manifest_dir {
   $dir->mkpath;
 
   return $dir;
+}
+
+sub get_doc_info {
+  my $folder = shift || die "param missing";
+  my $doc_id = shift || die "param missing";
+
+  my %doc_info;
+  $doc_info{document_uri} = get_document_uri( $folder, $doc_id );
+  foreach my $lang (@LANGUAGES) {
+    my $label =
+      decode_entities( $folder->get_doclabel( $lang, $doc_id, 'short' ) );
+    $doc_info{"doc_label_$lang"} = $label;
+  }
+
+  return \%doc_info;
 }
 
 sub write_manifest {
