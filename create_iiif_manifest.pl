@@ -271,7 +271,8 @@ sub build_canvases {
       document_uri  => get_document_uri( $folder, $doc_id ),
     );
     foreach my $lang (@LANGUAGES) {
-      my $label = decode_entities( $folder->get_doclabel( $lang, $doc_id ) );
+      my $label =
+        decode_entities( $folder->get_doclabel( $lang, $doc_id, 'short' ) );
       $doc_entry{"doc_label_$lang"} = $label;
     }
 
@@ -289,7 +290,7 @@ sub build_canvases {
       # document uri on doc_loop/image_range structure is not displayed by
       # Universal viewer, therefore it is added here on the canvas level
       my $document_uri = $doc_entry{document_uri};
-      my $page_uri = get_page_uri( $folder, $doc_id, $page_no );
+      my $page_uri     = get_page_uri( $folder, $doc_id, $page_no );
       my $image_uri =
         get_image_uri( $collection, $folder_nk, $doc_id, $page_no );
       my $canvas_uri = "$image_uri/canvas";
@@ -310,9 +311,11 @@ sub build_canvases {
       );
 
       foreach my $lang (@LANGUAGES) {
-        my $label = $lang eq 'en' ? 'p. ' : 'S. ';
-        $label .= "$page_no ("
-          . decode_entities( $folder->get_doclabel( $lang, $doc_id ) ) . ')';
+        my $label =
+            ( $lang eq 'en' ? 'p. ' : 'S. ' )
+          . $page_no
+          . ( $lang eq 'en' ? ' of ' : ' von ' )
+          . decode_entities( $folder->get_doclabel( $lang, $doc_id, 'short' ) );
         $entry{"canvas_label_$lang"} = $label;
       }
 

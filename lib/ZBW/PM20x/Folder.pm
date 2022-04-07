@@ -379,30 +379,32 @@ document info.
 =cut
 
 sub get_doclabel {
-  my $self   = shift or croak('param missing');
-  my $lang   = shift or croak('param missing');
-  my $doc_id = shift or croak('param missing');
+  my $self      = shift or croak('param missing');
+  my $lang      = shift or croak('param missing');
+  my $doc_id    = shift or croak('param missing');
+  my $short_flg = shift;
 
   my $docdata_ref = $self->get_docdata();
   my $field_ref   = $docdata_ref->{info}{$doc_id}{con};
 
   my $label = '';
   if ( $field_ref->{title} ) {
+    $label .= $field_ref->{title};
     if ( $field_ref->{author} ) {
       $label = "$field_ref->{author}: $label";
-    } else {
-      $label = $field_ref->{title};
     }
   }
-  if ( $field_ref->{pub} ) {
-    my $src = $field_ref->{pub};
-    if ( $field_ref->{date} ) {
-      $src = "$src, $field_ref->{date}";
-    }
-    if ($label) {
-      $label = "$label ($src)";
-    } else {
-      $label = $src;
+  if ( not $short_flg ) {
+    if ( $field_ref->{pub} ) {
+      my $src = $field_ref->{pub};
+      if ( $field_ref->{date} ) {
+        $src = "$src, $field_ref->{date}";
+      }
+      if ($label) {
+        $label = "$label ($src)";
+      } else {
+        $label = $src;
+      }
     }
   }
 
