@@ -12,14 +12,20 @@
       "de": [ "Zuordnung" ]
     },
     "value": {
-      "en": [ "Provided by ZBW - Leibniz Information Centre for Economics" ],
-      "de": [ "Bereitgestellt von ZBW - Leibniz Informationszentrum Wirtschaft" ]
+      "en": [ "Provided by <a href='https://www.zbw.eu/en/'><img src='/images/logo-zbw2.png' alt='ZBW - Leibniz Information Centre for Economics'></a>" ],
+      "de": [ "Bereitgestellt von <a href='https://www.zbw.eu/de/'><img src='/images/logo-zbw2.png' alt='ZBW - Leibniz Informationszentrum Wirtschaft'></a>" ]
     }
   },
   "metadata": [
+    <tmpl_if name='from_to'>
+    {
+      "label": { "en" : [ "Life time" ], "de" : [ "Lebenszeit" ] },
+      "value": { "none" : [ "<tmpl_var name='from_to'>" ] }
+    },
+    </tmpl_if>
     {
       "label": { "en": [ "Folder home (persistent URI)" ], "de" : [ "Mappen Homepage (persistente URI)" ] },
-      "value": { "none": [ "<a href='<tmpl_var name='folder_uri'>'><tmpl_var name='folder_uri'>" ] }
+      "value": { "none": [ "<a href='<tmpl_var folder_uri>'><tmpl_var folder_uri></a>" ] }
     }
   ],
   "provider": [
@@ -44,7 +50,7 @@
     }
   ],
   "items": [
-<tmpl_loop name='main_loop'>
+<tmpl_loop name='main_loop'><tmpl_if doc_label_en><tmpl_if doc_label_de></tmpl_if></tmpl_if>
     {
       "id": "<tmpl_var name='canvas_uri'>",
       "type": "Canvas",
