@@ -356,19 +356,20 @@ sub get_folderdata_raw {
   return $data;
 }
 
-=item get_docdata ()
+=item get_docdata ( $doc_id )
 
-Return a hash with document data for a folder (TODO more specifc methods)
+Return a hash with document data for a document of a folder
 
 =cut
 
 sub get_docdata {
   my $self = shift or croak('param missing');
+  my $doc_id = shift or croak('param missing');
 
   my $collection = $self->{collection};
   my $folder_nk  = $self->{folder_nk};
 
-  return $data{$collection}{docdata}{$folder_nk};
+  return $data{$collection}{docdata}{$folder_nk}{info}{$doc_id}{con};
 }
 
 =item get_doclabel ( $lang, $doc_id )
@@ -384,8 +385,7 @@ sub get_doclabel {
   my $doc_id    = shift or croak('param missing');
   my $short_flg = shift;
 
-  my $docdata_ref = $self->get_docdata();
-  my $field_ref   = $docdata_ref->{info}{$doc_id}{con};
+  my $field_ref = $self->get_docdata($doc_id);
 
   my $label = '';
   if ( $field_ref->{title} ) {
