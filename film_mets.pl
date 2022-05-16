@@ -1,15 +1,15 @@
 #!/bin/perl
 # nbt, 31.1.2018
 
-# TODO extend download file name with collection
+# TODO extend download file name with subset
 
 # traverses folder roots in order to create internal and external
 # DFG-Viewer-suitable METS/MODS files per folder
 
 # can be invoked either by
 # - an extended folder id (e.g., pe/000012)
-# - a collection id (e.g., pe)
-# - 'ALL' (to (re-) create all collections)
+# - a subset id (e.g., pe)
+# - 'ALL' (to (re-) create all subsets)
 
 use strict;
 use warnings;
@@ -30,36 +30,26 @@ $Data::Dumper::Sortkeys = 1;
 
 # use folder_root for persistent URI, and image_root for internal linking
 # to image files (spares redirect for every file)
-Readonly my $FOLDER_ROOT_URI => 'https://purl.org/pressemappe20/folder/';
-Readonly my $IMAGE_ROOT_URI  => 'https://pm20.zbw.eu/folder/';
-Readonly my $PDF_ROOT_URI    => 'https://pm20.zbw.eu/pdf/';
+Readonly my $FILM_ROOT_URI => 'https://pm20.zbw.eu/film/';
+Readonly my $IMAGE_ROOT_URI  => 'https://pm20.zbw.eu/film/';
 Readonly my $METS_ROOT       => path('../web/folder');
-Readonly my $IMAGEDATA_ROOT  => path('../data/imagedata');
-Readonly my %RES_EXT         => (
-  DEFAULT => '_B.JPG',
-  MAX     => '_A.JPG',
-  MIN     => '_C.JPG',
-);
-Readonly my @LANGUAGES   => qw/ en de /;
-Readonly my @COLLECTIONS => qw/ co pe sh wa /;
+Readonly my @SUSETS => qw/ h1_sh /;
 
-my ( $docdata_file, $imagedata_file, $docdata_ref, $imagedata_ref, );
-
-my $tmpl = HTML::Template->new( filename => '../etc/html_tmpl/mets.tmpl' );
+my $tmpl = HTML::Template->new( filename => '../etc/html_tmpl/film.mets.tmpl' );
 
 # check arguments
 if ( scalar(@ARGV) == 1 ) {
-  if ( $ARGV[0] =~ m:^(co|pe|wa|sh)$: ) {
-    my $collection = $1;
-    mk_collection($collection);
+  if ( $ARGV[0] =~ m:$FILM_QR: ) {
+    my $subset = $1;
+    mk_subset($subset);
   } elsif ( $ARGV[0] =~ m:^(co|pe)/(\d{6}): ) {
-    my $collection = $1;
+    my $subset = $1;
     my $folder_nk  = $2;
-    mk_folder( $collection, $folder_nk );
+    mk_folder( $subset, $folder_nk );
   } elsif ( $ARGV[0] =~ m:^(sh|wa)/(\d{6},\d{6})$: ) {
-    my $collection = $1;
+    my $subset = $1;
     my $folder_nk  = $2;
-    mk_folder( $collection, $folder_nk );
+    mk_folder( $subset, $folder_nk );
   } elsif ( $ARGV[0] eq 'ALL' ) {
     mk_all();
   } else {
@@ -73,31 +63,31 @@ if ( scalar(@ARGV) == 1 ) {
 
 sub mk_all {
 
-  foreach my $collection (@COLLECTIONS) {
-    mk_collection($collection);
+  foreach my $subset (@subsetS) {
+    mk_subset($subset);
   }
 }
 
-sub mk_collection {
-  my $collection = shift or die "param missing";
+sub mk_subset {
+  my $subset = shift or die "param missing";
 
   # load input files
-  load_files($collection);
+  load_files($subset);
 
   foreach my $folder_nk ( sort keys %{$imagedata_ref} ) {
-    mk_folder( $collection, $folder_nk );
+    mk_folder( $subset, $folder_nk );
   }
 }
 
 sub mk_folder {
-  my $collection = shift || die "param missing";
+  my $subset = shift || die "param missing";
   my $folder_nk  = shift || die "param missing";
 
-  my $folder = ZBW::PM20x::Folder->new( $collection, $folder_nk );
+  my $folder = ZBW::PM20x::Folder->new( $subset, $folder_nk );
 
   # check if folder dir exists
   my $rel_path  = $folder->get_folder_hashed_path();
-  my $full_path = $ZBW::PM20x::Folder::FOLDER_ROOT->child($rel_path);
+  my $full_path = $ZBW::PM20x::Folder::FILM_ROOT->child($rel_path);
   if ( not -d $full_path ) {
     die "$full_path does not exist\n";
   }
@@ -105,7 +95,7 @@ sub mk_folder {
   # open files if necessary
   # (check with arbitrary entry)
   if ( not defined $imagedata_ref ) {
-    load_files($collection);
+    load_files($subset);
   }
 
   # TODO clearly wrong - change to public/intern pdfs?
@@ -125,11 +115,11 @@ sub mk_folder {
           "&#109;&#97;ilto&#58;p%72essema%70pe&#50;0&#64;&#37;&#55;Ab%77&#46;eu"
         . "?subject=Feedback%20zu%20PM20%20$label"
         . "&amp;body=%0D%0A%0D%0A%0D%0A---%0D%0A"
-        . "https://pm20.zbw.eu/dfgview/$collection/$folder_nk";
+        . "https://pm20.zbw.eu/dfgview/$subset/$folder_nk";
 
       my %tmpl_var = (
         pref_label    => $label,
-        uri           => "$FOLDER_ROOT_URI$collection/$folder_nk",
+        uri           => "$FILM_ROOT_URI$subset/$folder_nk",
         folder_nk     => $folder_nk,
         file_grp_loop => build_file_grp( $type, $folder ),
         phys_loop     => build_phys_struct( $type, $folder ),
@@ -147,8 +137,8 @@ sub mk_folder {
 }
 
 sub load_files {
-  my $collection = shift || die "param missing";
-  $imagedata_file = $IMAGEDATA_ROOT->child("${collection}_image.json");
+  my $subset = shift || die "param missing";
+  $imagedata_file = $IMAGEDATA_ROOT->child("${subset}_image.json");
   $imagedata_ref  = decode_json( $imagedata_file->slurp );
 }
 
@@ -173,7 +163,7 @@ sub build_res_files {
   my $folder = shift || die "param missing";
   my $res    = shift || die "param missing";
 
-  my $collection = $folder->{collection};
+  my $subset = $folder->{subset};
   my $folder_nk  = $folder->{folder_nk};
   my %imagedata  = %{ $imagedata_ref->{$folder_nk} };
 
@@ -300,7 +290,7 @@ sub write_mets {
 }
 
 sub usage {
-  print "Usage: $0 {folder-id}|{collection}|ALL\n";
+  print "Usage: $0 {folder-id}|{subset}|ALL\n";
   exit 1;
 }
 
