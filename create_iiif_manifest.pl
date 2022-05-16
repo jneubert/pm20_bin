@@ -132,6 +132,12 @@ sub mk_folder {
       main_loop    => $main_loop_ref,
       doc_loop     => $doc_loop_ref,
     );
+    if ($folder->get_folderdata_raw->{fromTo}) {
+      $tmpl_var{from_to} = $folder->get_folderdata_raw->{fromTo};
+    }
+    if ($folder->get_folderdata_raw->{dateOfBirthAndDeath}) {
+      $tmpl_var{from_to} = $folder->get_folderdata_raw->{dateOfBirthAndDeath};
+    }
 
     foreach my $lang (@LANGUAGES) {
 
@@ -345,6 +351,28 @@ sub get_doc_info {
       decode_entities( $folder->get_doclabel( $lang, $doc_id, 'short' ) );
     $doc_info{"doc_label_$lang"} = $label;
   }
+
+  # TODO additional document data as metadata fields
+  # - is this necessary???
+  ##my $docdata = $folder->get_docdata($doc_id);
+  ##my @meta_fields = qw/ title author pub date /;
+  ##my %config_meta = (
+  ##  title => {
+  ##    label => {
+  ##      'de' => 'Titel',
+  ##      'en' => 'Title',
+  ##    },
+  ##  },
+  ##  author => {
+  ##    label => {
+  ##      'de' => 'Autor/in',
+  ##      'en' => 'Auhtor',
+  ##    },
+  ##  },
+  ##);
+  ##my %meta;
+  ##foreach my $field (@meta_fields) {
+  ##}
 
   return \%doc_info;
 }
