@@ -116,9 +116,17 @@ my %linktitle = (
     de => '(alle Mappen)',
     en => '(all folders)',
   },
+  ware_cat => {
+    de => '(XXX in der ganzen Welt)',
+    en => '(xXX all over the world)',
+  },
   subject_sys => {
     de => 'Sachsystematik',
     en => 'Subject category system',
+  },
+  ware_sys => {
+    de => 'Warensystematik',
+    en => 'Ware category system',
   },
   geo_sys => {
     de => 'Ländersystematik',
@@ -182,17 +190,20 @@ foreach my $category_type ( keys %{$definitions_ref} ) {
         # skip result if no folders exist
         next
           if not( exists $category->{shCountLabel}
+          or exists $category->{waCountLabel}
           or exists $category->{countLabel} );
 
         # control break?
-        my $firstletter = substr( $category->{signature}->{value}, 0, 1 );
+        my $firstletter =
+          $category_type eq 'ware'
+          ? substr( $category->{categoryLabel}->{value}, 0, 1 )
+          : substr( $category->{signature}->{value},     0, 1 );
         if ( $firstletter ne $firstletter_old ) {
-          push( @lines,
-            '',
-            "### "
-              . $master_voc->subheading( $lang, $firstletter )
-              . "<a name='$firstletter'></a>",
-            '' );
+          my $subhead =
+              $category_type eq 'ware'
+            ? $firstletter
+            : $master_voc->subheading( $lang, $firstletter );
+          push( @lines, '', "### $subhead <a name='$firstletter'></a>", '' );
           $firstletter_old = $firstletter;
         }
 
@@ -223,8 +234,10 @@ foreach my $category_type ( keys %{$definitions_ref} ) {
 
         # main entry
         my $siglink = $master_voc->siglink($id);
+        my $entry_label =
+          $category_type eq 'ware' ? $label : "$signature $label";
         my $line =
-            "- [$signature $label](i/$id/about.$lang.html) $entry_note"
+            "- [$entry_label](i/$id/about.$lang.html) $entry_note"
           . "<a name='$siglink'></a>";
         ## indent for Sondermappe
         if ( $signature =~ $SM_QR and $firstletter ne 'q' ) {
