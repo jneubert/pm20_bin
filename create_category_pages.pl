@@ -170,7 +170,6 @@ foreach my $category_type ( keys %{$definitions_ref} ) {
         "is_$lang"          => 1,
         "is_$category_type" => 1,
         title               => $title,
-        etr                 => "category_overview/$category_type",
         modified            => last_modified( $master_voc, $detail_voc ),
         backlink            => "../about.$lang.html",
         backlink_title      => $backlinktitle,
@@ -385,8 +384,10 @@ foreach my $category_type ( keys %{$definitions_ref} ) {
 
         my $syspage_title = $linktitle{"${detail_type}_sys"}{$lang};
         my $catpage_title = "$label " . $linktitle{"${detail_type}_cat"}{$lang};
+        my $entry_label =
+          $category_type eq 'ware' ? $label : "$signature $label";
         $line .=
-            "- $signature $label "
+            "- $entry_label "
           . "[**&nearr;**]($catpage_link \"$catpage_title\") "
           . "[**&uarr;**]($syspage_link \"$syspage_title\") "
           . $entry_note;
@@ -424,19 +425,20 @@ sub output_category_page {
     : 'Systematik-Übersicht';
   my %tmpl_var = (
     "is_$lang"      => 1,
-    signature       => $signature,
     label           => $label,
-    etr             => "category/$category_type/$signature",
     modified        => last_modified( $master_voc, $detail_voc ),
     backlink        => "../../about.$lang.html",
     backlink_title  => $backlinktitle,
-    x_canonical     => get_canonical( $category_type, $signature ),
     provenance      => $provenance,
     wdlink          => $master_voc->wdlink($id),
     folder_count1   => $count_ref->{folder_count_first},
     document_count1 => $count_ref->{document_count_first},
     scope_note      => $master_voc->scope_note( $lang, $id ),
   );
+
+  if ( $category_type ne 'ware' ) {
+    $tmpl_var{signature} = $signature;
+  }
 
   if ( $master_voc->folders_complete($id) ) {
     $tmpl_var{complete} = 1;
