@@ -305,11 +305,12 @@ foreach my $category_type ( keys %{$definitions_ref} ) {
       foreach my $entry (@entries) {
 
         # extract ids for master and detail from folder id
-        my $folder_nk;
-        if ( $entry->{pm20}->{value} =~ m/(\d{6},\d{6})$/ ) {
-          $folder_nk = $1;
+        my ( $folder_nk, $collection );
+        if ( $entry->{pm20}->{value} =~ m/(sh|wa)\/(\d{6},\d{6})$/ ) {
+          $collection = $1;
+          $folder_nk  = $2;
         }
-        my $folder = ZBW::PM20x::Folder->new( 'sh', $folder_nk );
+        my $folder = ZBW::PM20x::Folder->new( $collection, $folder_nk );
 
         my ( $master_id, $detail_id ) =
           get_master_detail_ids( $category_type, $detail_type, $folder_nk );
@@ -460,9 +461,15 @@ sub get_master_detail_ids {
   if ( $category_type eq 'geo' and $detail_type eq 'subject' ) {
     $master_id = $1;
     $detail_id = $2;
+  } elsif ( $category_type eq 'geo' and $detail_type eq 'ware' ) {
+    $master_id = $2;
+    $detail_id = $1;
   } elsif ( $category_type eq 'subject' and $detail_type eq 'geo' ) {
     $master_id = $2;
     $detail_id = $1;
+  } elsif ( $category_type eq 'ware' and $detail_type eq 'geo' ) {
+    $master_id = $1;
+    $detail_id = $2;
   } else {
     croak "combination of category: $category_type"
       . " and detail: $detail_type not defined";
