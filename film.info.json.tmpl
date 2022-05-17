@@ -1,0 +1,20 @@
+{
+
+  "@context": "http://iiif.io/api/image/3/context.json",
+  "id": "<tmpl_var name='image_uri'>",
+  "type": "ImageService3",
+  "protocol": "http://iiif.io/api/image",
+  "width": <tmpl_var name='width'>,
+  "height": <tmpl_var name='height'>,
+  "sizes": [
+    {
+      "width": <tmpl_var name='width'>,
+      "height": <tmpl_var name='height'>
+    }
+  ],
+  "profile": "level0",
+  "extraFeatures": [
+    "cors",
+    "baseUriRedirect"
+  ]
+}
