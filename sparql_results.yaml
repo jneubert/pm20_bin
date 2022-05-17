@@ -13,6 +13,13 @@ subject_by_signature:
   query_file: ../sparql/subject_by_signature.rq
   output_dir: ../var/klassdata
   report_dir: vocab
+ware_by_signature:
+  title:
+    de: "Vollständige Warensystematik"
+    en: "Complete commodities/wares category system"
+  query_file: ../sparql/ware_by_signature.rq
+  output_dir: ../var/klassdata
+  report_dir: vocab
 subject_folders:
   title:
     de: "Alle online verfügbaren Länder/Sach-Mappen"

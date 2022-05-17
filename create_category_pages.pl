@@ -31,7 +31,8 @@ use ZBW::PM20x::Vocab;
 
 binmode( STDOUT, ":encoding(UTF-8)" );
 
-Readonly my $WEB_ROOT        => path('../web/category');
+##Readonly my $WEB_ROOT        => path('../web/category');
+Readonly my $WEB_ROOT        => path('/tmp/category');
 Readonly my $KLASSDATA_ROOT  => path('../data/klassdata');
 Readonly my $FOLDERDATA_ROOT => path('../data/folderdata');
 Readonly my $TEMPLATE_ROOT   => path('../etc/html_tmpl');
@@ -61,9 +62,9 @@ geo:
     subject:
       result_file: subject_folders
       vocab: je
-#    ware
-#      result_file: ware_folders
-#      vocab: ip
+    ware:
+      result_file: ware_folders
+      vocab: ip
 subject:
   prov: hwwa
   title:
@@ -75,6 +76,18 @@ subject:
   detail:
     geo:
       result_file: subject_folders
+      vocab: ag
+ware:
+  prov: hwwa
+  title:
+    en: Folders by Commodity/ware Category System
+    de: Mappen nach Warensystematik
+  result_file: ware_by_signature
+  vocab: ip
+  uri_field: category
+  detail:
+    geo:
+      result_file: ware_folders
       vocab: ag
 EOF
 

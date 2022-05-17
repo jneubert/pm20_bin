@@ -31,6 +31,7 @@ Readonly my $RDF_ROOT => path('../data/rdf');
 Readonly my %COUNT_PROPERTY => (
   subject => 'zbwext:folderCount',
   geo     => 'zbwext:shFolderCount',
+  ware    => 'zbwext:waFolderCount',
 );
 
 =encoding utf8
@@ -507,6 +508,15 @@ sub _add_subheadings {
         $label =~ s/, General$//i;
 
         $self->{subhead}{$signature}{$lang} = $label;
+      }
+    }
+  } elsif ( $self->{vocab_name} eq 'ip' ) {
+    # here we have no signature, but only start chars
+    foreach my $id ( keys %{ $self->{id} } ) {
+      my %terminfo  = %{ $self->{id}{$id} };
+      foreach my $lang (@LANGUAGES) {
+        my $startchar = uc( substr( $terminfo{prefLabel}{$lang}, 0, 1 ) );
+        $self->{subhead}{$startchar}{$lang} = $startchar;
       }
     }
   }
