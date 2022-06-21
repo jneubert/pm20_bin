@@ -132,10 +132,10 @@ sub mk_folder {
       main_loop    => $main_loop_ref,
       doc_loop     => $doc_loop_ref,
     );
-    if ($folder->get_folderdata_raw->{fromTo}) {
+    if ( $folder->get_folderdata_raw->{fromTo} ) {
       $tmpl_var{from_to} = $folder->get_folderdata_raw->{fromTo};
     }
-    if ($folder->get_folderdata_raw->{dateOfBirthAndDeath}) {
+    if ( $folder->get_folderdata_raw->{dateOfBirthAndDeath} ) {
       $tmpl_var{from_to} = $folder->get_folderdata_raw->{dateOfBirthAndDeath};
     }
 
@@ -223,31 +223,6 @@ sub get_image_uri {
   return "$doc_uri/${page_no}";
 }
 
-sub get_image_dir {
-  my $folder   = shift || die "param missing";
-  my $doc_id   = shift || die "param missing";
-  my $image_id = shift || die "param missing";
-
-  my $image_dir = get_manifest_dir($folder)->child($doc_id)->child($image_id);
-  $image_dir->mkpath;
-  return $image_dir;
-}
-
-sub get_image_real_url {
-  my $folder = shift || die "param missing";
-  my $doc_id = shift || die "param missing";
-  my $page   = shift || die "param missing";
-  my $res    = shift || die "param missing";
-
-  # create url according to dir structure
-  my $url =
-      $PM20_ROOT_URI
-    . $folder->get_document_hashed_path($doc_id)->child('PIC')
-    ->child( $page . $RES_EXT{$res} );
-
-  return $url;
-}
-
 sub get_dim {
   my $max_image_fn = shift || die "param missing";
   my $res          = shift || die "param missing";
@@ -282,9 +257,7 @@ sub build_canvases {
     ##my $page_no = 1;
     foreach my $page ( @{ $imagedata{docs}{$doc_id}{pg} } ) {
 
-      my $real_max_url = get_image_real_url( $folder, $doc_id, $page, 'A' );
-      my $max_image_fn = get_max_image_fn( $folder_nk, $doc_id, $page );
-      my $image_id     = substr( $page, 24, 4 );
+      my $image_id = substr( $page, 24, 4 );
       ## file name is 0 based; start page numbers with 1
       my $page_no = $image_id + 1;
 
@@ -294,9 +267,10 @@ sub build_canvases {
       my $page_uri     = get_page_uri( $folder, $doc_id, $page_no );
       my $image_uri =
         get_image_uri( $collection, $folder_nk, $doc_id, $page_no );
+      my $max_url    = "$image_uri/full/max/0/default.jpg";
       my $canvas_uri = "$image_uri/canvas";
-      my $image_dir  = get_image_dir( $folder, $doc_id, $image_id );
       ## w,h are here only used for aspect ratio
+      my $max_image_fn = get_max_image_fn( $folder_nk, $doc_id, $page );
       my ( $width, $height ) = get_dim( $max_image_fn, 'A' );
 
       my %entry = (
@@ -305,7 +279,7 @@ sub build_canvases {
         document_uri => $doc_info{document_uri},
         page_uri     => $page_uri,
         img_uri      => $image_uri,
-        real_max_url => $real_max_url,
+        max_url      => $max_url,
         width        => $width,
         height       => $height,
 
@@ -322,7 +296,6 @@ sub build_canvases {
 
       push( @main_loop, { %entry, %doc_info } );
       push( @page_loop, { canvas_uri => $canvas_uri } );
-      ##$page_no++;
     }
     $doc_entry{page_loop} = \@page_loop;
     push( @doc_loop, { %doc_entry, %doc_info } );
