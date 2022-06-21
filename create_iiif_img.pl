@@ -23,7 +23,6 @@ use ZBW::PM20x::Folder;
 
 $Data::Dumper::Sortkeys = 1;
 
-Readonly my $PM20_ROOT_URI  => 'https://pm20.zbw.eu/folder/';
 Readonly my $IIIF_ROOT_URI  => 'https://pm20.zbw.eu/iiif/folder/';
 Readonly my $IIIF_ROOT      => path('/pm20/iiif/folder/');
 Readonly my $IMAGEDATA_ROOT => path('/pm20/data/imagedata');
@@ -185,7 +184,7 @@ sub get_image_real_url {
 
   # create url according to dir structure
   my $url =
-      $PM20_ROOT_URI
+    '/folder/'
     . $folder->get_document_hashed_path($doc_id)->child('PIC')
     ->child( $page . $RES_EXT{$res} );
 
@@ -234,7 +233,7 @@ sub write_htaccess {
   foreach my $rewrite_ref ( @{$rewrites_ref} ) {
     foreach my $from ( keys %{$rewrite_ref} ) {
       my $to = $rewrite_ref->{$from};
-      print $fh "RewriteRule \"full/$from/0/default.jpg\" \"$to\" [R=303,L]\n";
+      print $fh "RewriteRule \"full/$from/0/default.jpg\" \"$to\" [PT]\n";
     }
   }
   close($fh);
