@@ -22,10 +22,11 @@ Readonly our $FOLDER_ROOT     => path('/pm20/folder');
 Readonly our $FOLDERDATA_FILE => path('/pm20/data/rdf/pm20.extended.jsonld');
 ##Readonly our $FOLDERDATA_FILE =>
 ##  path('../data/rdf/pm20.extended.examples.jsonld');
-Readonly our $DOCDATA_ROOT     => path('/pm20/data/docdata');
-Readonly our @ACCESS_TYPES     => qw/ public intern /;
-Readonly our $URI_STUB         => 'http://purl.org/pressemappe20/folder';
-Readonly our $DFGVIEW_URL_STUB => 'https://pm20.zbw.eu/dfgview';
+Readonly our $DOCDATA_ROOT      => path('/pm20/data/docdata');
+Readonly our @ACCESS_TYPES      => qw/ public intern /;
+Readonly our $URI_STUB          => 'http://purl.org/pressemappe20/folder';
+Readonly our $DFGVIEW_URL_STUB  => 'https://pm20.zbw.eu/dfgview';
+Readonly our $IIIFVIEW_URL_STUB => 'https://pm20.zbw.eu/iiifview/folder';
 
 our ( %folderdata, %blank_node );
 
@@ -363,7 +364,7 @@ Return a hash with document data for a document of a folder
 =cut
 
 sub get_docdata {
-  my $self = shift or croak('param missing');
+  my $self   = shift or croak('param missing');
   my $doc_id = shift or croak('param missing');
 
   my $collection = $self->{collection};
@@ -481,6 +482,22 @@ sub get_dfgview_url {
   # currenly, $lang is not used
 
   return "$DFGVIEW_URL_STUB/$self->{folder_id}";
+}
+
+=item get_iiifview_url ( $lang )
+
+Return a URL for the IIIF viewer, loading the folder IIIF manifest file
+(language selected here, public/intern via Apache).
+
+=cut
+
+sub get_iiifview_url {
+  my $self = shift or croak('param missing');
+  my $lang = shift;
+
+  # currenly, $lang is not used
+
+  return "$IIIFVIEW_URL_STUB/$self->{folder_id}";
 }
 
 =item get_document_hashed_path ( $doc_id )

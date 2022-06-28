@@ -125,9 +125,9 @@ sub mk_collection {
 }
 
 sub mk_folder {
-  my $collection = shift || die "param missing";
-  my $folder_nk  = shift || die "param missing";
-  my $pages_for_sitemap_ref  = shift || die "param missing";
+  my $collection            = shift || die "param missing";
+  my $folder_nk             = shift || die "param missing";
+  my $pages_for_sitemap_ref = shift;
 
   my $folder = ZBW::PM20x::Folder->new( $collection, $folder_nk );
 
@@ -170,8 +170,6 @@ sub mk_folder {
     if ( $collection eq 'wa' ) {
       $backlink = '../../' . $backlink;
     }
-    my $x_canonical = $folder->get_folder_uri;
-    $x_canonical =~ s;http://purl.org/pressemappe20/;https://pm20.zbw.eu/;;
 
     my %tmpl_var = (
       "is_$lang"     => 1,
@@ -179,8 +177,8 @@ sub mk_folder {
       coll           => $collection_title,
       label          => $label,
       folder_uri     => $folder->get_folder_uri,
-      x_canonical    => $x_canonical,
       dfgview_url    => $folder->get_dfgview_url,
+      iiifview_url   => $folder->get_iiifview_url,
       fid            => "$collection/$folder_nk",
       backlink       => $backlink,
       backlink_title => $backlink_title,
@@ -257,10 +255,10 @@ sub mk_folder {
     my $fn = write_page( $type, $lang, $folder, $tmpl );
 
     # collect URLs of pages to add in sitemap
-    if ($tmpl_var{'doc_counts'}) {
+    if ( $tmpl_var{'doc_counts'} and $pages_for_sitemap_ref ) {
       $fn =~ s/\.md$/.html/;
       $fn =~ s|/pm20/web/|./|;
-      push(@{$pages_for_sitemap_ref}, "$fn");
+      push( @{$pages_for_sitemap_ref}, "$fn" );
     }
 
   }
