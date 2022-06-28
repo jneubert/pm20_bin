@@ -75,8 +75,17 @@ sub mk_collection {
   # load input files
   load_files($collection);
 
+  my $i = 0;
   foreach my $folder_nk ( sort keys %{$imagedata_ref} ) {
+    $i++;
+    ##next if ($i < 8100);
+
     mk_folder( $collection, $folder_nk );
+
+    # debug and progress info
+    if ( $i % 100 == 0 ) {
+      print "$i folders done (up to $folder_nk)\n";
+    }
   }
 }
 
@@ -87,6 +96,7 @@ sub mk_folder {
   # open files if necessary
   # (check with arbitrary entry)
   if ( not defined $imagedata_ref ) {
+    print "loading imagedata\n";
     load_files($collection);
   }
 
@@ -104,12 +114,19 @@ sub mk_folder {
       my $image_dir =
         get_image_dir( $collection, $folder_nk, $doc_id, $page_no );
 
+      # temporarily skip directories which has once been done
+      ##next if $image_dir->child('.htaccess')->is_file;
+
       my @rewrites;
 
       # create iiif info
       my %info_tmpl_var = ( image_uri => $image_uri, );
       foreach my $res ( keys %RES_EXT ) {
         my ( $width, $height ) = get_dim( $max_image_fn, $res );
+        unless ( length($width) and length($height) ) {
+          warn "width or height missing: $max_image_fn\n";
+          next;
+        }
         my $real_url = get_image_real_url( $folder, $doc_id, $page, $res );
         $info_tmpl_var{"width_$res"}  = $width;
         $info_tmpl_var{"height_$res"} = $height;
@@ -146,11 +163,9 @@ sub get_max_image_fn {
   my $doc_id    = shift || die "param missing";
   my $page      = shift || die "param missing";
 
-  my %imagedata = %{ $imagedata_ref->{$folder_nk} };
-
   return
-      $imagedata{root} . '/'
-    . $imagedata{docs}{$doc_id}{rp}
+      $imagedata_ref->{$folder_nk}{root} . '/'
+    . $imagedata_ref->{$folder_nk}{docs}{$doc_id}{rp}
     . "/${page}_A.JPG";
 }
 
