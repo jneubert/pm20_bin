@@ -90,8 +90,17 @@ sub mk_collection {
   # load input files
   load_files($collection);
 
+  my $i = 0;
   foreach my $folder_nk ( sort keys %{$imagedata_ref} ) {
+    $i++;
+    ##next if ( $i < 2900);
+
     mk_folder( $collection, $folder_nk );
+
+    # debug and progress info
+    if ( $i % 100 == 0 ) {
+      print "$i folders done (up to $folder_nk)\n";
+    }
   }
 }
 
@@ -100,12 +109,19 @@ sub mk_folder {
   my $folder_nk  = shift || die "param missing";
 
   my $folder = ZBW::PM20x::Folder->new( $collection, $folder_nk );
+  my $folderdata_raw = $folder->get_folderdata_raw;
 
   # check if folder dir exists
   my $rel_path  = $folder->get_folder_hashed_path();
   my $full_path = $ZBW::PM20x::Folder::FOLDER_ROOT->child($rel_path);
   if ( not -d $full_path ) {
     die "$full_path does not exist\n";
+  }
+
+  # check folder data exists
+  if ( not $folderdata_raw ) {
+    warn "No folder data for $collection/$folder_nk\n";
+    return;
   }
 
   # open files if necessary
@@ -132,11 +148,11 @@ sub mk_folder {
       main_loop    => $main_loop_ref,
       doc_loop     => $doc_loop_ref,
     );
-    if ( $folder->get_folderdata_raw->{fromTo} ) {
-      $tmpl_var{from_to} = $folder->get_folderdata_raw->{fromTo};
+    if ( $folderdata_raw->{fromTo} ) {
+      $tmpl_var{from_to} = $folderdata_raw->{fromTo};
     }
-    if ( $folder->get_folderdata_raw->{dateOfBirthAndDeath} ) {
-      $tmpl_var{from_to} = $folder->get_folderdata_raw->{dateOfBirthAndDeath};
+    if ( $folderdata_raw->{dateOfBirthAndDeath} ) {
+      $tmpl_var{from_to} = $folderdata_raw->{dateOfBirthAndDeath};
     }
 
     foreach my $lang (@LANGUAGES) {
@@ -244,7 +260,7 @@ sub build_canvases {
   my %doc_info;
   my @main_loop;
   my @doc_loop;
-  my $doclist_ref = $folder->get_doclist($type);
+  my $doclist_ref = ( $folder->get_doclist($type) or [] );
   foreach my $doc_id ( sort @{$doclist_ref} ) {
 
     my @page_loop;
