@@ -56,8 +56,8 @@
       "id": "<tmpl_var name='canvas_uri'>",
       "type": "Canvas",
       "label": {
-        "en": [ "<tmpl_var name='canvas_label_en'>" ],
-        "de": [ "<tmpl_var name='canvas_label_de'>" ]
+        "en": [ "<tmpl_var escape='js' name='canvas_label_en'>" ],
+        "de": [ "<tmpl_var escape='js' name='canvas_label_de'>" ]
       },
       "width": <tmpl_var name='width'>,
       "height": <tmpl_var name='height'>,
@@ -120,8 +120,8 @@
         }
       ],
       "label": {
-        "en": [ "<tmpl_var name='doc_label_en'>" ],
-        "de": [ "<tmpl_var name='doc_label_de'>" ]
+        "en": [ "<tmpl_var escape='js' name='doc_label_en'>" ],
+        "de": [ "<tmpl_var escape='js' name='doc_label_de'>" ]
       },
       "items": [
 <tmpl_loop name="page_loop">
