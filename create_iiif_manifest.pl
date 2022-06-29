@@ -45,6 +45,7 @@ Readonly my @COLLECTIONS => qw/ co pe sh wa /;
 my $tmpl = HTML::Template->new(
   filename          => '../etc/html_tmpl/static_manifest.json.tmpl',
   utf8              => 1,
+  default_escape    => 'js',
   loop_context_vars => 1
 );
 
@@ -108,7 +109,7 @@ sub mk_folder {
   my $collection = shift || die "param missing";
   my $folder_nk  = shift || die "param missing";
 
-  my $folder = ZBW::PM20x::Folder->new( $collection, $folder_nk );
+  my $folder         = ZBW::PM20x::Folder->new( $collection, $folder_nk );
   my $folderdata_raw = $folder->get_folderdata_raw;
 
   # check if folder dir exists
@@ -336,8 +337,7 @@ sub get_doc_info {
   my %doc_info;
   $doc_info{document_uri} = get_document_uri( $folder, $doc_id );
   foreach my $lang (@LANGUAGES) {
-    my $label =
-      decode_entities( $folder->get_doclabel( $lang, $doc_id, 'short' ) );
+    my $label = decode_entities( $folder->get_doclabel( $lang, $doc_id ) );
     $doc_info{"doc_label_$lang"} = $label;
   }
 
@@ -372,7 +372,25 @@ sub write_manifest {
   my $tmpl   = shift || die "param missing";
 
   my $manifest_file = get_manifest_dir($folder)->child("$type.manifest.json");
-  $manifest_file->spew_utf8( $tmpl->output );
+
+  # unescape single quotes, which should occur only within quoted strings
+  my $output = $tmpl->output;
+  $output =~ s/\\'/'/g;
+
+  # validate json
+  my $dummy = eval { decode_json($output) };
+  if ($@) {
+    ## skip UTF-8 errors
+    if (  $type ne 'public'
+      and not( $@ =~ m/malformed UTF-8 character in JSON string/ )
+      and not( $@ =~ m/Wide character in subroutine entry/ ) )
+    {
+      print "decode_json for $folder->{collection}/$folder->{folder_nk} "
+        . "failed, invalid json. error:$@\n";
+    }
+  }
+
+  $manifest_file->spew_utf8($output);
 }
 
 sub usage {
