@@ -114,9 +114,6 @@ sub mk_folder {
       my $image_dir =
         get_image_dir( $collection, $folder_nk, $doc_id, $page_no );
 
-      # temporarily skip directories which has once been done
-      ##next if $image_dir->child('.htaccess')->is_file;
-
       my @rewrites;
 
       # create iiif info

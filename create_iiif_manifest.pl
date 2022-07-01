@@ -100,7 +100,7 @@ sub mk_collection {
 
     # debug and progress info
     if ( $i % 100 == 0 ) {
-      print "$i folders done (up to $folder_nk)\n";
+      print "$i folders done (up to $collection/$folder_nk)\n";
     }
   }
 }
