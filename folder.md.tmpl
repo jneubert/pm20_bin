@@ -15,7 +15,7 @@ fn-stub: about
 
 <tmpl_if doc_counts>
 <a class="btn" href="<tmpl_var iiifview_url>"><tmpl_if is_de>Dokumente anzeigen (IIIF-Viewer)</tmpl_if><tmpl_if is_en>View documents (IIIF viewer)</tmpl_if></a> &#160; (<tmpl_var doc_counts>)
-&#160; <a href="<tmpl_var dfgview_url>"><tmpl_if is_de>Dokumente anzeigen (DFG Viewer)</tmpl_if><tmpl_if is_en>View documents (DFG viewer)</tmpl_if></a>
+&#160; <a class="btn-small" href="<tmpl_var dfgview_url>"><tmpl_if is_de>Dokumente anzeigen (DFG-Viewer)</tmpl_if><tmpl_if is_en>View documents (DFG viewer)</tmpl_if></a>
 <tmpl_else>
 _<tmpl_if is_de>Für diese Mappe gibt es nur Metadaten, keine digitalisierten Dokumente.</tmpl_if><tmpl_if is_en>Only metadata for this folder, no digitized documents.</tmpl_if>_
 </tmpl_if>
