@@ -302,6 +302,10 @@ sub build_canvases {
 
       );
 
+      if ( $folder->get_document_locked_flag($doc_id) ) {
+        $entry{is_locked} = 1;
+      }
+
       foreach my $lang (@LANGUAGES) {
         my $label =
             ( $lang eq 'en' ? 'p. ' : 'S. ' )
