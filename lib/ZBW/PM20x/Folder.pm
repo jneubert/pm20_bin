@@ -290,6 +290,36 @@ sub get_doc_counts {
   }
 }
 
+=item format_doc_counts ()
+
+Return a language-specific string with total and free document counts, undef if none of them defined.
+
+=cut
+
+sub format_doc_counts {
+  my $self = shift or croak('param missing');
+  my $lang = shift or croak('param missing');
+
+  my $fid            = $self->get_folder_id;
+  my $folderdata_raw = $self->get_folderdata_raw;
+
+  my $doc_counts = '';
+  if ( exists $folderdata_raw->{totalDocCount} ) {
+    $doc_counts .= $folderdata_raw->{totalDocCount};
+    $doc_counts .= ($lang eq 'en' ? ' documents' : ' Dokumente');
+  }
+  $doc_counts .= ' / ';
+  if ( exists $folderdata_raw->{freeDocCount} ) {
+    $doc_counts .= $folderdata_raw->{freeDocCount};
+    $doc_counts .= ($lang eq 'en' ? ' available on the web' : ' im Web zugänglich');
+  }
+  if ( $doc_counts ne ' / ' ) {
+    return $doc_counts;
+  } else {
+    return;
+  }
+}
+
 =item get_wdlink ()
 
 Get the URI of the exact matching Wikidata item. If more than one exists, issue
@@ -398,6 +428,12 @@ sub get_doclabel {
   if ( not $short_flg ) {
     if ( $field_ref->{pub} ) {
       my $src = $field_ref->{pub};
+
+      # remove non-essential parts of the source description
+      $src =~ s/(.*?) \(.*?\)(.*)/$1$2/g;
+      $src =~ s/(.*?) \<.*?\>(.*)/$1$2/g;
+      $src =~ s/, Nr\. \d+$//g;
+
       if ( $field_ref->{date} ) {
         $src = "$src, $field_ref->{date}";
       }
