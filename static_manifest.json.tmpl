@@ -69,6 +69,13 @@
         }
       ],
       "metadata": [
+        <tmpl_if name='is_locked'>{
+          "label": { "en": [ "Rights information" ], "de" : [ "Rechteinformation" ] },
+          "value": { 
+            "en": [ "<b>For internal use only -  under copyright or status undetermined</b>" ],
+            "de": [ "<b>Nur zur internen Verwendung - unter Urheberrecht oder Status ungeklärt</b>" ]
+          }
+        },</tmpl_if>
         {
           "label": { "en": [ "Persistent document URI" ], "de" : [ "Persistente Dokument-URI" ] },
           "value": { "none": [ "<tmpl_var name='document_uri'>" ] }
