@@ -306,12 +306,13 @@ sub format_doc_counts {
   my $doc_counts = '';
   if ( exists $folderdata_raw->{totalDocCount} ) {
     $doc_counts .= $folderdata_raw->{totalDocCount};
-    $doc_counts .= ($lang eq 'en' ? ' documents' : ' Dokumente');
+    $doc_counts .= ( $lang eq 'en' ? ' documents' : ' Dokumente' );
   }
   $doc_counts .= ' / ';
   if ( exists $folderdata_raw->{freeDocCount} ) {
     $doc_counts .= $folderdata_raw->{freeDocCount};
-    $doc_counts .= ($lang eq 'en' ? ' available on the web' : ' im Web zugänglich');
+    $doc_counts .=
+      ( $lang eq 'en' ? ' available on the web' : ' im Web zugänglich' );
   }
   if ( $doc_counts ne ' / ' ) {
     return $doc_counts;
@@ -570,6 +571,28 @@ sub get_document_hashed_fspath {
   return $path;
 }
 
+=item get_document_locked_flag ( $doc_id )
+
+Returns 1, if the document is locked (still under copyright), undef otherwise.
+
+=cut
+
+sub get_document_locked_flag {
+  my $self   = shift or croak('param missing');
+  my $doc_id = shift or croak('param missing');
+
+  my $lock_status;
+
+  # if .htaccess in document directory exists
+  my $lockfile = $FOLDER_ROOT->child(
+    $self->get_document_hashed_fspath($doc_id)->child('.htaccess') );
+  if ( -f $lockfile ) {
+    $lock_status = 1;
+  }
+
+  return $lock_status;
+}
+
 =item get_doclist( $type )
 
 Return a reference to a list of sorted document ids for the folder, either of
@@ -594,11 +617,9 @@ sub get_doclist {
     my @tmplist = sort keys %{ $data{$collection}{docdata}{$folder_nk}{info} };
     foreach my $doc_id (@tmplist) {
 
-      # skip if .htaccess in document directory exists
+      # skip locked documents
       if ( $type eq 'public' ) {
-        my $lockfile = $FOLDER_ROOT->child(
-          $self->get_document_hashed_fspath($doc_id)->child('.htaccess') );
-        next if -f $lockfile;
+        next if ( $self->get_document_locked_flag($doc_id) );
       }
       push( @{$doclist_ref}, $doc_id );
     }
