@@ -31,7 +31,7 @@ Readonly my $RDF_ROOT => path('../data/rdf');
 Readonly my %COUNT_PROPERTY => (
   subject => 'zbwext:folderCount',
   geo     => 'zbwext:shFolderCount',
-  ware    => 'zbwext:waFolderCount',
+  ware    => 'zbwext:folderCount',
 );
 
 =encoding utf8

@@ -140,6 +140,7 @@ my ( $master_voc, $detail_voc );
 # loop over category types
 foreach my $category_type ( keys %{$definitions_ref} ) {
   my $def_ref = $definitions_ref->{$category_type};
+  next unless $category_type eq 'ware';
 
   # master vocabulary reference
   my $master_vocab_name = $def_ref->{vocab};
@@ -217,7 +218,11 @@ foreach my $category_type ( keys %{$definitions_ref} ) {
         my $label        = $master_voc->label( $lang, $id );
         my $signature    = $master_voc->signature($id);
         my $folder_count = $master_voc->folder_count( $category_type, $id );
-        my $entry_note   = (
+        my $count_label =
+          $category_type eq 'ware'
+          ? ( $lang eq 'en' ? ' ware folders'    : ' Waren-Mappen' )
+          : ( $lang eq 'en' ? ' subject folders' : ' Sach-Mappen' );
+        my $entry_note = (
           ( $master_voc->geo_category_type($id) )
           ? $master_voc->geo_category_type($id) . ' '
           : ''
@@ -227,9 +232,7 @@ foreach my $category_type ( keys %{$definitions_ref} ) {
             ( $master_voc->folders_complete($id) )
           ? ( $lang eq 'en' ? 'complete, ' : 'komplett, ' )
           : ''
-          )
-          . $folder_count
-          . ( $lang eq 'en' ? ' subject folders' : ' Sach-Mappen' ) . ')';
+          ) . "$folder_count $count_label)";
 
         # main entry
         my $siglink = $master_voc->siglink($id);
