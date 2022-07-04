@@ -114,8 +114,17 @@ sub mk_collection {
   my $collection = shift or die "param missing";
 
   my @pages_for_sitemap;
+  my $i = 0;
   foreach my $folder_nk ( sort @{ $collection_ids{$collection} } ) {
+    $i++;
+    ##next if ($i < 8100);
+
     mk_folder( $collection, $folder_nk, \@pages_for_sitemap );
+
+    # debug and progress info
+    if ( $i % 100 == 0 ) {
+      print "$i folders done (up to $collection/$folder_nk)\n";
+    }
   }
 
   # write a list of pages to index for Google etc.
@@ -183,7 +192,7 @@ sub mk_folder {
       backlink       => $backlink,
       backlink_title => $backlink_title,
       modified       => $folder->get_modified,
-      doc_counts     => $folder->get_doc_counts || undef,
+      doc_counts     => $folder->format_doc_counts($lang) || undef,
     );
 
     if ($wdlink) {
