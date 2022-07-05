@@ -282,7 +282,12 @@ foreach my $category_type ( keys %{$definitions_ref} ) {
   my $master_vocab_name = $definitions_ref->{$category_type}{vocab};
   $master_voc = ZBW::PM20x::Vocab->new($master_vocab_name);
 
+    foreach my $lang (@LANGUAGES) {
+
+  my @lines;
+  my %count;
   # loop over detail types
+  my @detail_loop;
   foreach
     my $detail_type ( keys %{ $definitions_ref->{$category_type}{detail} } )
   {
@@ -291,8 +296,6 @@ foreach my $category_type ( keys %{$definitions_ref} ) {
     # detail vocabulary reference
     my $detail_vocab_name = $def_ref->{vocab};
     $detail_voc = ZBW::PM20x::Vocab->new($detail_vocab_name);
-
-    foreach my $lang (@LANGUAGES) {
 
       # read json input (all folders for all categories)
       my $file =
@@ -306,11 +309,6 @@ foreach my $category_type ( keys %{$definitions_ref} ) {
         sort { $a->{$key}{value} cmp $b->{$key}{value} } @unsorted_entries;
 
       # main loop
-      my $count_ref = {
-        folder_count_first   => 0,
-        document_count_first => 0,
-      };
-      my @lines;
       my $master_id_old   = '';
       my $detail_id_old   = '';
       my $firstletter_old = '';
@@ -399,11 +397,24 @@ foreach my $category_type ( keys %{$definitions_ref} ) {
         $count_ref->{document_count_first} += $entry->{docs}{value};
       }
 
-      # output of last category
-      output_category_page( $lang, $category_type, $master_id_old, \@lines,
-        $count_ref );
+      # safe all for the current category type
+      ## q & d: add lines as large variable
+      my %detail = (
+        "is_$category_type" => 1,
+        lines => join( "\n", @lines ),
+        folder_count1   => $count_ref->{folder_count_first},
+        document_count1 => $count_ref->{document_count_first},
+      );
+      if ( $master_voc->folders_complete($master_id_old) ) {
+        $detail{complete} = 1;
+      }
+      push(@detail_loop, \%detail);
     }
+    print Dumper \@detail_loop;exit;
   }
+    # output of last category
+    output_category_page( $lang, $category_type, $master_id_old, \@lines,
+      $count_ref );
 }
 
 ############
@@ -431,8 +442,6 @@ sub output_category_page {
     backlink_title  => $backlinktitle,
     provenance      => $provenance,
     wdlink          => $master_voc->wdlink($id),
-    folder_count1   => $count_ref->{folder_count_first},
-    document_count1 => $count_ref->{document_count_first},
     scope_note      => $master_voc->scope_note( $lang, $id ),
   );
 
@@ -440,18 +449,11 @@ sub output_category_page {
     $tmpl_var{signature} = $signature;
   }
 
-  if ( $master_voc->folders_complete($id) ) {
-    $tmpl_var{complete} = 1;
-  }
-  $count_ref->{folder_count_first}   = 0;
-  $count_ref->{document_count_first} = 0;
-
   my $tmpl = HTML::Template->new(
     filename => $TEMPLATE_ROOT->child('category.md.tmpl'),
     utf8     => 1
   );
   $tmpl->param( \%tmpl_var );
-  ## q & d: add lines as large variable
   $tmpl->param( lines => join( "\n", @{$lines_ref} ), );
 
   my $out_dir =
