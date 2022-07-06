@@ -27,6 +27,13 @@ subject_folders:
   query_file: ../sparql/subject_folders.rq
   output_dir: ../var/folderdata
   report_dir: sh
+ware_folders:
+  title:
+    de: "Alle online verfügbaren Waren-Mappen"
+    en: "All ware folders available online"
+  query_file: ../sparql/ware_folders.rq
+  output_dir: ../var/folderdata
+  report_dir: wa
 companies_with_reports:
   title:
     de: "Firmen/Institutionen mit online verfügbaren Geschäftsberichten"
