@@ -1,5 +1,5 @@
 ---
-title: "<tmpl_var signature> <tmpl_var label>"
+title: "<tmpl_if signature><tmpl_var signature> </tmpl_if><tmpl_var label>"
 modified: <tmpl_var modified>
 backlink: <tmpl_var backlink>
 backlink-title: "<tmpl_var backlink_title>"
@@ -7,31 +7,58 @@ fn-stub: about
 ---
 
 ### <tmpl_var provenance>
-# [<tmpl_var signature>]{.gray}&#8201; <tmpl_var label>&#160; <tmpl_if wdlink>[![Wikidata item](/images/Wikidata-logo.svg){.inline-icon}](<tmpl_var wdlink>)</tmpl_if>
+# <tmpl_if signature><tmpl_var signature>]{.gray}&#8201; </tmpl_if><tmpl_var label>&#160; <tmpl_if wdlink>[![Wikidata item](/images/Wikidata-logo.svg){.inline-icon}](<tmpl_var wdlink>)</tmpl_if>
 
-<tmpl_if scope_note>
-> Scope Note: <tmpl_var scope_note>
-</tmpl_if>
+<tmpl_if is_de><tmpl_if scope_note>
+> Scope Note: <tmpl_var scope_note><tmpl_if is_en></tmpl_if>
+</tmpl_if></tmpl_if>
+
+<tmpl_loop detail_loop>
+
+<tmpl_if is_subject>
 
 <tmpl_if is_de>
+## Sacharchiv
+
 Insgesamt <tmpl_var folder_count1> Sach-Mappen, <tmpl_var document_count1> Dokumente - Mappen <tmpl_if complete>komplett<tmpl_else>unvollständig.
 Nicht als Mappe aufbereitetes Material finden Sie unter [digitalisierte Microfilme](/film/h1_sh.de.html).</tmpl_if>
 
-_Klicken Sie "(xy Dokumente)" für die Dokumentanzeige im DFG-Viewer und "(Mappe)" für Mappeninformation._
-
-## Sacharchiv
+_Klicken Sie "(xy Dokumente)" für die Dokumentanzeige im Viewer und "(Mappe)" für Mappeninformation._
 </tmpl_if>
 <tmpl_if is_en>
+## Subject archives
+
 In total <tmpl_var folder_count1> subject folders, <tmpl_var document_count1> documents - folders <tmpl_if complete>complete<tmpl_else>incomplete.
 For material not published as folders, please check the [digitized micro-films](/film/h1_sh.de.html) (in German)</tmpl_if>.
 
 _For direct access to the documents, click the "(xy documents)" link, for folder information use the "(folder)" link._
-
-## Subject archives
 </tmpl_if>
 
 <tmpl_var lines>
 
-<tmpl_if is_en>
-_* The English category label is an unchecked automated translation of the German label._
 </tmpl_if>
+
+<tmpl_if is_ware>
+
+<tmpl_if is_de>
+## Warenarchiv
+
+Insgesamt <tmpl_var folder_count1> Waren-Mappen, <tmpl_var document_count1> Dokumente - Mappen <tmpl_if complete>komplett<tmpl_else>unvollständig.
+Nicht als Mappe aufbereitetes Material finden Sie unter [digitalisierte Microfilme](/film/h1_wa.de.html).</tmpl_if>
+
+_Klicken Sie "(xy Dokumente)" für die Dokumentanzeige im Viewer und "(Mappe)" für Mappeninformation._
+</tmpl_if>
+<tmpl_if is_en>
+## Commodities/wares archives
+
+In total <tmpl_var folder_count1> commodity/wares folders, <tmpl_var document_count1> documents - folders <tmpl_if complete>complete<tmpl_else>incomplete.
+For material not published as folders, please check the [digitized micro-films](/film/h1_wa.de.html) (in German)</tmpl_if>.
+
+_For direct access to the documents, click the "(xy documents)" link, for folder information use the "(folder)" link._
+</tmpl_if>
+
+<tmpl_var lines>
+
+</tmpl_if>
+
+</tmpl_loop detail_loop>
