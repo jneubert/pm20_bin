@@ -140,7 +140,7 @@ my ( $master_voc, $detail_voc );
 # loop over category types
 foreach my $category_type ( keys %{$definitions_ref} ) {
   my $def_ref = $definitions_ref->{$category_type};
-  next unless $category_type eq 'ware';
+  next unless $category_type eq 'subject';
 
   # master vocabulary reference
   my $master_vocab_name = $def_ref->{vocab};
@@ -257,8 +257,7 @@ foreach my $category_type ( keys %{$definitions_ref} ) {
         $total_folder_count += $folder_count || 0;
       }
 
-      # TODO for multiple detail sections on one category page, this has to
-      # move one level higher
+      # for overview pages, which have only one level, we are done here
       my $tmpl = HTML::Template->new(
         filename => $TEMPLATE_ROOT->child('category_overview.md.tmpl'),
         utf8     => 1
@@ -280,22 +279,23 @@ foreach my $category_type ( keys %{$definitions_ref} ) {
 
 # individual category pages
 foreach my $category_type ( keys %{$definitions_ref} ) {
+  next unless $category_type eq 'subject';
+  print "\ncategory_type: $category_type\n";
 
   # master vocabulary reference
   my $master_vocab_name = $definitions_ref->{$category_type}{vocab};
   $master_voc = ZBW::PM20x::Vocab->new($master_vocab_name);
 
   foreach my $lang (@LANGUAGES) {
+    print "  lang: $lang\n";
 
     my @lines;
     my $count_ref;
 
     # loop over detail types
-    my @detail_loop;
-    my $master_id_old;
-    foreach
-      my $detail_type ( keys %{ $definitions_ref->{$category_type}{detail} } )
-    {
+    my @detail_types = keys %{ $definitions_ref->{$category_type}{detail} };
+    foreach my $detail_type (@detail_types) {
+      print "    detail_type $detail_type\n";
       my $def_ref = $definitions_ref->{$category_type}->{detail}{$detail_type};
 
       # TODO pull out of tne $lang loop and store entries ref in variables
@@ -314,10 +314,11 @@ foreach my $category_type ( keys %{$definitions_ref} ) {
       my @entries =
         sort { $a->{$key}{value} cmp $b->{$key}{value} } @unsorted_entries;
 
-      # main loop
-      $master_id_old = '';
+      # main loop - an entry is a folder
+      my $master_id_old = '';
       my $detail_id_old   = '';
       my $firstletter_old = '';
+      my @detail_loop;
       foreach my $entry (@entries) {
 
         # extract ids for master and detail from folder id
@@ -334,11 +335,20 @@ foreach my $category_type ( keys %{$definitions_ref} ) {
         my $label     = $detail_voc->label( $lang, $detail_id );
         my $signature = $detail_voc->signature($detail_id);
 
+        # debug
+        if ( $master_id eq '' or $master_id ne $master_id_old ) {
+          print '      ', $master_voc->signature($master_id), ' ',
+            $master_voc->label( $lang, $master_id ), "\n";
+        }
+        print '        ', $folder->get_folderlabel($lang), "\n";
+
         # first level control break - new category page
         if ( $master_id_old ne '' and $master_id ne $master_id_old ) {
-          output_category_page( $lang, $category_type, $master_id_old, \@lines,
-            $count_ref );
-          @lines = ();
+          output_category_page( $lang, $category_type, $master_id_old,
+            \@detail_loop );
+          ##print Dumper \@detail_loop;
+          @detail_loop = ();
+          @lines       = ();
         }
         $master_id_old = $master_id;
 
@@ -401,40 +411,35 @@ foreach my $category_type ( keys %{$definitions_ref} ) {
         # statistics
         $count_ref->{folder_count_first}++;
         $count_ref->{document_count_first} += $entry->{docs}{value};
+
+        # safe all for the current category type
+        ## q & d: add lines as large variable
+        my %detail = (
+          "is_$category_type" => 1,
+          lines               => join( "\n", @lines ),
+          folder_count1       => $count_ref->{folder_count_first},
+          document_count1     => $count_ref->{document_count_first},
+        );
+        if ( $master_voc->folders_complete($master_id_old) ) {
+          $detail{complete} = 1;
+        }
+        push( @detail_loop, \%detail );
       }
 
-      # safe all for the current category type
-      ## q & d: add lines as large variable
-      my %detail = (
-        "is_$category_type" => 1,
-        lines               => join( "\n", @lines ),
-        folder_count1       => $count_ref->{folder_count_first},
-        document_count1     => $count_ref->{document_count_first},
-      );
-      if ( $master_voc->folders_complete($master_id_old) ) {
-        $detail{complete} = 1;
-      }
-      push( @detail_loop, \%detail );
+      # output of last category
+      output_category_page( $lang, $category_type, $master_id_old,
+        \@detail_loop );
     }
-
-    # output of last category
-    output_category_page( $lang, $category_type, $master_id_old, \@lines,
-      $count_ref );
-
-    print Dumper \@detail_loop;
-    print $master_id_old;
-    exit;
   }
 }
 
 ############
 
 sub output_category_page {
-  my $lang          = shift or croak('param missing');
-  my $category_type = shift or croak('param missing');
-  my $id            = shift or croak('param missing');
-  my $lines_ref     = shift or croak('param missing');
-  my $count_ref     = shift or croak('param missing');
+  my $lang            = shift or croak('param missing');
+  my $category_type   = shift or croak('param missing');
+  my $id              = shift or croak('param missing');
+  my $detail_loop_ref = shift or croak('param missing');
 
   my $provenance =
     $PROV{ $definitions_ref->{$category_type}{prov} }{name}{$lang};
@@ -453,6 +458,7 @@ sub output_category_page {
     provenance     => $provenance,
     wdlink         => $master_voc->wdlink($id),
     scope_note     => $master_voc->scope_note( $lang, $id ),
+    detail_loop    => $detail_loop_ref,
   );
 
   if ( $category_type ne 'ware' ) {
@@ -464,7 +470,6 @@ sub output_category_page {
     utf8     => 1
   );
   $tmpl->param( \%tmpl_var );
-  $tmpl->param( lines => join( "\n", @{$lines_ref} ), );
 
   my $out_dir =
     $WEB_ROOT->child($category_type)->child('i')->child($id);
