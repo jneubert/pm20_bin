@@ -62,9 +62,15 @@ geo:
     subject:
       result_file: subject_folders
       vocab: je
+      title:
+        en: Subject archives
+        de: Sacharchiv
     ware:
       result_file: ware_folders
       vocab: ip
+      title:
+        en: Commodities/wares archives
+        de: Warenarchiv
 subject:
   prov: hwwa
   title:
@@ -77,6 +83,9 @@ subject:
     geo:
       result_file: subject_folders
       vocab: ag
+      title:
+        en: Countries-subject archives
+        de: Länder-Sacharchiv
 ware:
   prov: hwwa
   title:
@@ -89,6 +98,9 @@ ware:
     geo:
       result_file: ware_folders
       vocab: ag
+      title:
+        en: Commodities/wares archives
+        de: Warenarchiv
 EOF
 
 my %linktitle = (
@@ -140,7 +152,6 @@ my ( $master_voc, $detail_voc );
 # loop over category types
 foreach my $category_type ( keys %{$definitions_ref} ) {
   my $def_ref = $definitions_ref->{$category_type};
-  next unless $category_type eq 'subject';
 
   # master vocabulary reference
   my $master_vocab_name = $def_ref->{vocab};
@@ -279,7 +290,6 @@ foreach my $category_type ( keys %{$definitions_ref} ) {
 
 # individual category pages
 foreach my $category_type ( keys %{$definitions_ref} ) {
-  next unless $category_type eq 'subject';
   print "\ncategory_type: $category_type\n";
 
   # master vocabulary reference
@@ -289,14 +299,17 @@ foreach my $category_type ( keys %{$definitions_ref} ) {
   foreach my $lang (@LANGUAGES) {
     print "  lang: $lang\n";
 
+    my %category_data;
     my @lines;
     my $count_ref;
 
     # loop over detail types
-    my @detail_types = keys %{ $definitions_ref->{$category_type}{detail} };
+    my @detail_types =
+      sort keys %{ $definitions_ref->{$category_type}{detail} };
     foreach my $detail_type (@detail_types) {
       print "    detail_type $detail_type\n";
       my $def_ref = $definitions_ref->{$category_type}->{detail}{$detail_type};
+      my $detail_title = $def_ref->{title}{$lang};
 
       # TODO pull out of tne $lang loop and store entries ref in variables
       # detail vocabulary reference
@@ -315,10 +328,9 @@ foreach my $category_type ( keys %{$definitions_ref} ) {
         sort { $a->{$key}{value} cmp $b->{$key}{value} } @unsorted_entries;
 
       # main loop - an entry is a folder
-      my $master_id_old = '';
+      my $master_id_old   = '';
       my $detail_id_old   = '';
       my $firstletter_old = '';
-      my @detail_loop;
       foreach my $entry (@entries) {
 
         # extract ids for master and detail from folder id
@@ -340,15 +352,23 @@ foreach my $category_type ( keys %{$definitions_ref} ) {
           print '      ', $master_voc->signature($master_id), ' ',
             $master_voc->label( $lang, $master_id ), "\n";
         }
-        print '        ', $folder->get_folderlabel($lang), "\n";
+##        print '        ', $folder->get_folderlabel($lang), "\n";
 
         # first level control break - new category page
         if ( $master_id_old ne '' and $master_id ne $master_id_old ) {
-          output_category_page( $lang, $category_type, $master_id_old,
-            \@detail_loop );
-          ##print Dumper \@detail_loop;
-          @detail_loop = ();
-          @lines       = ();
+          my %category_type_detail = (
+            "is_$lang"        => 1,
+            "is_$detail_type" => 1,
+            detail_title      => $detail_title,
+            lines             => join( "\n", @lines ),
+            folder_count1     => $count_ref->{folder_count_first},
+            document_count1   => $count_ref->{document_count_first},
+          );
+          if ( $master_voc->folders_complete($master_id_old) ) {
+            $category_type_detail{complete} = 1;
+          }
+          push( @{ $category_data{$master_id_old} }, \%category_type_detail );
+          @lines = ();
         }
         $master_id_old = $master_id;
 
@@ -411,24 +431,28 @@ foreach my $category_type ( keys %{$definitions_ref} ) {
         # statistics
         $count_ref->{folder_count_first}++;
         $count_ref->{document_count_first} += $entry->{docs}{value};
-
-        # safe all for the current category type
-        ## q & d: add lines as large variable
-        my %detail = (
-          "is_$category_type" => 1,
-          lines               => join( "\n", @lines ),
-          folder_count1       => $count_ref->{folder_count_first},
-          document_count1     => $count_ref->{document_count_first},
-        );
-        if ( $master_voc->folders_complete($master_id_old) ) {
-          $detail{complete} = 1;
-        }
-        push( @detail_loop, \%detail );
       }
 
-      # output of last category
-      output_category_page( $lang, $category_type, $master_id_old,
-        \@detail_loop );
+      # save the last category
+      ## q & d: add lines as large variable
+      my %category_type_detail = (
+        "is_$lang"        => 1,
+        "is_$detail_type" => 1,
+        detail_title      => $detail_title,
+        lines             => join( "\n", @lines ),
+        folder_count1     => $count_ref->{folder_count_first},
+        document_count1   => $count_ref->{document_count_first},
+      );
+      if ( $master_voc->folders_complete($master_id_old) ) {
+        $category_type_detail{complete} = 1;
+      }
+      push( @{ $category_data{$master_id_old} }, \%category_type_detail );
+    }
+
+    # actual output of all collected data for a category
+    foreach my $category_id ( sort keys %category_data ) {
+      my $data_ref = $category_data{$category_id};
+      output_category_page( $lang, $category_type, $category_id, $data_ref );
     }
   }
 }
@@ -436,10 +460,10 @@ foreach my $category_type ( keys %{$definitions_ref} ) {
 ############
 
 sub output_category_page {
-  my $lang            = shift or croak('param missing');
-  my $category_type   = shift or croak('param missing');
-  my $id              = shift or croak('param missing');
-  my $detail_loop_ref = shift or croak('param missing');
+  my $lang          = shift or croak('param missing');
+  my $category_type = shift or croak('param missing');
+  my $id            = shift or croak('param missing');
+  my $data_ref      = shift or croak('param missing');
 
   my $provenance =
     $PROV{ $definitions_ref->{$category_type}{prov} }{name}{$lang};
@@ -450,15 +474,15 @@ sub output_category_page {
     ? 'Category Overview'
     : 'Systematik-Übersicht';
   my %tmpl_var = (
-    "is_$lang"     => 1,
-    label          => $label,
-    modified       => last_modified( $master_voc, $detail_voc ),
-    backlink       => "../../about.$lang.html",
-    backlink_title => $backlinktitle,
-    provenance     => $provenance,
-    wdlink         => $master_voc->wdlink($id),
-    scope_note     => $master_voc->scope_note( $lang, $id ),
-    detail_loop    => $detail_loop_ref,
+    "is_$lang"       => 1,
+    label            => $label,
+    modified         => last_modified( $master_voc, $detail_voc ),
+    backlink         => "../../about.$lang.html",
+    backlink_title   => $backlinktitle,
+    provenance       => $provenance,
+    wdlink           => $master_voc->wdlink($id),
+    scope_note       => $master_voc->scope_note( $lang, $id ),
+    detail_type_loop => $data_ref,
   );
 
   if ( $category_type ne 'ware' ) {
