@@ -290,7 +290,7 @@ foreach my $category_type ( keys %{$definitions_ref} ) {
 
 # individual category pages
 foreach my $category_type ( keys %{$definitions_ref} ) {
-  next unless $category_type eq 'ware';
+  ##next unless $category_type eq 'ware';
   print "\ncategory_type: $category_type\n";
 
   # master vocabulary reference
@@ -429,7 +429,7 @@ foreach my $category_type ( keys %{$definitions_ref} ) {
         my $syspage_title = $linktitle{"${detail_type}_sys"}{$lang};
         my $catpage_title = "$label " . $linktitle{"${detail_type}_cat"}{$lang};
         my $entry_label =
-          $category_type eq 'ware' ? $label : "$signature $label";
+          $detail_type eq 'ware' ? $label : "$signature $label";
         $line .=
             "- $entry_label "
           . "[**&nearr;**]($catpage_link \"$catpage_title\") "
