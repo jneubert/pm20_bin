@@ -290,6 +290,7 @@ foreach my $category_type ( keys %{$definitions_ref} ) {
 
 # individual category pages
 foreach my $category_type ( keys %{$definitions_ref} ) {
+  next unless $category_type eq 'ware';
   print "\ncategory_type: $category_type\n";
 
   # master vocabulary reference
@@ -311,7 +312,6 @@ foreach my $category_type ( keys %{$definitions_ref} ) {
       my $def_ref = $definitions_ref->{$category_type}->{detail}{$detail_type};
       my $detail_title = $def_ref->{title}{$lang};
 
-      # TODO pull out of tne $lang loop and store entries ref in variables
       # detail vocabulary reference
       my $detail_vocab_name = $def_ref->{vocab};
       $detail_voc = ZBW::PM20x::Vocab->new($detail_vocab_name);
@@ -322,10 +322,20 @@ foreach my $category_type ( keys %{$definitions_ref} ) {
       my @unsorted_entries =
         @{ decode_json( $file->slurp )->{results}->{bindings} };
 
-      # sort entries by relevant notation
-      my $key = "${category_type}Nta";
-      my @entries =
-        sort { $a->{$key}{value} cmp $b->{$key}{value} } @unsorted_entries;
+      # sort entries by relevant notation (or label)
+      my @entries;
+      if ( $category_type eq 'ware' ) {
+        @entries =
+          sort {
+               $a->{'wareLabel'}{value} cmp $b->{'wareLabel'}{value}
+            or $a->{'geoNtaLong'}{value} cmp $b->{'geoNtaLong'}{value}
+          } @unsorted_entries;
+##      print Dumper \@entries; exit;
+      } else {
+        my $key = "${category_type}NtaLong";
+        @entries =
+          sort { $a->{$key}{value} cmp $b->{$key}{value} } @unsorted_entries;
+      }
 
       # main loop - an entry is a folder
       my $master_id_old   = '';
@@ -349,7 +359,7 @@ foreach my $category_type ( keys %{$definitions_ref} ) {
 
         # debug
         if ( $master_id eq '' or $master_id ne $master_id_old ) {
-          print '      ', $master_voc->signature($master_id), ' ',
+          print '      ',    ## $master_voc->signature($master_id), ' ',
             $master_voc->label( $lang, $master_id ), "\n";
         }
 ##        print '        ', $folder->get_folderlabel($lang), "\n";
