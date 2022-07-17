@@ -379,6 +379,7 @@ foreach my $category_type ( keys %{$definitions_ref} ) {
           }
           push( @{ $category_data{$master_id_old} }, \%category_type_detail );
           @lines = ();
+          $count_ref = {};
         }
         $master_id_old = $master_id;
 
