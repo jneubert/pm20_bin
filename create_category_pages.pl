@@ -158,6 +158,7 @@ foreach my $category_type ( keys %{$definitions_ref} ) {
   $master_voc = ZBW::PM20x::Vocab->new($master_vocab_name);
 
   # loop over detail types
+  my %total_folder_count;
   foreach my $detail_type ( keys %{ $def_ref->{detail} } ) {
 
     # detail vocabulary reference
@@ -170,8 +171,7 @@ foreach my $category_type ( keys %{$definitions_ref} ) {
       my $title = $def_ref->{title}{$lang};
       my $provenance =
         $PROV{ $def_ref->{prov} }{name}{$lang};
-      my $category_count     = 0;
-      my $total_folder_count = 0;
+      my $category_count = 0;
 
       # some header information for the page
       my $backlinktitle =
@@ -226,24 +226,43 @@ foreach my $category_type ( keys %{$definitions_ref} ) {
         } else {
           croak "irregular category uri $category_uri";
         }
-        my $label        = $master_voc->label( $lang, $id );
-        my $signature    = $master_voc->signature($id);
-        my $folder_count = $master_voc->folder_count( $category_type, $id );
+        my $label     = $master_voc->label( $lang, $id );
+        my $signature = $master_voc->signature($id);
+
+        my $folder_count =
+          $master_voc->folder_count( $category_type, $detail_type, $id ) || 0;
         my $count_label =
           $category_type eq 'ware'
           ? ( $lang eq 'en' ? ' ware folders'    : ' Waren-Mappen' )
           : ( $lang eq 'en' ? ' subject folders' : ' Sach-Mappen' );
+
+        my $entry_body = "$folder_count $count_label"
+          . (
+            ( $master_voc->folders_complete($id) )
+          ? ( $lang eq 'en' ? ' (complete)' : ' (komplett)' )
+          : ''
+          );
+
+        # q&d extension for geo categories
+        if ( $category_type eq 'geo' ) {
+          $entry_body =
+            ( $master_voc->folder_count( $category_type, 'subject', $id ) || 0 )
+            . ( $lang eq 'en' ? ' subject folders' : ' Sach-Mappen' )
+            . (
+              ( $master_voc->folders_complete($id) )
+            ? ( $lang eq 'en' ? ' (complete)' : ' (komplett)' )
+            : ''
+            )
+            . ', '
+            . ( $master_voc->folder_count( $category_type, 'ware', $id ) || 0 )
+            . ( $lang eq 'en' ? ' ware folders' : ' Waren-Mappen' );
+        }
+
         my $entry_note = (
           ( $master_voc->geo_category_type($id) )
           ? $master_voc->geo_category_type($id) . ' '
           : ''
-          )
-          . '('
-          . (
-            ( $master_voc->folders_complete($id) )
-          ? ( $lang eq 'en' ? 'complete, ' : 'komplett, ' )
-          : ''
-          ) . "$folder_count $count_label)";
+        ) . "($entry_body)";
 
         # main entry
         my $siglink = $master_voc->siglink($id);
@@ -265,7 +284,9 @@ foreach my $category_type ( keys %{$definitions_ref} ) {
         }
         push( @lines, $line );
         $category_count++;
-        $total_folder_count += $folder_count || 0;
+        if ( $lang eq 'en' ) {
+          $total_folder_count{$detail_type} += $folder_count || 0;
+        }
       }
 
       # for overview pages, which have only one level, we are done here
@@ -276,9 +297,10 @@ foreach my $category_type ( keys %{$definitions_ref} ) {
       $tmpl->param( \%tmpl_var );
       ## q & d: add lines as large variable
       $tmpl->param(
-        lines              => join( "\n", @lines ),
-        category_count     => $category_count,
-        total_folder_count => $total_folder_count,
+        lines                               => join( "\n", @lines ),
+        category_count                      => $category_count,
+        "${detail_type}_total_folder_count" =>
+          $total_folder_count{$detail_type},
       );
 
       my $out = $WEB_ROOT->child($category_type)->child("about.$lang.md");
@@ -377,8 +399,9 @@ foreach my $category_type ( keys %{$definitions_ref} ) {
           if ( $master_voc->folders_complete($master_id_old) ) {
             $category_type_detail{complete} = 1;
           }
+
           push( @{ $category_data{$master_id_old} }, \%category_type_detail );
-          @lines = ();
+          @lines     = ();
           $count_ref = {};
         }
         $master_id_old = $master_id;
@@ -429,8 +452,7 @@ foreach my $category_type ( keys %{$definitions_ref} ) {
 
         my $syspage_title = $linktitle{"${detail_type}_sys"}{$lang};
         my $catpage_title = "$label " . $linktitle{"${detail_type}_cat"}{$lang};
-        my $entry_label =
-          $detail_type eq 'ware' ? $label : "$signature $label";
+        my $entry_label = $detail_type eq 'ware' ? $label : "$signature $label";
         $line .=
             "- $entry_label "
           . "[**&nearr;**]($catpage_link \"$catpage_title\") "
@@ -457,6 +479,7 @@ foreach my $category_type ( keys %{$definitions_ref} ) {
       if ( $master_voc->folders_complete($master_id_old) ) {
         $category_type_detail{complete} = 1;
       }
+
       push( @{ $category_data{$master_id_old} }, \%category_type_detail );
     }
 
@@ -498,6 +521,14 @@ sub output_category_page {
 
   if ( $category_type ne 'ware' ) {
     $tmpl_var{signature} = $signature;
+  }
+
+  # navigation tabs for overview page?
+  if (  $category_type eq 'geo'
+    and $master_voc->folder_count( 'geo', 'subject', $id )
+    and $master_voc->folder_count( 'geo', 'ware',    $id ) )
+  {
+    $tmpl_var{show_tabs} = 1;
   }
 
   my $tmpl = HTML::Template->new(
