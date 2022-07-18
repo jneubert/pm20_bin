@@ -32,7 +32,7 @@ use ZBW::PM20x::Vocab;
 binmode( STDOUT, ":encoding(UTF-8)" );
 
 ##Readonly my $WEB_ROOT        => path('../web/category');
-Readonly my $WEB_ROOT        => path('/tmp/category');
+Readonly my $WEB_ROOT        => path('../web/category');
 Readonly my $KLASSDATA_ROOT  => path('../data/klassdata');
 Readonly my $FOLDERDATA_ROOT => path('../data/folderdata');
 Readonly my $TEMPLATE_ROOT   => path('../etc/html_tmpl');
@@ -404,7 +404,7 @@ foreach my $category_type ( keys %{$definitions_ref} ) {
           "../../../$detail_type/i/$detail_id/about.$lang.html";
         my $entry_note =
             '(<a href="'
-          . $folder->get_dfgview_url()
+          . $folder->get_iiifview_url()
           . '" title="'
           . "$linktitle{about_hint}{$lang}: "
           . $folder->get_folderlabel($lang)
