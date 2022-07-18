@@ -29,9 +29,16 @@ Readonly my $RDF_ROOT => path('../data/rdf');
 
 # detail type -> relevant count property
 Readonly my %COUNT_PROPERTY => (
-  subject => 'zbwext:folderCount',
-  geo     => 'zbwext:shFolderCount',
-  ware    => 'zbwext:folderCount',
+  subject => {
+    geo => 'zbwext:folderCount',
+  },
+  geo => {
+    subject => 'zbwext:shFolderCount',
+    ware    => 'zbwext:waFolderCount',
+  },
+  ware => {
+    geo => 'zbwext:folderCount',
+  },
 );
 
 =encoding utf8
@@ -51,8 +58,8 @@ ZBW::PM20x::Vocab - Functions for PM20 vocabularies
   my $signature = $voc->signature($id);
   my $term_id = $voc->lookup_signature('A10');
   my $subheading = $voc->subheading('A');
-  my $folder_count = $voc->folder_count( 'subject', $id );
-  
+  my $folder_count = $voc->folder_count( 'subject', 'geo', $id );
+
 =head1 DESCRIPTION
 
 Read all vocabularies into a data structure, organized as:
@@ -113,7 +120,7 @@ sub new {
 
         # map optional simple jsonld fields to hash entries
         my @fields = qw / notation notationLong foldersComplete geoCategoryType
-          zbwext:shFolderCount zbwext:folderCount /;
+          zbwext:shFolderCount zbwext:waFolderCount zbwext:folderCount /;
         foreach my $field (@fields) {
           $cat{$id}{$field} = $category->{$field};
         }
@@ -347,7 +354,8 @@ sub geo_category_type {
 
 =item folders_complete( $term_id )
 
-Return true if the subject folders are comlete for a country, false otherwise. 
+Return true if all subject folders are comlete for a country, or if all country
+folders are complete for a ware, false otherwise.
 
 =cut
 
@@ -365,20 +373,22 @@ sub folders_complete {
   return $folders_complete;
 }
 
-=item folder_count( $category_type, $term_id )
+=item folder_count( $category_type, $detail_type, $term_id )
 
-Return the folder_count (A for "Sternchenland", B for normal, C for "Kästschenland), or undef, if not defined.
+Return the folder_count, or undef, if not defined.
 
 =cut
 
 sub folder_count {
   my $self          = shift or croak('param missing');
   my $category_type = shift or croak('param missing');
+  my $detail_type   = shift or croak('param missing');
   my $term_id       = shift or croak('param missing');
 
   # get from extended vocab data
   my $folder_count =
-    $self->{id}{$term_id}{ $COUNT_PROPERTY{$category_type} } || '';
+    $self->{id}{$term_id}{ $COUNT_PROPERTY{$category_type}{$detail_type} }
+    || '';
   return $folder_count;
 }
 
@@ -511,9 +521,10 @@ sub _add_subheadings {
       }
     }
   } elsif ( $self->{vocab_name} eq 'ip' ) {
+
     # here we have no signature, but only start chars
     foreach my $id ( keys %{ $self->{id} } ) {
-      my %terminfo  = %{ $self->{id}{$id} };
+      my %terminfo = %{ $self->{id}{$id} };
       foreach my $lang (@LANGUAGES) {
         my $startchar = uc( substr( $terminfo{prefLabel}{$lang}, 0, 1 ) );
         $self->{subhead}{$startchar}{$lang} = $startchar;
