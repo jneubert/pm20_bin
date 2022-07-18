@@ -38,6 +38,7 @@ section:
     seq:
       - geo_by_signature
       - subject_by_signature
+      - ware_by_signature
 sections:
   - pe
   - co
