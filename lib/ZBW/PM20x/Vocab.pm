@@ -51,7 +51,7 @@ ZBW::PM20x::Vocab - Functions for PM20 vocabularies
 =head1 SYNOPSIS
 
   use ZBW::PM20x::Vocab;
-  my $voc = ZBW::PM20x::Vocab->new('ag');
+  my $voc = ZBW::PM20x::Vocab->new('geo');
 
   my $last_modified = $voc->modified;
   my $label = $voc->label($lang, $id);
@@ -64,7 +64,7 @@ ZBW::PM20x::Vocab - Functions for PM20 vocabularies
 
 Read all vocabularies into a data structure, organized as:
 
-  {$vocab}          e.g., 'ag'
+  {$vocab}          e.g., 'geo'
     id              by identifier (main term entry)
       {$id}         hash with everything from database
     modified        last modification of the vocabulary
@@ -84,9 +84,9 @@ Read all vocabularies into a data structure, organized as:
 
 =item new ($vocab_name)
 
-Return a new vocab object from the named vocabulary. (Names are lowercase ifis
-klass_code).  Read the according SKOS vocabluary in JSONLD format into the
-object.
+Return a new vocab object from the named vocabulary. (Names were lowercase ifis
+klass_code; now geo|suject|ware).  Read the according SKOS vocabluary in JSONLD
+format into the object.
 
 =cut
 
@@ -327,7 +327,9 @@ sub wdlink {
   if ( defined $self->{id}{$term_id}{exactMatch} ) {
     my @exact_links = @{ $self->{id}{$term_id}{exactMatch} };
     foreach my $link (@exact_links) {
-      if ( $link =~ m|^http://www\.wikidata\.org/entity| ) {
+      ## replace short links
+      $link =~ s|^wd:|http://www\.wikidata\.org/entity/|;
+      if ( $link =~ m|^http://www\.wikidata\.org/entity/| ) {
         $wdlink = $link;
         last;
       }
@@ -466,7 +468,7 @@ sub _as_array {
 sub _add_subheadings {
   my $self = shift or croak('param missing');
 
-  if ( $self->{vocab_name} eq 'ag' ) {
+  if ( $self->{vocab_name} eq 'geo' ) {
     $self->{subhead} = {
       A => {
         de => 'Europa',
@@ -505,7 +507,7 @@ sub _add_subheadings {
         en => 'World',
       },
     };
-  } elsif ( $self->{vocab_name} eq 'je' ) {
+  } elsif ( $self->{vocab_name} eq 'subject' ) {
     foreach my $id ( keys %{ $self->{id} } ) {
       my %terminfo  = %{ $self->{id}{$id} };
       my $signature = $terminfo{notation};
@@ -520,7 +522,7 @@ sub _add_subheadings {
         $self->{subhead}{$signature}{$lang} = $label;
       }
     }
-  } elsif ( $self->{vocab_name} eq 'ip' ) {
+  } elsif ( $self->{vocab_name} eq 'ware' ) {
 
     # here we have no signature, but only start chars
     foreach my $id ( keys %{ $self->{id} } ) {

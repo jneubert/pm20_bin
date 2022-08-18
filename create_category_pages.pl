@@ -31,7 +31,7 @@ use ZBW::PM20x::Vocab;
 
 binmode( STDOUT, ":encoding(UTF-8)" );
 
-##Readonly my $WEB_ROOT        => path('../web/category');
+##Readonly my $WEB_ROOT        => path('/tmp/category');
 Readonly my $WEB_ROOT        => path('../web/category');
 Readonly my $KLASSDATA_ROOT  => path('../data/klassdata');
 Readonly my $FOLDERDATA_ROOT => path('../data/folderdata');
@@ -56,18 +56,18 @@ geo:
     en: Folders by Country Category System
     de: Mappen nach Ländersystematik
   result_file: geo_by_signature
-  vocab: ag
+  vocab: geo
   uri_field: country
   detail:
     subject:
       result_file: subject_folders
-      vocab: je
+      vocab: subject
       title:
         en: Subject archives
         de: Sacharchiv
     ware:
       result_file: ware_folders
-      vocab: ip
+      vocab: ware
       title:
         en: Commodities/wares archives
         de: Warenarchiv
@@ -77,12 +77,12 @@ subject:
     en: Folders by Subject Category System
     de: Mappen nach Sachsystematik
   result_file: subject_by_signature
-  vocab: je
+  vocab: subject
   uri_field: category
   detail:
     geo:
       result_file: subject_folders
-      vocab: ag
+      vocab: geo
       title:
         en: Countries-subject archives
         de: Länder-Sacharchiv
@@ -92,12 +92,12 @@ ware:
     en: Folders by Commodity/ware Category System
     de: Mappen nach Warensystematik
   result_file: ware_by_signature
-  vocab: ip
+  vocab: ware
   uri_field: category
   detail:
     geo:
       result_file: ware_folders
-      vocab: ag
+      vocab: geo
       title:
         en: Commodities/wares archives
         de: Warenarchiv
@@ -150,7 +150,7 @@ my %linktitle = (
 my ( $master_voc, $detail_voc );
 
 # loop over category types
-foreach my $category_type ( keys %{$definitions_ref} ) {
+foreach my $category_type ( sort keys %{$definitions_ref} ) {
   my $def_ref = $definitions_ref->{$category_type};
 
   # master vocabulary reference
@@ -195,6 +195,7 @@ foreach my $category_type ( keys %{$definitions_ref} ) {
         @{ decode_json( $file->slurp )->{results}->{bindings} };
 
       # main loop
+      my $firstletter     = '';
       my $firstletter_old = '';
       foreach my $category (@categories) {
 
@@ -205,7 +206,7 @@ foreach my $category_type ( keys %{$definitions_ref} ) {
           or exists $category->{countLabel} );
 
         # control break?
-        my $firstletter =
+        $firstletter =
           $category_type eq 'ware'
           ? substr( $category->{categoryLabel}->{value}, 0, 1 )
           : substr( $category->{signature}->{value},     0, 1 );
@@ -287,6 +288,8 @@ foreach my $category_type ( keys %{$definitions_ref} ) {
         if ( $lang eq 'en' ) {
           $total_folder_count{$detail_type} += $folder_count || 0;
         }
+        $firstletter     = '';
+        $firstletter_old = '';
       }
 
       # for overview pages, which have only one level, we are done here
@@ -311,7 +314,7 @@ foreach my $category_type ( keys %{$definitions_ref} ) {
 }
 
 # individual category pages
-foreach my $category_type ( keys %{$definitions_ref} ) {
+foreach my $category_type ( sort keys %{$definitions_ref} ) {
   ##next unless $category_type eq 'ware';
   print "\ncategory_type: $category_type\n";
 
@@ -362,6 +365,7 @@ foreach my $category_type ( keys %{$definitions_ref} ) {
       # main loop - an entry is a folder
       my $master_id_old   = '';
       my $detail_id_old   = '';
+      my $firstletter     = '';
       my $firstletter_old = '';
       foreach my $entry (@entries) {
 
@@ -384,7 +388,7 @@ foreach my $category_type ( keys %{$definitions_ref} ) {
           print '      ',    ## $master_voc->signature($master_id), ' ',
             $master_voc->label( $lang, $master_id ), "\n";
         }
-##        print '        ', $folder->get_folderlabel($lang), "\n";
+        ##print '        ', $folder->get_folderlabel($lang), "\n";
 
         # first level control break - new category page
         if ( $master_id_old ne '' and $master_id ne $master_id_old ) {
@@ -407,10 +411,12 @@ foreach my $category_type ( keys %{$definitions_ref} ) {
         $master_id_old = $master_id;
 
         # second level control break
-        my $firstletter = substr( $signature, 0, 1 );
+        $firstletter =
+          $detail_type eq 'ware'
+          ? substr( $entry->{wareLabel}->{value}, 0, 1 )
+          : substr( $signature,                   0, 1 );
         if ( $firstletter ne $firstletter_old ) {
-
-          # subheading
+          ## subheading
           my $subheading = $detail_voc->subheading( $lang, $firstletter );
           push( @lines, '', "### $subheading", '' );
           $firstletter_old = $firstletter;
@@ -458,6 +464,7 @@ foreach my $category_type ( keys %{$definitions_ref} ) {
           . "[**&nearr;**]($catpage_link \"$catpage_title\") "
           . "[**&uarr;**]($syspage_link \"$syspage_title\") "
           . $entry_note;
+
         push( @lines, $line );
         $detail_id_old = $detail_id;
 
@@ -481,6 +488,8 @@ foreach my $category_type ( keys %{$definitions_ref} ) {
       }
 
       push( @{ $category_data{$master_id_old} }, \%category_type_detail );
+      @lines     = ();
+      $count_ref = {};
     }
 
     # actual output of all collected data for a category
@@ -488,6 +497,7 @@ foreach my $category_type ( keys %{$definitions_ref} ) {
       my $data_ref = $category_data{$category_id};
       output_category_page( $lang, $category_type, $category_id, $data_ref );
     }
+
   }
 }
 
@@ -507,7 +517,9 @@ sub output_category_page {
     $lang eq 'en'
     ? 'Category Overview'
     : 'Systematik-Übersicht';
+  my $uri      = "http://purl.org/pressemappe20/category/$category_type/i/$id";
   my %tmpl_var = (
+    uri              => $uri,
     "is_$lang"       => 1,
     label            => $label,
     modified         => last_modified( $master_voc, $detail_voc ),
