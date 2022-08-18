@@ -10,13 +10,15 @@ fn-stub: about
 
 # <tmpl_if signature>[<tmpl_var signature>]{.gray}&#8201; </tmpl_if><tmpl_var label>&#160; <tmpl_if wdlink>[![Wikidata item](/images/Wikidata-logo.svg){.inline-icon}](<tmpl_var wdlink>)</tmpl_if>
 
-<tmpl_if is_de><tmpl_if scope_note>
-> Scope Note: <tmpl_var scope_note><tmpl_if is_en></tmpl_if>
-</tmpl_if></tmpl_if>
+<div class="hint">Persistent Identifier: `<tmpl_var uri>`</div>
+
+<tmpl_if is_de><tmpl_if scope_note><div class="hint">
+Scope Note: <tmpl_var scope_note><tmpl_if is_en></tmpl_if>
+</div></tmpl_if></tmpl_if>
 
 <tmpl_if show_tabs>
 <tmpl_if is_de>[Sacharchiv](#sacharchiv) &#160; [Warenarchiv](#warenarchiv)</tmpl_if>
-<tmpl_if is_en>[Subject archives](#subject-archives) &#160; [Commodities/wares archives](#commoditieswares-archive)</tmpl_if>
+<tmpl_if is_en>[Subject archives](#subject-archives) &#160; [Commodities/wares archives](#commoditieswares-archives)</tmpl_if>
 </tmpl_if>
 
 <tmpl_loop detail_type_loop>
