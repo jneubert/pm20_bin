@@ -302,12 +302,7 @@ foreach my $category_type ( sort keys %{$definitions_ref} ) {
         category_count => $category_count,
       );
 
-      if ( $category_type eq 'geo' ) {
-        $tmpl->param(
-          ware_total_folder_count    => $total_folder_count{ware},
-          subject_total_folder_count => $total_folder_count{subject},
-        );
-      } else {
+      foreach my $detail_type ( keys %{ $def_ref->{detail} } ) {
         $tmpl->param( "${detail_type}_total_folder_count" =>
             $total_folder_count{$detail_type}, );
       }
