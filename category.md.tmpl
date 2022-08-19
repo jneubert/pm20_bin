@@ -8,7 +8,7 @@ fn-stub: about
 
 ### <tmpl_var provenance>
 
-# <tmpl_if signature>[<tmpl_var signature>]{.gray}&#8201; </tmpl_if><tmpl_var label>&#160; <tmpl_if wdlink>[![Wikidata item](/images/Wikidata-logo.svg){.inline-icon}](<tmpl_var wdlink>)</tmpl_if>
+# <tmpl_if signature>[<tmpl_var signature>]{.gray}&#8201; </tmpl_if><tmpl_var label><tmpl_if wdlink> &#160; [![Wikidata](/images/Wikidata-logo.svg "Wikidata"){.inline-icon}](<tmpl_var wdlink>)</tmpl_if><tmpl_if wplink> [![Wikipedia](/images/Wikipedia-W.svg "Wikipedia"){.inline-icon}](<tmpl_var wplink>)</tmpl_if>
 
 <div class="hint">Persistent Identifier: `<tmpl_var uri>`</div>
 
