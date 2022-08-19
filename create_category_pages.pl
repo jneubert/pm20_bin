@@ -298,12 +298,19 @@ foreach my $category_type ( sort keys %{$definitions_ref} ) {
       $tmpl->param( \%tmpl_var );
       ## q & d: add lines as large variable
       $tmpl->param(
-        lines                               => join( "\n", @lines ),
-        category_count                      => $category_count,
-        "${detail_type}_total_folder_count" =>
-          $total_folder_count{$detail_type},
+        lines          => join( "\n", @lines ),
+        category_count => $category_count,
       );
 
+      if ( $category_type eq 'geo' ) {
+        $tmpl->param(
+          ware_total_folder_count    => $total_folder_count{ware},
+          subject_total_folder_count => $total_folder_count{subject},
+        );
+      } else {
+        $tmpl->param( "${detail_type}_total_folder_count" =>
+            $total_folder_count{$detail_type}, );
+      }
       my $out = $WEB_ROOT->child($category_type)->child("about.$lang.md");
       $out = path("$WEB_ROOT/$category_type/about.$lang.md");
       $out->spew_utf8( $tmpl->output );
