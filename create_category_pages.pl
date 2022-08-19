@@ -288,8 +288,6 @@ foreach my $category_type ( sort keys %{$definitions_ref} ) {
         if ( $lang eq 'en' ) {
           $total_folder_count{$detail_type} += $folder_count || 0;
         }
-        $firstletter     = '';
-        $firstletter_old = '';
       }
 
       # for overview pages, which have only one level, we are done here
@@ -309,6 +307,9 @@ foreach my $category_type ( sort keys %{$definitions_ref} ) {
       my $out = $WEB_ROOT->child($category_type)->child("about.$lang.md");
       $out = path("$WEB_ROOT/$category_type/about.$lang.md");
       $out->spew_utf8( $tmpl->output );
+
+      $firstletter     = '';
+      $firstletter_old = '';
     }
   }
 }
@@ -527,6 +528,7 @@ sub output_category_page {
     backlink_title   => $backlinktitle,
     provenance       => $provenance,
     wdlink           => $master_voc->wdlink($id),
+    wplink           => $master_voc->wplink( $lang, $id ),
     scope_note       => $master_voc->scope_note( $lang, $id ),
     detail_type_loop => $data_ref,
   );

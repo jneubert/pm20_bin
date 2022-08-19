@@ -127,7 +127,7 @@ sub new {
 
         # map optional multivalued language-independent jsonld fields to hash
         # entries
-        @fields = qw / exactMatch /;
+        @fields = qw / exactMatch wikipediaArticle /;
         foreach my $field (@fields) {
           foreach my $entry ( _as_array( $category->{$field} ) ) {
             if ( $lang eq 'de' ) {
@@ -337,6 +337,31 @@ sub wdlink {
   }
 
   return $wdlink;
+}
+
+=item wplink( $term_id )
+
+Return a link to the Wikipedia page for a exactly matching Wikidata item
+
+=cut
+
+sub wplink {
+  my $self    = shift or croak('param missing');
+  my $lang    = shift or croak('param missing');
+  my $term_id = shift or croak('param missing');
+
+  my $wplink;
+  if ( defined $self->{id}{$term_id}{wikipediaArticle} ) {
+    my @articles = @{ $self->{id}{$term_id}{wikipediaArticle} };
+    foreach my $link (@articles) {
+      if ( $link =~ m|^https://$lang\.wikipedia\.org/wiki/| ) {
+        $wplink = $link;
+        last;
+      }
+    }
+  }
+
+  return $wplink;
 }
 
 =item geo_category_type( $term_id )
