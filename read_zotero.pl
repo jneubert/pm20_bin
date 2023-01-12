@@ -1,6 +1,8 @@
 #!/bin/perl
 # nbt, 2021-01-12
 
+# read information about film sections from Zotero
+
 use strict;
 use warnings;
 
@@ -14,10 +16,11 @@ use WWW::Zotero;
 Readonly my $USER          => '224220';
 Readonly my $PM20_GROUP    => '4548009';
 Readonly my $FILMDATA_STUB => '/pm20/data/filmdata/zotero.';
-Readonly my @VALID_SUBSETS => qw/ h1_sh h1_co /;
 
 # TODO extend to other holdings beyond Hamburg and sh or co
-Readonly my %CONF => (
+# (currently set is not restricted to a certain filming (1/2))
+Readonly my @VALID_SUBSETS => qw/ h1_sh h1_co /;
+Readonly my %CONF          => (
   'h' => {
     co => {
       film_qr => qr{[AF]\d{4}H(_[12])?},
@@ -62,7 +65,7 @@ my $zclient = WWW::Zotero->new();
 
 # top level in Zotero are films
 # (undivided film numbers - no S0123H_1/2 here!)
-my (%collection, %film);
+my ( %collection, %film );
 
 # read in slices, due to limit in Zotero API
 my $limit = 100;
@@ -90,36 +93,33 @@ while ($more) {
   }
 }
 
-  # second level are items (sections) within the films
-  foreach my $key (
-    sort { $collection{$a} cmp $collection{$b} }
-    keys %collection
-    )
-  {
-    my $film_name = $collection{$key};
+# second level are items (sections) within the films
+foreach my $key (
+  sort { $collection{$a} cmp $collection{$b} }
+  keys %collection
+  )
+{
+  my $film_name = $collection{$key};
 
-    # restrict to example A12/Polen
-    ##next if ( $film_name lt 'S0220H_2' );
-    ##next if ( $film_name lt 'S0220H_2' );
-    ##next if ( $film_name ne 'S0205H' );
+  # only work on films of a specific set
+  next unless $film_name =~ $conf{film_qr};
+  $film_count++;
 
-    # only work on films of a specific set
-    next unless $film_name =~ $conf{film_qr};
-    $film_count++;
+  my %item_film;
+
+  # second level loop (to cover films with more than $limit entries)
+  my $start2 = 0;
+  my $more2  = 1;
+  while ($more2) {
 
     # read film data
     my $film_data = $zclient->listCollectionItemsTop(
       collectionKey => $key,
       group         => $PM20_GROUP,
       limit         => $limit,
+      start         => $start2,
     ) or die "error reading $film_name: $!\n";
 
-    if ( $film_data->{total} > $limit ) {
-      warn "COLLECTION WITH $film_data->{total} (MORE THAN limit $limit)"
-        . "ENTRIES: $film_name\n";
-    }
-
-    my %item_film;
     my @entries = @{ $film_data->{results} };
     foreach my $entry (
       sort { $a->{data}{archiveLocation} cmp $b->{data}{archiveLocation} }
@@ -167,11 +167,21 @@ while ($more) {
         $error_count++;
         next;
       }
+
     }
 
-    # save complete film
-    $film{$film_name}{item} = \%item_film;
+    # is there more data (within the film)?
+    if ( $film_data->{total} - ( $start2 + $limit ) gt 0 ) {
+      ##warn "FILM $film_name: $film_data->{total} entries - CONTINUING\n";
+      $start2 = $start2 + $limit;
+    } else {
+      $more2 = 0;
+    }
   }
+
+  # save complete film
+  $film{$film_name}{item} = \%item_film;
+}
 
 # save data (only if output dir exists)
 my $output = path("$FILMDATA_STUB$subset.json");
