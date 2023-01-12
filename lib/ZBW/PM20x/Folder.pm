@@ -305,12 +305,12 @@ sub format_doc_counts {
 
   my $doc_counts = '';
   if ( exists $folderdata_raw->{totalDocCount} ) {
-    $doc_counts .= $folderdata_raw->{totalDocCount};
+    $doc_counts .= $folderdata_raw->{totalDocCount}{'@value'};
     $doc_counts .= ( $lang eq 'en' ? ' documents' : ' Dokumente' );
   }
   $doc_counts .= ' / ';
   if ( exists $folderdata_raw->{freeDocCount} ) {
-    $doc_counts .= $folderdata_raw->{freeDocCount};
+    $doc_counts .= $folderdata_raw->{freeDocCount}{'@value'};
     $doc_counts .=
       ( $lang eq 'en' ? ' available on the web' : ' im Web zugänglich' );
   }
