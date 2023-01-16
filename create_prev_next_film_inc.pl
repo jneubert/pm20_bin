@@ -18,7 +18,7 @@ if ( scalar(@ARGV) == 2 ) {
 }
 
 my $filmdir  = path("/pm20/web/film/$set/$collection");
-my @filmlist = $filmdir->children(qr/([A-Z0-9_])+/);
+my @filmlist = $filmdir->children(qr/^([A-Z0-9_])+$/);
 
 my $film_string;
 foreach my $dir ( sort @filmlist ) {
