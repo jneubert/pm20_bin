@@ -48,7 +48,9 @@ $vocab{geo}     = ZBW::PM20x::Vocab->new('ag');
 $vocab{subject} = ZBW::PM20x::Vocab->new('je');
 
 my %position;
+my %has_zotero;
 parse_zotero($subset);
+my %is_online;
 parse_filmlist($subset);
 
 # debug info
@@ -58,7 +60,6 @@ my $olditem_ref = {};
 foreach my $film ( sort keys %position ) {
   ##next unless ( $film eq 'S0204H' or $film eq 'S0205H' );
 
-  # compute image numbers and link paths
   my %image;
   my $film_dir = $subset_root->child($film);
   my @files    = $film_dir->children(qr/\.jpg\z/);
@@ -72,7 +73,6 @@ foreach my $film ( sort keys %position ) {
   $image{'9999'} = undef;
 
   # merge
-  my @postions = sort keys %{ $position{$film}{items} };
   my $current_olditem_ref;
   foreach my $lang (@LANGUAGES) {
     $current_olditem_ref = $olditem_ref;
@@ -101,6 +101,18 @@ foreach my $film ( sort keys %position ) {
   $olditem_ref = $current_olditem_ref;
 }
 
+##print Dumper \%has_zotero;
+
+my $cnt_open = 0;
+foreach my $film ( sort keys %position ) {
+  next if defined $has_zotero{$film} or $is_online{$film};
+  ##print "Film $film without zotero\n";
+  $cnt_open++;
+}
+
+print "$subset films: ", scalar( keys %is_online ), " online, ",
+  scalar( keys %has_zotero ), " with zotero, $cnt_open open\n";
+
 ####################
 
 sub parse_zotero {
@@ -119,8 +131,13 @@ sub parse_zotero {
       my $film_part = $item->{id};
       $film_part =~ s/.+?\/([AFS].+?)\/\d{4}$/$1/;
       $position{$film_part}{$page} = $item;
+      $has_zotero{$film_part}++;
     }
+    ##if (scalar(keys %{ $film{$film}{item}}) eq 1) {
+    ##  print "ONLY ONE ITEM: $film\n";
+    ##}
   }
+  exit;
 }
 
 sub parse_filmlist {
@@ -131,6 +148,9 @@ sub parse_filmlist {
 
   foreach my $entry (@filmlist) {
     my $film = $entry->{film_id};
+    if ( $entry->{online} ) {
+      $is_online{$film} = 1;
+    }
 
     # skip non-existing film numbers
     next if grep( /^$film$/, @MISSING_FILMS );
@@ -144,7 +164,9 @@ sub parse_filmlist {
       $position{$film}{$ord}{signature_string} = $signature_string;
       my $date = $entry->{"${pos}_date"};
       $position{$film}{$ord}{date} = $date;
-      if ( $signature_string =~ m/(?: : (.+?) )?\[(\S+)(?:\s+(.+?))?(?: - (.+))?\]$/ ) {
+      if ( $signature_string =~
+        m/(?: : (.+?) )?\[(\S+)(?:\s+(.+?))?(?: - (.+))?\]$/ )
+      {
         ## string version of the subject
         $position{$film}{$ord}{subject_string} = $1;
         $sig{geo}                              = $2;
@@ -227,7 +249,9 @@ sub get_item_tag {
   # add date to start and end tags
   if ( $img_nr eq '0000' and $item{date} ) {
     ## if continued
-    if ( defined $olditem_ref->{subject_string} and $item{subject_string} eq $olditem_ref->{subject_string} ) {
+    if ( defined $olditem_ref->{subject_string}
+      and $item{subject_string} eq $olditem_ref->{subject_string} )
+    {
       $label .= " <span class='date-limit'>($item{date} - )</span>";
     }
   }
