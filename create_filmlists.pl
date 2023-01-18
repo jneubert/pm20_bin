@@ -15,7 +15,7 @@ use Scalar::Util qw(looks_like_number);
 
 my $film_web_root = path('../web/film');
 my $filmdata_root = path('../data/filmdata');
-my $img_file = $filmdata_root->child('img_count.json');
+my $img_file      = $filmdata_root->child('img_count.json');
 my $ip_hints =
   path('../web/templates/fragments/ip_hints.de.md.frag')->slurp_utf8;
 
@@ -122,10 +122,18 @@ foreach my $prov ( keys %page ) {
       foreach my $column_id ( @{ $page{$prov}->{column_ids} } ) {
         my $cell = $film_section->{$column_id} || '';
 
+        # gray out films which are already online
+        if (  $film_section->{online}
+          and $column_id ne 'online'
+          and $column_id ne 'film_id' )
+        {
+          $cell = "[$cell]{.gray}";
+        }
+
         # add film id anchor
         # (don't use film_id column, otherwise linking fails)
         if ( $column_id eq 'start_sig' ) {
-          $cell = "<a name='". $film_section->{film_id} . "'></a>$cell";
+          $cell = "<a name='" . $film_section->{film_id} . "'></a>$cell";
         }
 
         # add class and link to "online" cell
@@ -188,6 +196,11 @@ sub insert_links {
       my $film_link;
       if ( $second_match ne '' and -d "$film_web_root/$dir/$film_id" ) {
         $film_link = "[$film_id]($dir/$film_id)";
+
+        # gray out filmlink if film is already online
+        if ( not( $line =~ m/\[\]{\.is-online/ ) ) {
+          $film_link =~ s/(\[$film_id\])/\[$1\{.gray\}\]/;
+        }
       } else {
         $film_link = $film_id;
       }
@@ -200,8 +213,7 @@ sub insert_links {
         if ( looks_like_number($img_id) ) {
           $img_id = sprintf( "%04d", $img_id );
         }
-        my $img_file =
-          "$film_web_root/$dir/$film_id/S$film_id${img_id}K.jpg";
+        my $img_file = "$film_web_root/$dir/$film_id/S$film_id${img_id}K.jpg";
 
         # check if according file exists
         my $img_link;
