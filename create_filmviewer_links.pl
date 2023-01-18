@@ -137,7 +137,6 @@ sub parse_zotero {
     ##  print "ONLY ONE ITEM: $film\n";
     ##}
   }
-  exit;
 }
 
 sub parse_filmlist {
