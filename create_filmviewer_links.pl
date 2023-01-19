@@ -47,7 +47,9 @@ my %vocab;
 $vocab{geo}     = ZBW::PM20x::Vocab->new('ag');
 $vocab{subject} = ZBW::PM20x::Vocab->new('je');
 
+# all start positions of sections, from zotero and film lists
 my %position;
+
 my %has_zotero;
 parse_zotero($subset);
 my %is_online;
@@ -59,6 +61,7 @@ parse_filmlist($subset);
 my $olditem_ref = {};
 foreach my $film ( sort keys %position ) {
   ##next unless ( $film eq 'S0204H' or $film eq 'S0205H' );
+  next if $film eq '';
 
   my %image;
   my $film_dir = $subset_root->child($film);
@@ -79,6 +82,7 @@ foreach my $film ( sort keys %position ) {
     my @links;
     foreach my $img_nr ( sort keys %image ) {
       if ( defined $position{$film}{$img_nr} ) {
+
         my %item = %{ $position{$film}{$img_nr} };
         ## skip items without identified geo (should not occur)
         next if not defined $item{geo};
@@ -110,6 +114,7 @@ foreach my $film ( sort keys %position ) {
   $cnt_open++;
 }
 
+# output statistics
 print "$subset films: ", scalar( keys %is_online ), " online, ",
   scalar( keys %has_zotero ), " with zotero, $cnt_open open\n";
 
@@ -133,9 +138,6 @@ sub parse_zotero {
       $position{$film_part}{$page} = $item;
       $has_zotero{$film_part}++;
     }
-    ##if (scalar(keys %{ $film{$film}{item}}) eq 1) {
-    ##  print "ONLY ONE ITEM: $film\n";
-    ##}
   }
 }
 
@@ -149,6 +151,7 @@ sub parse_filmlist {
     my $film = $entry->{film_id};
     if ( $entry->{online} ) {
       $is_online{$film} = 1;
+      next;
     }
 
     # skip non-existing film numbers
@@ -160,29 +163,51 @@ sub parse_filmlist {
 
       my %sig;
       my $signature_string = $entry->{"${pos}_sig"};
+
       $position{$film}{$ord}{signature_string} = $signature_string;
       my $date = $entry->{"${pos}_date"};
       $position{$film}{$ord}{date} = $date;
-      if ( $signature_string =~
-        m/(?: : (.+?) )?\[(\S+)(?:\s+(.+?))?(?: - (.+))?\]$/ )
-      {
-        ## string version of the subject
-        $position{$film}{$ord}{subject_string} = $1;
-        $sig{geo}                              = $2;
-        $sig{subject}                          = $3;
-        ## save optional keyword for later use
-        $position{$film}{$ord}{keyword} = $4;
-      } else {
-        warn "cannot parse signature of ", Dumper $entry;
+
+      # parse signature according to film type
+      if ( $film =~ m/^S/ ) {
+        if ( $signature_string =~
+          m/(?: : (.+?) )?\[(\S+)(?:\s+(.+?))?(?: - (.+))?\]$/ )
+        {
+          ## string version of the subject
+          $position{$film}{$ord}{subject_string} = $1;
+          $sig{geo}                              = $2;
+          $sig{subject}                          = $3;
+          ## save optional keyword for later use
+          $position{$film}{$ord}{keyword} = $4;
+        } else {
+          warn "cannot parse signature of ", Dumper $entry;
+        }
+
+        # substitute known variants in signatures
+        if ( $sig{subject} ) {
+          $sig{subject} =~ s/q sm/q Sm/;
+          $sig{subject} =~ s/q Nr /q Sm/;
+        }
+      } elsif ( $film =~ m/^[AF]/ ) {
+        if ( $signature_string =~ m/^([A-H]) ?(\d{1,3}[a-z]?) (.+)$/ ) {
+
+          # fix sloppy signature string
+          $signature_string = "$1$2 $3";
+          $sig{geo} = "$1$2";
+          ##$sig{company} = $signature_string;
+        } else {
+          warn "cannot parse signature of ", Dumper $entry;
+        }
+
       }
 
-      # substitute known variants in signatures
-      if ( $sig{subject} ) {
-        $sig{subject} =~ s/q sm/q Sm/;
-        $sig{subject} =~ s/q Nr /q Sm/;
-      }
       ## q&d fix "Osmanisches Reich/Türkei" signature (already online)
-      $sig{geo} =~ s/A43\/B21/A43/;
+      if ( $sig{geo} ) {
+        $sig{geo} =~ s/A43\/B21/A43/;
+        ## unknown E87 is probably Argentina
+        ## TODO remove when fixed in filmlist
+        $sig{geo} =~ s/E87/E86/;
+      }
 
       foreach my $voc ( sort keys %sig ) {
         next unless $sig{$voc};
@@ -216,6 +241,7 @@ sub get_item_tag {
   my %item        = %{$item_ref};
 
   # label for new geo in bold
+  my $new_geo  = 0;
   my $geolabel = $item{geo}{label}{$lang};
   if (
     not defined $olditem_ref->{geo}
@@ -226,11 +252,24 @@ sub get_item_tag {
     ##if ( defined $olditem_ref->{geo} and $item_ref->{id} =~ /0205/ and $lang eq 'en' ) {
     ##  print Dumper $olditem_ref, $item_ref
     ##}
+    $new_geo  = 1;
     $geolabel = "<b>$geolabel</b>";
   }
 
+  # title is used to display the notation
   my ( $label, $title );
-  if ( defined $item{subject} ) {
+  if ( defined $item{company_string} ) {
+    if ($new_geo) {
+      $label = "$geolabel : $item{company_string}";
+    } else {
+      $label = $item{company_string};
+    }
+    if ( $item{signature} ) {
+      $title = "$item{signature}";
+    } else {
+      $title = "$item{signature_string}";
+    }
+  } elsif ( defined $item{subject} ) {
     $label = "$geolabel : $item{subject}{label}{$lang}";
     $title = "$item{geo}{signature} $item{subject}{signature}";
     if ( defined $item{keyword} ) {
