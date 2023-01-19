@@ -1,7 +1,7 @@
 #!/bin/perl
 # nbt, 2021-01-12
 
-# read information about film sections from Zotero
+# read information about film sections from Zotero and look up signatures
 
 use strict;
 use warnings;
@@ -304,6 +304,24 @@ sub parse_co_signature {
     warn "$location: $signature not recognized\n";
     $item_ref->{valid_sig} = 0;
     $error_count++;
+  }
+
+  my $geo_sig;
+  if ( $signature =~ m/^([A-H]\d{1,3}?[a-z]?) / ) {
+    $geo_sig = $1;
+  } else {
+    warn "$location: missing geo: $signature\n";
+    return;
+  }
+
+  # lookup geo
+  if ( defined $lookup_geo->{$geo_sig} ) {
+    $item_ref->{geo} = $lookup_geo->{$geo_sig};
+  } elsif ( defined $translate_geo->{$geo_sig} ) {
+    $geo_sig = $translate_geo->{$geo_sig};
+    $item_ref->{geo} = $lookup_geo->{$geo_sig};
+  } else {
+    warn "$location: $geo_sig not recognized\n";
   }
 }
 
