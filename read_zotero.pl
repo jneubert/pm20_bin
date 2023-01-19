@@ -172,7 +172,6 @@ foreach my $key (
         $error_count++;
         next;
       }
-
     }
 
     # is there more data (within the film)?
@@ -296,7 +295,7 @@ sub parse_wa_signature {
   # split into ware and geo part
   # (allow for geo only, too)
   my $signature = $item_ref->{signature_string};
-  my ( $ware, $geo_sig );
+  my ( $ware_string, $geo_sig );
   if ( $signature =~ m/(.+) (\S+)/ ) {
     my $perhaps_ware = $1;
     my $perhaps_geo  = $2;
@@ -309,12 +308,16 @@ sub parse_wa_signature {
           ) ){0,1}
         )? $ /x;
     if ( $perhaps_geo =~ $geo_pattern ) {
-      $ware    = $perhaps_ware;
-      $geo_sig = $perhaps_geo;
-    } else {
-      $ware = $signature;
+      $ware_string = $perhaps_ware;
+      $geo_sig     = $perhaps_geo;
     }
   }
+  if ( not $ware_string ) {
+    $ware_string = $signature;
+  }
+  $item_ref->{ware_string} = $ware_string;
+
+  # TODO lookup ware
 
   # lookup geo (geo part can be ommitted)
   if ($geo_sig) {
