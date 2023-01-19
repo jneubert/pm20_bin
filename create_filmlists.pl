@@ -87,6 +87,12 @@ foreach my $prov ( keys %page ) {
     my $coll  = substr( $page_name, 3, 2 );
     my $set   = substr( $page_name, 0, 2 );
 
+    my $zotero_file = $filmdata_root->child("zotero.$page_name.json");
+    my %zotero_film;
+    if ( -f $zotero_file ) {
+      %zotero_film = %{ decode_json( $zotero_file->slurp ) };
+    }
+
     # some header information for the page
     my @lines;
     push( @lines,
@@ -136,9 +142,14 @@ foreach my $prov ( keys %page ) {
           $cell = "<a name='" . $film_section->{film_id} . "'></a>$cell";
         }
 
-        # add class and link to "online" cell
         if ( $column_id eq 'online' ) {
-          $cell = "[[$cell]{.is-online}](https://pm20.zbw.eu/folder/$coll)";
+          ## add class and link to "online" cell
+          if ( $cell ne '' ) {
+            $cell = "[[$cell]{.is-online}](https://pm20.zbw.eu/folder/$coll)";
+            ## add indicator for zotero films
+          } elsif ( $zotero_film{ $film_section->{film_id} } ) {
+            $cell = '-';
+          }
         }
         push( @columns, $cell );
       }
@@ -198,7 +209,7 @@ sub insert_links {
         $film_link = "[$film_id]($dir/$film_id)";
 
         # gray out filmlink if film is already online
-        if ( not( $line =~ m/\[\]{\.is-online/ ) ) {
+        if ( $line =~ m/{\.is-online}/ ) {
           $film_link =~ s/(\[$film_id\])/\[$1\{.gray\}\]/;
         }
       } else {
