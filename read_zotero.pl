@@ -137,7 +137,7 @@ foreach my $key (
 
       my %item;
       my $location = $entry->{data}{archiveLocation};
-      if ( $location =~ m;film/(.+\d)(/(L|R))?$; ) {
+      if ( $location =~ m;film/(.+\d{4})(/(L|R))?$; ) {
 
         $item{signature_string} = $entry->{data}{callNumber};
         $item{date}             = $entry->{data}{date};
