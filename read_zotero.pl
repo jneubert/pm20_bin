@@ -19,7 +19,7 @@ Readonly my $FILMDATA_STUB => '/pm20/data/filmdata/zotero.';
 
 # TODO extend to other holdings beyond Hamburg and sh or co
 # (currently set is not restricted to a certain filming (1/2))
-Readonly my @VALID_SUBSETS => qw/ h1_sh h1_co /;
+Readonly my @VALID_SUBSETS => qw/ h1_sh h1_co h1_wa /;
 Readonly my %CONF          => (
   'h' => {
     co => {
@@ -29,6 +29,10 @@ Readonly my %CONF          => (
     sh => {
       film_qr => qr{S\d{4}H(_[12])?},
       parser  => \&parse_sh_signature,
+    },
+    wa => {
+      film_qr => qr{W\d{4}H(_[12])?},
+      parser  => \&parse_wa_signature,
     },
   },
 );
@@ -52,7 +56,8 @@ if ( $ARGV[0] and $ARGV[0] =~ m/(h|k)(1|2)_(co|sh|wa)/ ) {
   exit 1;
 }
 
-my ( %qid, %type_count, $good_count, $error_count, $film_count );
+my ( %qid, %type_count, $good_count, $film_count );
+my $error_count = 0;
 
 # initialize a lookup table for short notations and a supporting translate
 # table from long to short notations (from web)
@@ -276,6 +281,55 @@ sub parse_sh_signature {
 
   # both parts must be valid
   if ( defined $item_ref->{geo} and defined $item_ref->{subject} ) {
+    $item_ref->{valid_sig} = 1;
+    $good_count++;
+  } else {
+    $item_ref->{valid_sig} = 0;
+    $error_count++;
+  }
+}
+
+sub parse_wa_signature {
+  my $location = shift or die "param missing";
+  my $item_ref = shift or die "param missing";
+
+  # split into ware and geo part
+  # (allow for geo only, too)
+  my $signature = $item_ref->{signature_string};
+  my ( $ware, $geo_sig );
+  if ( $signature =~ m/(.+) (\S+)/ ) {
+    my $perhaps_ware = $1;
+    my $perhaps_geo  = $2;
+    my $geo_pattern  = qr/ ^ [A-Z]    # Continent
+        ( \d{0,3}             # optional numerical code for country
+          [a-z]?              # optional extension of country code
+          ( (              # optional subdivision in brackets
+            ( \(\d\d?\) )     # either numerical
+            | \((alt|Wn|Bln)\)# or special codes (old|Wien|Berlin)
+          ) ){0,1}
+        )? $ /x;
+    if ( $perhaps_geo =~ $geo_pattern ) {
+      $ware    = $perhaps_ware;
+      $geo_sig = $perhaps_geo;
+    } else {
+      $ware = $signature;
+    }
+  }
+
+  # lookup geo (geo part can be ommitted)
+  if ($geo_sig) {
+    if ( defined $lookup_geo->{$geo_sig} ) {
+      $item_ref->{geo} = $lookup_geo->{$geo_sig};
+    } elsif ( defined $translate_geo->{$geo_sig} ) {
+      $geo_sig = $translate_geo->{$geo_sig};
+      $item_ref->{geo} = $lookup_geo->{$geo_sig};
+    } else {
+      warn "$location: $geo_sig not recognized\n";
+    }
+  }
+
+  # TODO check for valid ware
+  if ( defined $item_ref->{geo} or not $geo_sig ) {
     $item_ref->{valid_sig} = 1;
     $good_count++;
   } else {
