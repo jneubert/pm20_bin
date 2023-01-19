@@ -21,7 +21,7 @@ Readonly my $FILM_ROOT     => path('/pm20/web/film');
 Readonly my $FILMDATA_ROOT => path('/pm20/data/filmdata');
 Readonly my @COLLECTIONS   => qw/ co sh wa /;
 Readonly my @LANGUAGES     => qw/ en de /;
-Readonly my @VALID_SUBSETS => qw/ h1_sh h1_co /;
+Readonly my @VALID_SUBSETS => qw/ h1_sh h1_co h1_wa /;
 ## films in film lists, but not on disk
 Readonly my @MISSING_FILMS =>
   qw/ S0005H S0010H S0371H S0843H S1009H S1010H S9393 S9398 /;
@@ -63,12 +63,18 @@ foreach my $film ( sort keys %position ) {
   ##next unless ( $film eq 'S0204H' or $film eq 'S0205H' );
   next if $film eq '';
 
+  # catch error
+  if ( $film =~ m/^h1/ ) {
+    print "error in $film ", Dumper $position{$film};
+    next;
+  }
+
   my %image;
   my $film_dir = $subset_root->child($film);
   my @files    = $film_dir->children(qr/\.jpg\z/);
   foreach my $file (@files) {
     my $img_nr = $file->basename('.jpg');
-    $img_nr =~ s/[SAF]\d{4}(\d{4})[HK]/$1/;
+    $img_nr =~ s/[SAFW]\d{4}(\d{4})[HK]/$1/;
     $image{$img_nr} =
       $file->relative('/pm20/web')->parent->child($img_nr)->absolute('/');
   }
@@ -85,7 +91,8 @@ foreach my $film ( sort keys %position ) {
 
         my %item = %{ $position{$film}{$img_nr} };
         ## skip items without identified geo (should not occur)
-        next if not defined $item{geo};
+        ## often occurs within wa - TODO check
+        ## next if not defined $item{geo};
         push( @links,
           '<br />',
           get_item_tag( $lang, $img_nr, \%item, $current_olditem_ref ) );
@@ -134,7 +141,7 @@ sub parse_zotero {
       my $page = $item->{id};
       $page =~ s/.*?\/(\d{4})$/$1/;
       my $film_part = $item->{id};
-      $film_part =~ s/.+?\/([AFS].+?)\/\d{4}$/$1/;
+      $film_part =~ s/.+?\/([AFSW].+?)\/\d{4}$/$1/;
       $position{$film_part}{$page} = $item;
       $has_zotero{$film_part}++;
     }
@@ -194,11 +201,11 @@ sub parse_filmlist {
           # fix sloppy signature string
           $signature_string = "$1$2 $3";
           $sig{geo} = "$1$2";
-          ##$sig{company} = $signature_string;
         } else {
           warn "cannot parse signature of ", Dumper $entry;
         }
-
+      } elsif ( $film =~ m/^W/ ) {
+        ## TODO
       }
 
       ## q&d fix "Osmanisches Reich/Türkei" signature (already online)
@@ -240,27 +247,25 @@ sub get_item_tag {
   my $olditem_ref = shift or die "param missing";
   my %item        = %{$item_ref};
 
-  # label for new geo in bold
-  my $new_geo  = 0;
-  my $geolabel = $item{geo}{label}{$lang};
+  # label for geo - sometimes not existing for wares
+  my $geolabel = $item{geo}{label}{$lang} || '';
+
+  my $new_geo = 0;
   if (
-    not defined $olditem_ref->{geo}
+    ## not relevant for ware!
+    $item_ref->{ware_string}
+    or ( not defined $olditem_ref->{geo} )
     or ( $item_ref->{geo}{id} ne $olditem_ref->{geo}{id} and $img_nr ne '9999' )
     )
   {
-    ## debug
-    ##if ( defined $olditem_ref->{geo} and $item_ref->{id} =~ /0205/ and $lang eq 'en' ) {
-    ##  print Dumper $olditem_ref, $item_ref
-    ##}
-    $new_geo  = 1;
-    $geolabel = "<b>$geolabel</b>";
+    $new_geo = 1;
   }
 
   # title is used to display the notation
   my ( $label, $title );
   if ( defined $item{company_string} ) {
     if ($new_geo) {
-      $label = "$geolabel : $item{company_string}";
+      $label = "<b>$geolabel</b> : $item{company_string}";
     } else {
       $label = $item{company_string};
     }
@@ -269,7 +274,16 @@ sub get_item_tag {
     } else {
       $title = "$item{signature_string}";
     }
+  } elsif ( defined $item{ware_string} ) {
+    $label = $item{ware_string};
+    if ($geolabel) {
+      $label .= " : $geolabel";
+    }
+    $title = $item{signature_string};
   } elsif ( defined $item{subject} ) {
+    if ($new_geo) {
+      $geolabel = "<b>$geolabel</b>";
+    }
     $label = "$geolabel : $item{subject}{label}{$lang}";
     $title = "$item{geo}{signature} $item{subject}{signature}";
     if ( defined $item{keyword} ) {
