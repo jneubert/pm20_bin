@@ -12,9 +12,10 @@ export PERL5LIB=/opt/perllib:/opt/perl5/lib/perl5
 cd $BASE_DIR/bin
 perl create_filmlists.pl > $LOG_DIR/create_filmlists.log 2>&1
 
-SUBSET=h1_sh
-perl read_zotero.pl $SUBSET  > $LOG_DIR/read_zotero.$SUBSET.log 2>&1
-perl create_filmviewer_links.pl $SUBSET > $LOG_DIR/create_filmviewer_links.$SUBSET.log 2>&1
+for subset in h1_sh h1_co h1_wa ; do
+  perl read_zotero.pl $subset  > $LOG_DIR/read_zotero.$subset.log 2>&1
+  perl create_filmviewer_links.pl $subset > $LOG_DIR/create_filmviewer_links.$subset.log 2>&1
+done
 
 cd $BASE_DIR/web
 make > /dev/null
