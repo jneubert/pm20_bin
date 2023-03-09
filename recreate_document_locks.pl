@@ -40,50 +40,72 @@ Readonly my $ACCESS_FREE_FN   => 'access_free.txt';
 # (overide codes from file name)
 Readonly my $META_FN => 'meta.yaml';
 
-# root directory for documents is required
+# root directory for documents or param ALL is required
 if ( not @ARGV ) {
-  die "Usage: $0 {root_dir_absolute}\n";
+  print "Usage: $0 {root_dir_absolute}|ALL\n";
+  exit 1;
 }
-my $docroot = path( $ARGV[0] );
-if ( !$docroot->is_dir ) {
-  die "docroot '$docroot' is not a directory\n";
+if ( $ARGV[0] eq 'ALL' ) {
+  &recreate_all;
+} else {
+  my $docroot = path( $ARGV[0] );
+  if ( !$docroot->is_dir ) {
+    die "docroot '$docroot' is not a directory\n";
+  }
+  &recreate_path($docroot);
 }
-
-$log->info("Start run $docroot");
-
-# recursivly visit all subdirectories, which include a PIC subdirectory
-my $rule = Path::Iterator::Rule->new;
-$rule->and( sub { -d "$_/PIC" } );
-my %options = ();
-my $next    = $rule->iter( ($docroot), \%options );
-while ( defined( my $file = $next->() ) ) {
-  my $path        = path($file);
-  my $free_status = is_free($path);
-  $log->debug("free_status $free_status $path");
-
-  # remove existing .htaccess file
-  my $htaccess              = $path->child('.htaccess');
-  my $pre_existing_htaccess = 0;
-  if ( $htaccess->is_file ) {
-    $pre_existing_htaccess = 1;
-    $htaccess->remove;
-  }
-  if ( $free_status eq 0 ) {
-    $htaccess->spew($HTACCESS_CONTENT);
-  }
-
-  # logging
-  if ( $free_status and $pre_existing_htaccess ) {
-    $log->info("unblocked $path");
-  }
-  if ( !$free_status and !$pre_existing_htaccess ) {
-    $log->info("blocked $path");
-  }
-}
-
-$log->info("End run $docroot");
 
 #########################
+
+sub recreate_all {
+  my $folder_root = path('/pm20/folder');
+
+  # cover folders and documents in all collections
+  $log->info("Start ALL");
+  foreach my $collection (qw/ co pe sh wa /) {
+    my $docroot = $folder_root->child($collection);
+    &recreate_path($docroot);
+  }
+  $log->info("End ALL");
+}
+
+sub recreate_path {
+  my $docroot = shift or die "param missing";
+
+  $log->info("Start run $docroot");
+
+  # recursivly visit all subdirectories, which include a PIC subdirectory
+  my $rule = Path::Iterator::Rule->new;
+  $rule->and( sub { -d "$_/PIC" } );
+  my %options = ();
+  my $next    = $rule->iter( ($docroot), \%options );
+  while ( defined( my $file = $next->() ) ) {
+    my $path        = path($file);
+    my $free_status = is_free($path);
+    $log->debug("free_status $free_status $path");
+
+    # remove existing .htaccess file
+    my $htaccess              = $path->child('.htaccess');
+    my $pre_existing_htaccess = 0;
+    if ( $htaccess->is_file ) {
+      $pre_existing_htaccess = 1;
+      $htaccess->remove;
+    }
+    if ( $free_status eq 0 ) {
+      $htaccess->spew($HTACCESS_CONTENT);
+    }
+
+    # logging
+    if ( $free_status and $pre_existing_htaccess ) {
+      $log->info("unblocked $path");
+    }
+    if ( !$free_status and !$pre_existing_htaccess ) {
+      $log->info("blocked $path");
+    }
+  }
+
+  $log->info("End run $docroot");
+}
 
 sub is_free {
   my $path = shift;
