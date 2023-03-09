@@ -195,6 +195,10 @@ sub mk_folder {
       doc_counts     => $folder->format_doc_counts($lang) || undef,
     );
 
+    # add description meta tag
+    $tmpl_var{meta_description} =
+      add_meta_description( $lang, $collection, $folderdata_raw );
+
     if ($wdlink) {
       $tmpl_var{wdlink} = $wdlink;
     }
@@ -353,4 +357,100 @@ sub get_company_relations {
     }
   }
   return \@field_entries;
+}
+
+sub add_meta_description {
+  my $lang           = shift || die "param missing";
+  my $collection     = shift || die "param missing";
+  my $folderdata_raw = shift || die "param missing";
+
+  print Dumper $folderdata_raw;
+
+  my ( $desc, $label );
+  my $ext = "";
+
+  if ( $collection eq 'pe' ) {
+    my $fullname = $folderdata_raw->{prefLabel};
+    if ( $fullname =~ m/^(.*)?, (.*)$/ ) {
+      $label = "$2 $1";
+    }
+    my $from_to = $folderdata_raw->{dateOfBirthAndDeath};
+    if ($from_to) {
+      $ext = $from_to;
+    }
+    if ( $folderdata_raw->{activity} ) {
+      if ($from_to) {
+        $ext = "$ext; ";
+      }
+      foreach my $field_ref ( @{ $folderdata_raw->{activity}[0]{location} } ) {
+        next unless $field_ref->{'@language'} eq $lang;
+        $ext .= "$field_ref->{'@value'}, ";
+      }
+    }
+    if ( $folderdata_raw->{activity} ) {
+      foreach my $field_ref ( @{ $folderdata_raw->{activity}[0]{about} } ) {
+        next unless $field_ref->{'@language'} eq $lang;
+        $ext .= "$field_ref->{'@value'}, ";
+      }
+    }
+  }
+
+  if ( $collection eq 'co' ) {
+    $label = $folderdata_raw->{prefLabel};
+    my $from_to = $folderdata_raw->{fromTo};
+    if ($from_to) {
+      $ext = $from_to;
+    }
+    if ( $folderdata_raw->{location} ) {
+      if ($from_to) {
+        $ext = "$ext; ";
+      }
+      foreach my $field_ref ( @{ $folderdata_raw->{location} } ) {
+        next unless $field_ref->{'@language'} eq $lang;
+        $ext .= "$field_ref->{'@value'}, ";
+      }
+    }
+  }
+
+  if ( $collection eq 'sh' ) {
+    foreach my $field_ref ( @{ $folderdata_raw->{prefLabel} } ) {
+      next unless $field_ref->{'@language'} eq $lang;
+      $field_ref->{'@value'} =~ m/^(.*)? : (.*)$/;
+      $label = "'$2' in $1";
+    }
+  }
+
+  if ( $collection eq 'wa' ) {
+    foreach my $field_ref ( @{ $folderdata_raw->{prefLabel} } ) {
+      next unless $field_ref->{'@language'} eq $lang;
+      $field_ref->{'@value'} =~ m/^(.*)? : (.*)$/;
+      my $ware = $1;
+      my $geo  = $2;
+      if ( $geo =~ m/^(Welt|World)$/ ) {
+        $label = $ware;
+      } else {
+        $label = "$ware in $geo";
+      }
+    }
+  }
+
+  if ( $ext eq "" ) {
+    $desc = $label;
+  } else {
+    $ext =~ s/(.*)?, $/$1/;
+    $desc = "$label ($ext)";
+  }
+  $desc = (
+    $lang eq 'en'
+    ? "Newspaper articles about $desc"
+    : "Zeitungsartikel zu $desc"
+  );
+  $desc .= (
+    $lang eq 'en'
+    ? ". From German and international press, 1908-1949"
+    : ". Aus deutscher und internationaler Presse, 1908-1949"
+  );
+
+  print "$desc\n";
+  return $desc;
 }
