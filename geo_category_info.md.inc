@@ -1,6 +1,6 @@
 <tmpl_if is_de>
 Insgesamt <tmpl_var category_count> Systematikstellen, <tmpl_var
-sach_total_folder_count> Sach-Mappen, <tmpl_var ware_total_folder_count>
+subject_total_folder_count> Sach-Mappen, <tmpl_var ware_total_folder_count>
 Waren-Mappen.
 
 
