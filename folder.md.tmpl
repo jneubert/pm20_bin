@@ -4,8 +4,8 @@ modified: <tmpl_var modified>
 backlink: <tmpl_var backlink>
 backlink-title: "<tmpl_var backlink_title>"
 fn-stub: about
-<tmpl_unless doc_counts>robots: noindex</tmpl_unless>
 desc-meta: <tmpl_var meta_description>
+<tmpl_unless doc_counts>robots: noindex</tmpl_unless>
 ---
 
 ### <tmpl_var provenance> - <tmpl_var coll><tmpl_if is_de>-Mappen</tmpl_if><tmpl_if is_en> folders</tmpl_if>
@@ -51,4 +51,26 @@ URI|[<tmpl_var folder_uri>](<tmpl_var folder_uri>)
 ID| <tmpl_var fid>
 
 :::
+
+<script type="application/ld+json">
+{
+	"@context" : "http://schema.org",
+	"@type" : "WebSite",
+	"name" : "<tmpl_if is_en>ZBW Press Archives</tmpl_if><tmpl_if is_de>ZBW Pressearchive</tmpl_if>",
+  "publisher" : {
+    "@type" : "EducationalOrganization",
+    "name" : "ZBW - <tmpl_if is_en>Leibniz Information Centre for Economics</tmpl_if><tmpl_if is_de>Leibniz-Informtionszentrum Wirtschaft</tmpl_if>",
+    "sameAs" : "http://www.wikidata.org/entity/Q317179"
+  },
+	"url" : "https://pm20.zbw.eu"
+}
+</script>
+
+<script type="application/ld+json">
+<tmpl_var schema_jsonld>
+</script>
+
+<script type="application/ld+json">
+<tmpl_var jsonld>
+</script>
 
