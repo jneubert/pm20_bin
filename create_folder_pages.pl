@@ -3,7 +3,7 @@
 
 # creates the .md files for folders
 
-# can be invoked either by
+# to be invoked with a param, either for
 # - an extended folder id (e.g., pe/000012)
 # - a collection id (e.g., pe)
 # - 'ALL' (to (re-) create all collections)
@@ -198,6 +198,9 @@ sub mk_folder {
     # add description meta tag
     $tmpl_var{meta_description} =
       add_meta_description( $lang, $collection, $folderdata_raw );
+    $tmpl_var{jsonld} = add_jsonld($folderdata_raw);
+    $tmpl_var{schema_jsonld} =
+      add_schema_jsonld( $lang, $collection, $folderdata_raw );
 
     if ($wdlink) {
       $tmpl_var{wdlink} = $wdlink;
@@ -273,7 +276,6 @@ sub mk_folder {
       $fn =~ s|/pm20/web/|./|;
       push( @{$pages_for_sitemap_ref}, "$fn" );
     }
-
   }
 }
 
@@ -373,6 +375,8 @@ sub add_meta_description {
     my $fullname = $folderdata_raw->{prefLabel};
     if ( $fullname =~ m/^(.*)?, (.*)$/ ) {
       $label = "$2 $1";
+    } else {
+      $label = $fullname;
     }
     my $from_to = $folderdata_raw->{dateOfBirthAndDeath};
     if ($from_to) {
@@ -434,9 +438,14 @@ sub add_meta_description {
     }
   }
 
+  # used to transmit computed label to add_schema_jsonld()
+  $folderdata_raw->{label} = $label;
+
   if ( $ext eq "" ) {
     $desc = $label;
   } else {
+
+    # truncate last delimiter
     $ext =~ s/(.*)?, $/$1/;
     $desc = "$label ($ext)";
   }
@@ -451,6 +460,78 @@ sub add_meta_description {
     : ". Aus deutscher und internationaler Presse, 1908-1949"
   );
 
-  print "$desc\n";
+  ##print "$desc\n";
   return $desc;
 }
+
+sub add_jsonld {
+  my $folderdata_raw = shift || die "param missing";
+
+  my $ld = {
+    '@context' => 'https://pm20.zbw.eu/schema/context.jsonld',
+    '@graph'   => [$folderdata_raw],
+  };
+  print encode_json($ld);
+  return encode_json($ld);
+}
+
+sub add_schema_jsonld {
+  my $lang           = shift || die "param missing";
+  my $collection     = shift || die "param missing";
+  my $folderdata_raw = shift || die "param missing";
+
+  my %schema_type = (
+    pe => "Person",
+    co => "Organization",
+    sh => "Place",
+    wa => "ProductGroup"
+  );
+  my @schema_props     = qw/ /;
+  my %schema_translate = ();
+
+  my $schema_data_ref = {
+    '@type'  => "CreativeWork",
+    name     => $folderdata_raw->{label},
+    isPartOf => {
+      '@type' => 'Collection',
+      name    => (
+        $lang eq 'en'
+        ? '20th Century Press Archives'
+        : 'Pressearchiv 20. Jahrhundert'
+      ),
+      sameAs => 'http://www.wikidata.org/entity/Q36948990',
+    },
+  };
+  $schema_data_ref->{'@type'} = "CreativeWork";
+  my $about = { '@type' => $schema_type{$collection}, };
+
+  foreach my $prop ( keys %schema_translate ) {
+    $about->{ $schema_translate{$prop} } = $folderdata_raw->{$prop};
+  }
+  if ( $collection eq 'pe' or $collection eq 'co' ) {
+    $about->{name} = $folderdata_raw->{label};
+    if ( get_wd_uri($folderdata_raw) ) {
+      $about->{sameAs} = get_wd_uri($folderdata_raw);
+    }
+  }
+  $schema_data_ref->{about} = $about;
+
+  my $schema_ld = {
+    '@context' => 'https://schema.org/',
+    '@graph'   => [$schema_data_ref],
+  };
+  ##print Dumper encode_json($ld);
+  return encode_json($schema_ld);
+}
+
+sub get_wd_uri {
+  my $folderdata_raw = shift || die "param missing";
+
+  my $uri;
+  foreach my $ref ( @{ $folderdata_raw->{exactMatch} } ) {
+    next unless $ref->{'@id'} =~ m{wikidata.org/entity/Q\d+$};
+    $uri = $ref->{'@id'};
+  }
+  return $uri;
+}
+
