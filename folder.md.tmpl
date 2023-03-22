@@ -4,7 +4,7 @@ modified: <tmpl_var modified>
 backlink: <tmpl_var backlink>
 backlink-title: "<tmpl_var backlink_title>"
 fn-stub: about
-desc-meta: <tmpl_var meta_description>
+desc-meta: "<tmpl_var meta_description>"
 <tmpl_unless doc_counts>robots: noindex</tmpl_unless>
 ---
 
@@ -70,7 +70,8 @@ ID| <tmpl_var fid>
 <tmpl_var schema_jsonld>
 </script>
 
+<tmpl_if jsonld>
 <script type="application/ld+json">
 <tmpl_var jsonld>
 </script>
-
+</tmpl_if>
