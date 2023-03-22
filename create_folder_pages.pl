@@ -24,6 +24,9 @@ use ZBW::PM20x::Folder;
 
 $Data::Dumper::Sortkeys = 1;
 
+# used only for debugging
+my $json = JSON->new;
+
 Readonly my $FOLDER_DATA    => path('/pm20/data/rdf/pm20.extended.jsonld');
 Readonly my $FOLDER_ROOT    => $ZBW::PM20x::Folder::FOLDER_ROOT;
 Readonly my $URL_DATA_ROOT  => path('/pm20/data/folderdata');
@@ -195,12 +198,15 @@ sub mk_folder {
       doc_counts     => $folder->format_doc_counts($lang) || undef,
     );
 
+    # parse data for decription and jsonld
+    my $folderdata = parse_folderdata( $lang, $collection, $folder );
+
     # add description meta tag
-    $tmpl_var{meta_description} =
-      add_meta_description( $lang, $collection, $folderdata_raw );
-    $tmpl_var{jsonld} = add_jsonld($folderdata_raw);
+    $tmpl_var{meta_description} = add_meta_description( $lang, $folderdata );
     $tmpl_var{schema_jsonld} =
-      add_schema_jsonld( $lang, $collection, $folderdata_raw );
+      add_schema_jsonld( $lang, $collection, $folderdata );
+    ## TODO is raw, partly invalid jsonld useful?
+    ##$tmpl_var{jsonld}           = add_jsonld($folderdata_raw);
 
     if ($wdlink) {
       $tmpl_var{wdlink} = $wdlink;
@@ -361,98 +367,125 @@ sub get_company_relations {
   return \@field_entries;
 }
 
-sub add_meta_description {
-  my $lang           = shift || die "param missing";
-  my $collection     = shift || die "param missing";
-  my $folderdata_raw = shift || die "param missing";
+sub parse_folderdata {
+  my $lang       = shift || die "param missing";
+  my $collection = shift || die "param missing";
+  my $folder     = shift || die "param missing";
 
-  print Dumper $folderdata_raw;
+  my $folderdata_raw = $folder->get_folderdata_raw;
+  ##print Dumper $folderdata_raw;
 
-  my ( $desc, $label );
-  my $ext = "";
+  my $folderdata;
+
+  my $extension = "";
+
+  # set default name for "about"
+  $folderdata->{name} = $folder->get_folderlabel($lang);
+
+  if ( get_wd_uri($folderdata_raw) ) {
+    if ( $collection eq 'pe' or $collection eq 'co' ) {
+
+      # uri of the person or organization item
+      $folderdata->{wikidata} = get_wd_uri($folderdata_raw);
+    } else {
+      $folderdata->{wikidata_folder_item} = get_wd_uri($folderdata_raw);
+    }
+  }
 
   if ( $collection eq 'pe' ) {
-    my $fullname = $folderdata_raw->{prefLabel};
-    if ( $fullname =~ m/^(.*)?, (.*)$/ ) {
-      $label = "$2 $1";
-    } else {
-      $label = $fullname;
+    ## overwrite name if it is in "lastname, firstname" form
+    my $fullname = $folderdata->{name};
+    if ( $fullname =~ m/^(.*)?, (.*)$/ and not $fullname =~ m/</ ) {
+      $folderdata->{name} = "$2 $1";
     }
     my $from_to = $folderdata_raw->{dateOfBirthAndDeath};
     if ($from_to) {
-      $ext = $from_to;
+      $extension = $from_to;
     }
+    ## TODO fix
     if ( $folderdata_raw->{activity} ) {
       if ($from_to) {
-        $ext = "$ext; ";
+        $extension = "$extension; ";
       }
+      my @locations;
       foreach my $field_ref ( @{ $folderdata_raw->{activity}[0]{location} } ) {
         next unless $field_ref->{'@language'} eq $lang;
-        $ext .= "$field_ref->{'@value'}, ";
+        push( @locations, $field_ref->{'@value'} );
       }
-    }
-    if ( $folderdata_raw->{activity} ) {
+      my @fields;
       foreach my $field_ref ( @{ $folderdata_raw->{activity}[0]{about} } ) {
         next unless $field_ref->{'@language'} eq $lang;
-        $ext .= "$field_ref->{'@value'}, ";
+        push( @fields, $field_ref->{'@value'} );
       }
+      $extension .= join( ', ', @locations, @fields );
+    }
+    $folderdata->{foldername} = "$folderdata->{name} ($extension)";
+
+    if ( $folderdata_raw->{nationality} ) {
+      foreach my $field_ref ( @{ $folderdata_raw->{nationality} } ) {
+        next unless $field_ref->{'@language'} eq $lang;
+        $folderdata->{nationality} = {
+          '@type' => 'Country',
+          name    => $field_ref->{'@value'},
+        };
+      }
+    }
+
+    # hasOccupation entry hat insufficient and invalid schema.org markup, can
+    # be used only for description
+    if ( $lang eq 'de' and $folderdata_raw->{hasOccupation} ) {
+      $folderdata->{description} = $folderdata_raw->{hasOccupation};
     }
   }
 
   if ( $collection eq 'co' ) {
-    $label = $folderdata_raw->{prefLabel};
     my $from_to = $folderdata_raw->{fromTo};
     if ($from_to) {
-      $ext = $from_to;
+      $extension = $from_to;
     }
     if ( $folderdata_raw->{location} ) {
       if ($from_to) {
-        $ext = "$ext; ";
+        $extension = "$extension; ";
       }
       foreach my $field_ref ( @{ $folderdata_raw->{location} } ) {
         next unless $field_ref->{'@language'} eq $lang;
-        $ext .= "$field_ref->{'@value'}, ";
+        $extension .= "$field_ref->{'@value'}, ";
       }
     }
+    $folderdata->{foldername} = "$folderdata->{name} ($extension)";
   }
 
   if ( $collection eq 'sh' ) {
-    foreach my $field_ref ( @{ $folderdata_raw->{prefLabel} } ) {
-      next unless $field_ref->{'@language'} eq $lang;
-      $field_ref->{'@value'} =~ m/^(.*)? : (.*)$/;
-      $label = "'$2' in $1";
+    $folderdata->{foldername} = $folderdata->{name};
+    if ( get_wd_uri( $folderdata_raw->{country} ) ) {
+      $folderdata->{wikidata} = get_wd_uri( $folderdata_raw->{country} );
     }
   }
 
   if ( $collection eq 'wa' ) {
-    foreach my $field_ref ( @{ $folderdata_raw->{prefLabel} } ) {
-      next unless $field_ref->{'@language'} eq $lang;
-      $field_ref->{'@value'} =~ m/^(.*)? : (.*)$/;
-      my $ware = $1;
-      my $geo  = $2;
-      if ( $geo =~ m/^(Welt|World)$/ ) {
-        $label = $ware;
-      } else {
-        $label = "$ware in $geo";
-      }
+    $folderdata->{name} =~ m/^(.*)? : (.*)$/;
+    my $ware = $1;
+    my $geo  = $2;
+    if ( $geo =~ m/^(Welt|World)$/ ) {
+      $folderdata->{foldername} = $ware;
+    } else {
+      $folderdata->{foldername} = "$ware in $geo";
+    }
+    if ( get_wd_uri( $folderdata_raw->{ware} ) ) {
+      $folderdata->{wikidata} = get_wd_uri( $folderdata_raw->{ware} );
     }
   }
+  return $folderdata;
+}
 
-  # used to transmit computed label to add_schema_jsonld()
-  $folderdata_raw->{label} = $label;
+sub add_meta_description {
+  my $lang       = shift || die "param missing";
+  my $folderdata = shift || die "param missing";
 
-  if ( $ext eq "" ) {
-    $desc = $label;
-  } else {
-
-    # truncate last delimiter
-    $ext =~ s/(.*)?, $/$1/;
-    $desc = "$label ($ext)";
-  }
-  $desc = (
+  my $desc = (
     $lang eq 'en'
-    ? "Newspaper articles about $desc"
-    : "Zeitungsartikel zu $desc"
+    ? "Newspaper articles about $folderdata->{foldername}"
+    : "Zeitungsartikel zu $folderdata->{foldername}"
   );
   $desc .= (
     $lang eq 'en'
@@ -464,21 +497,10 @@ sub add_meta_description {
   return $desc;
 }
 
-sub add_jsonld {
-  my $folderdata_raw = shift || die "param missing";
-
-  my $ld = {
-    '@context' => 'https://pm20.zbw.eu/schema/context.jsonld',
-    '@graph'   => [$folderdata_raw],
-  };
-  print encode_json($ld);
-  return encode_json($ld);
-}
-
 sub add_schema_jsonld {
-  my $lang           = shift || die "param missing";
-  my $collection     = shift || die "param missing";
-  my $folderdata_raw = shift || die "param missing";
+  my $lang       = shift || die "param missing";
+  my $collection = shift || die "param missing";
+  my $folderdata = shift || die "param missing";
 
   my %schema_type = (
     pe => "Person",
@@ -486,12 +508,10 @@ sub add_schema_jsonld {
     sh => "Place",
     wa => "ProductGroup"
   );
-  my @schema_props     = qw/ /;
-  my %schema_translate = ();
 
   my $schema_data_ref = {
     '@type'  => "CreativeWork",
-    name     => $folderdata_raw->{label},
+    name     => $folderdata->{foldername},
     isPartOf => {
       '@type' => 'Collection',
       name    => (
@@ -502,26 +522,48 @@ sub add_schema_jsonld {
       sameAs => 'http://www.wikidata.org/entity/Q36948990',
     },
   };
-  $schema_data_ref->{'@type'} = "CreativeWork";
   my $about = { '@type' => $schema_type{$collection}, };
 
-  foreach my $prop ( keys %schema_translate ) {
-    $about->{ $schema_translate{$prop} } = $folderdata_raw->{$prop};
-  }
-  if ( $collection eq 'pe' or $collection eq 'co' ) {
-    $about->{name} = $folderdata_raw->{label};
-    if ( get_wd_uri($folderdata_raw) ) {
-      $about->{sameAs} = get_wd_uri($folderdata_raw);
+  foreach my $prop (qw / name description nationality /) {
+    if ( $folderdata->{$prop} ) {
+      $about->{$prop} = $folderdata->{$prop};
     }
   }
+
+  if ( $collection eq 'pe' or $collection eq 'co' ) {
+    $about->{name} = $folderdata->{name};
+    if ( $folderdata->{wikidata} ) {
+      $about->{sameAs} = $folderdata->{wikidata};
+    }
+  }
+  if ( $collection eq 'sh' or $collection eq 'wa' ) {
+    if ( $folderdata->{wikidata_folder_item} ) {
+      $schema_data_ref->{sameAs} = $folderdata->{wikidata_folder_item};
+    }
+    if ( $folderdata->{wikidata} ) {
+      $about->{sameAs} = $folderdata->{wikidata};
+    }
+  }
+
   $schema_data_ref->{about} = $about;
 
   my $schema_ld = {
     '@context' => 'https://schema.org/',
     '@graph'   => [$schema_data_ref],
   };
-  ##print Dumper encode_json($ld);
+  ##print $json->pretty->encode($schema_ld);
   return encode_json($schema_ld);
+}
+
+sub add_jsonld {
+  my $folderdata_raw = shift || die "param missing";
+
+  my $ld = {
+    '@context' => 'https://pm20.zbw.eu/schema/context.jsonld',
+    '@graph'   => [$folderdata_raw],
+  };
+  ##print encode_json($ld);
+  return encode_json($ld);
 }
 
 sub get_wd_uri {
