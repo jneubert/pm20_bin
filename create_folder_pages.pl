@@ -373,10 +373,8 @@ sub parse_folderdata {
   my $folder     = shift || die "param missing";
 
   my $folderdata_raw = $folder->get_folderdata_raw;
-  ##print Dumper $folderdata_raw;
 
   my $folderdata;
-
   my $extension = "";
 
   # set default name for "about"
@@ -392,8 +390,16 @@ sub parse_folderdata {
     }
   }
 
+  # dates (for pe and co)
+  foreach my $field (qw/ birthDate deathDate foundingDate dissolutionDate/) {
+    if ( my $date = $folderdata_raw->{$field} ) {
+      $date =~ s/(.*)?T00:00:00$/$1/;
+      $folderdata->{$field} = $date;
+    }
+  }
+
   if ( $collection eq 'pe' ) {
-    ## overwrite name if it is in "lastname, firstname" form
+    ##print Dumper $folderdata_raw;
     my $fullname = $folderdata->{name};
     if ( $fullname =~ m/^(.*)?, (.*)$/ and not $fullname =~ m/</ ) {
       $folderdata->{name} = "$2 $1";
@@ -456,7 +462,9 @@ sub parse_folderdata {
   }
 
   if ( $collection eq 'sh' ) {
-    $folderdata->{foldername} = $folderdata->{name};
+    $folderdata->{name} =~ m/^(.*)? : (.*)$/;
+    $folderdata->{name}       = $1;
+    $folderdata->{foldername} = $folder->get_folderlabel($lang);
     if ( get_wd_uri( $folderdata_raw->{country} ) ) {
       $folderdata->{wikidata} = get_wd_uri( $folderdata_raw->{country} );
     }
@@ -466,6 +474,7 @@ sub parse_folderdata {
     $folderdata->{name} =~ m/^(.*)? : (.*)$/;
     my $ware = $1;
     my $geo  = $2;
+    $folderdata->{name} = $ware;
     if ( $geo =~ m/^(Welt|World)$/ ) {
       $folderdata->{foldername} = $ware;
     } else {
@@ -524,7 +533,10 @@ sub add_schema_jsonld {
   };
   my $about = { '@type' => $schema_type{$collection}, };
 
-  foreach my $prop (qw / name description nationality /) {
+  foreach my $prop (
+    qw / name description nationality birthDate deathDate foundingDate dissolutionDate /
+    )
+  {
     if ( $folderdata->{$prop} ) {
       $about->{$prop} = $folderdata->{$prop};
     }
