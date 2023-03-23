@@ -15,6 +15,7 @@ use utf8;
 use lib './lib';
 
 use Data::Dumper;
+use Encode;
 use HTML::Template;
 use JSON;
 use Path::Tiny;
@@ -203,9 +204,12 @@ sub mk_folder {
 
     # add description meta tag
     $tmpl_var{meta_description} = add_meta_description( $lang, $folderdata );
+
+    # add schema jsonld
     $tmpl_var{schema_jsonld} =
       add_schema_jsonld( $lang, $collection, $folderdata );
-    ## TODO is raw, partly invalid jsonld useful?
+
+    # TODO is raw, partly invalid jsonld useful?
     ##$tmpl_var{jsonld}           = add_jsonld($folderdata_raw);
 
     if ($wdlink) {
@@ -400,10 +404,11 @@ sub parse_folderdata {
 
   if ( $collection eq 'pe' ) {
     ##print Dumper $folderdata_raw;
-    my $fullname = $folderdata->{name};
-    if ( $fullname =~ m/^(.*)?, (.*)$/ and not $fullname =~ m/</ ) {
+    my $name = $folderdata->{name};
+    if ( $name =~ m/^(.*)?, (.*)$/ and $name =~ m/^</ ) {
       $folderdata->{name} = "$2 $1";
     }
+
     my $from_to = $folderdata_raw->{dateOfBirthAndDeath};
     if ($from_to) {
       $extension = $from_to;
@@ -437,7 +442,7 @@ sub parse_folderdata {
       }
     }
 
-    # hasOccupation entry hat insufficient and invalid schema.org markup, can
+    # hasOccupation entry has insufficient and invalid schema.org markup, can
     # be used only for description
     if ( $lang eq 'de' and $folderdata_raw->{hasOccupation} ) {
       $folderdata->{description} = $folderdata_raw->{hasOccupation};
@@ -563,8 +568,8 @@ sub add_schema_jsonld {
     '@context' => 'https://schema.org/',
     '@graph'   => [$schema_data_ref],
   };
-  ##print $json->pretty->encode($schema_ld);
-  return encode_json($schema_ld);
+  # will be utf8-encoded later in template
+  return decode( 'UTF-8',  encode_json($schema_ld) );
 }
 
 sub add_jsonld {
@@ -574,8 +579,9 @@ sub add_jsonld {
     '@context' => 'https://pm20.zbw.eu/schema/context.jsonld',
     '@graph'   => [$folderdata_raw],
   };
-  ##print encode_json($ld);
-  return encode_json($ld);
+
+  # will be utf8-encoded later in template
+  return decode( 'UTF-8',  encode_json($ld) );
 }
 
 sub get_wd_uri {
