@@ -227,25 +227,12 @@ sub mk_folder {
     }
 
     if ( $folderdata_raw->{activity} ) {
-      my @field_values;
-      foreach my $field_ref ( @{ $folderdata_raw->{activity} } ) {
-        my @entry;
-        foreach my $part (qw/ location about /) {
-          if ( not $field_ref->{$part} ) {
-            warn "missing activity $part", Dumper $field_ref;
-            next;
-          }
-          foreach my $subfield_ref ( @{ $field_ref->{$part} } ) {
-            next unless $subfield_ref->{'@language'} eq $lang;
-            push( @entry, $subfield_ref->{'@value'} );
-          }
-        }
-        push( @field_values, join( ' - ', @entry ) );
-      }
-      my $values = join( '<br>', @field_values );
+      my $values =
+        join( '<br>', @{ get_activities( $lang, $folderdata_raw ) } );
 
       $tmpl_var{activity} = $values;
     }
+
     if ( $folderdata_raw->{nationality} ) {
       $tmpl_var{nationality} =
         get_field_values( $lang, $folderdata_raw, 'nationality' );
@@ -403,6 +390,7 @@ sub parse_folderdata {
   }
 
   if ( $collection eq 'pe' ) {
+    ##print Dumper $folderdata_raw;
     my $name = $folderdata->{name};
     if ( $name =~ m/^(.*)?, (.*)$/ and $name =~ m/^</ ) {
       $folderdata->{name} = "$2 $1";
@@ -412,22 +400,25 @@ sub parse_folderdata {
     if ($from_to) {
       $extension = $from_to;
     }
-    ## TODO fix
+
+    # for description property
+    my @desc_parts;
+
+    # hasOccupation entry has insufficient and invalid schema.org markup, can
+    # be used only for description
+    if ( $lang eq 'de' and $folderdata_raw->{hasOccupation} ) {
+      push( @desc_parts, $folderdata_raw->{hasOccupation} );
+    }
+
     if ( $folderdata_raw->{activity} ) {
+      my $activities =
+        join( ', ', @{ get_activities( $lang, $folderdata_raw ) } );
       if ($from_to) {
-        $extension = "$extension; ";
+        $extension = "$extension; $activities";
+      } else {
+        $extension = $activities;
       }
-      my @locations;
-      foreach my $field_ref ( @{ $folderdata_raw->{activity}[0]{location} } ) {
-        next unless $field_ref->{'@language'} eq $lang;
-        push( @locations, $field_ref->{'@value'} );
-      }
-      my @fields;
-      foreach my $field_ref ( @{ $folderdata_raw->{activity}[0]{about} } ) {
-        next unless $field_ref->{'@language'} eq $lang;
-        push( @fields, $field_ref->{'@value'} );
-      }
-      $extension .= join( ', ', @locations, @fields );
+      push( @desc_parts, "$activities" );
     }
     $folderdata->{foldername} = "$folderdata->{name} ($extension)";
 
@@ -441,10 +432,11 @@ sub parse_folderdata {
       }
     }
 
-    # hasOccupation entry has insufficient and invalid schema.org markup, can
-    # be used only for description
-    if ( $lang eq 'de' and $folderdata_raw->{hasOccupation} ) {
-      $folderdata->{description} = $folderdata_raw->{hasOccupation};
+    # pretty description
+    if ( scalar(@desc_parts) gt 1 ) {
+      $folderdata->{description} = "$desc_parts[0]. ($desc_parts[1])";
+    } else {
+      $folderdata->{description} = $desc_parts[0];
     }
   }
 
@@ -456,22 +448,22 @@ sub parse_folderdata {
     }
     if ( $folderdata_raw->{location} ) {
       ## use only first location
-      my @locations = get_field_values($lang, $folderdata_raw, 'location');
+      my @locations = get_field_values( $lang, $folderdata_raw, 'location' );
       $folderdata->{location} = {
         '@type' => 'Place',
-        name => $locations[0],
+        name    => $locations[0],
       };
       ## create/extend extension
       if ($from_to) {
         $extension = "$extension; ";
       }
-      $extension .= join(', ', @locations);
+      $extension .= join( ', ', @locations );
     }
     $folderdata->{foldername} = "$folderdata->{name} ($extension)";
 
-    if ($folderdata_raw->{industry}) {
-      my @industries = get_field_values($lang, $folderdata_raw, 'industry');
-      $folderdata->{description} = join(', ', @industries);
+    if ( $folderdata_raw->{industry} ) {
+      my @industries = get_field_values( $lang, $folderdata_raw, 'industry' );
+      $folderdata->{description} = join( ', ', @industries );
     }
   }
 
@@ -507,13 +499,13 @@ sub add_meta_description {
 
   my $desc = (
     $lang eq 'en'
-    ? "Newspaper articles about $folderdata->{foldername}"
-    : "Zeitungsartikel zu $folderdata->{foldername}"
+    ? "Dossier about $folderdata->{foldername}"
+    : "Dossier zu $folderdata->{foldername}"
   );
   $desc .= (
     $lang eq 'en'
-    ? ". From German and international press, 1908-1949"
-    : ". Aus deutscher und internationaler Presse, 1908-1949"
+    ? ". From German and international press, 1908-1949."
+    : ". Aus deutscher und internationaler Presse, 1908-1949."
   );
 
   ##print "$desc\n";
@@ -577,8 +569,9 @@ sub add_schema_jsonld {
     '@context' => 'https://schema.org/',
     '@graph'   => [$schema_data_ref],
   };
+
   # will be utf8-encoded later in template
-  return decode( 'UTF-8',  encode_json($schema_ld) );
+  return decode( 'UTF-8', encode_json($schema_ld) );
 }
 
 sub add_jsonld {
@@ -590,7 +583,7 @@ sub add_jsonld {
   };
 
   # will be utf8-encoded later in template
-  return decode( 'UTF-8',  encode_json($ld) );
+  return decode( 'UTF-8', encode_json($ld) );
 }
 
 sub get_wd_uri {
@@ -602,5 +595,27 @@ sub get_wd_uri {
     $uri = $ref->{'@id'};
   }
   return $uri;
+}
+
+sub get_activities {
+  my $lang           = shift || die "param missing";
+  my $folderdata_raw = shift || die "param missing";
+
+  my @field_values;
+  foreach my $field_ref ( @{ $folderdata_raw->{activity} } ) {
+    my @entry;
+    foreach my $part (qw/ location about /) {
+      if ( not $field_ref->{$part} ) {
+        warn "missing activity $part", Dumper $field_ref;
+        next;
+      }
+      foreach my $subfield_ref ( @{ $field_ref->{$part} } ) {
+        next unless $subfield_ref->{'@language'} eq $lang;
+        push( @entry, $subfield_ref->{'@value'} );
+      }
+    }
+    push( @field_values, join( ' - ', @entry ) );
+  }
+  return \@field_values;
 }
 
