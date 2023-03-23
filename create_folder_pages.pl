@@ -403,7 +403,6 @@ sub parse_folderdata {
   }
 
   if ( $collection eq 'pe' ) {
-    ##print Dumper $folderdata_raw;
     my $name = $folderdata->{name};
     if ( $name =~ m/^(.*)?, (.*)$/ and $name =~ m/^</ ) {
       $folderdata->{name} = "$2 $1";
@@ -450,20 +449,30 @@ sub parse_folderdata {
   }
 
   if ( $collection eq 'co' ) {
+    ##print Dumper $folderdata_raw;
     my $from_to = $folderdata_raw->{fromTo};
     if ($from_to) {
       $extension = $from_to;
     }
     if ( $folderdata_raw->{location} ) {
+      ## use only first location
+      my @locations = get_field_values($lang, $folderdata_raw, 'location');
+      $folderdata->{location} = {
+        '@type' => 'Place',
+        name => $locations[0],
+      };
+      ## create/extend extension
       if ($from_to) {
         $extension = "$extension; ";
       }
-      foreach my $field_ref ( @{ $folderdata_raw->{location} } ) {
-        next unless $field_ref->{'@language'} eq $lang;
-        $extension .= "$field_ref->{'@value'}, ";
-      }
+      $extension .= join(', ', @locations);
     }
     $folderdata->{foldername} = "$folderdata->{name} ($extension)";
+
+    if ($folderdata_raw->{industry}) {
+      my @industries = get_field_values($lang, $folderdata_raw, 'industry');
+      $folderdata->{description} = join(', ', @industries);
+    }
   }
 
   if ( $collection eq 'sh' ) {
@@ -539,7 +548,7 @@ sub add_schema_jsonld {
   my $about = { '@type' => $schema_type{$collection}, };
 
   foreach my $prop (
-    qw / name description nationality birthDate deathDate foundingDate dissolutionDate /
+    qw / name description nationality birthDate deathDate foundingDate dissolutionDate location /
     )
   {
     if ( $folderdata->{$prop} ) {
