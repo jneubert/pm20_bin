@@ -175,7 +175,7 @@ sub mk_folder {
     my $backlink         = "../../about.$lang.html";
     my $backlink_title =
       $collection_title . ( $lang eq 'de' ? '-Mappen' : ' folders' );
-    if ( $collection eq 'sh' ) {
+    if ( $collection eq 'sh' or $collection eq 'wa' ) {
       $backlink = "../../../../../../category/about.$lang.html";
       $backlink_title =
         $lang eq 'de' ? 'Mappen nach Systematik' : 'Folders by category system';
