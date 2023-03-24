@@ -520,7 +520,7 @@ sub add_schema_jsonld {
   my %schema_type = (
     pe => "Person",
     co => "Organization",
-    sh => "Place",
+    sh => "Country",
     wa => "ProductGroup"
   );
 
@@ -560,6 +560,10 @@ sub add_schema_jsonld {
     }
     if ( $folderdata->{wikidata} ) {
       $about->{sameAs} = $folderdata->{wikidata};
+    }
+    ## replace Country with City
+    if ( $folderdata->{name} =~ m/(Hamburg|Berlin)/ ) {
+      $about->{'@type'} = 'City';
     }
   }
 
