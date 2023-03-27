@@ -41,7 +41,7 @@ _<tmpl_if is_de>Für diese Mappe gibt es nur Metadaten, keine digitalisierten Do
 <tmpl_if location><tmpl_if is_de>Sitz</tmpl_if><tmpl_if is_en>Location</tmpl_if>|<tmpl_var location></tmpl_if>
 <tmpl_if industry><tmpl_if is_de>Branche</tmpl_if><tmpl_if is_en>Industry</tmpl_if>|<tmpl_var industry></tmpl_if>
 <tmpl_loop company_relations_loop>
-<tmpl_var field_label>|[<tmpl_var name>](<tmpl_var url>)
+<tmpl_var field_label>|<tmpl_if url>[<tmpl_var name>](<tmpl_var url>)<tmpl_else><tmpl_var name></tmpl_if>
 </tmpl_loop>
 
 <tmpl_if gnd>GND|[<tmpl_var gnd>](https://d-nb.info/gnd/<tmpl_var gnd>)</tmpl_if>
