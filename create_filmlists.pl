@@ -98,7 +98,6 @@ foreach my $prov ( keys %page ) {
     push( @lines,
       '---',
       "title: \"$page_name: $title\"",
-      "etr: filmlist/$coll",
       "backlink: ./about.de.html",
       "backlink-title: Film-Überblick",
       '---', '' );

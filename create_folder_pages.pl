@@ -263,8 +263,7 @@ sub mk_folder {
         get_field_values( $lang, $folderdata_raw, 'industry' );
     }
     if ( $folderdata_raw->{hasNACECode} ) {
-      $tmpl_var{hasNACECode} =
-        get_field_values( $lang, $folderdata_raw, 'hasNACECode' );
+      $tmpl_var{hasNACECode} = join(', ', $folderdata_raw->{hasNACECode});
     }
     if ( $folderdata_raw->{organizationType} ) {
       $tmpl_var{organization_type} =
