@@ -30,7 +30,7 @@ Readonly my $FOLDER_ROOT    => $ZBW::PM20x::Folder::FOLDER_ROOT;
 Readonly my $FOLDER_WEBROOT => path('/pm20/web/folder');
 Readonly my $IMAGEDATA_ROOT => path('/pm20/data/imagedata');
 Readonly my %TITLE          => %{ YAML::LoadFile('archive_titles.yaml') };
-Readonly my @COLLECTIONS    => qw/ co pe wa /;
+Readonly my @COLLECTIONS    => qw/ co pe /;
 Readonly my @LANGUAGES      => qw/ en de /;
 
 my $tmpl = HTML::Template->new(
@@ -163,7 +163,9 @@ sub mk_collectionlist {
           $tmpl_var{backlink}       = "about.$lang.html";
           $tmpl_var{backlink_title} = $label;
           $tmpl_var{fn_stub}        = 'without_docs';
-          $tmpl_var{robots}         = 'nofollow';
+          $tmpl_var{robots}         = 'noindex,nofollow';
+        } else {
+          $tmpl_var{robots}         = 'noindex';
         }
       }
       if ( $collection eq 'wa' ) {
