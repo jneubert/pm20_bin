@@ -11,17 +11,22 @@ use strict;
 use warnings;
 use utf8;
 
+use lib './lib';
+
 use Data::Dumper;
 use JSON;
 use Path::Tiny;
 use Readonly;
 use YAML;
+use ZBW::PM20x::Folder;
 
 binmode( STDOUT, ":utf8" );
 
 Readonly my $DEFINITIONS_FILE   => 'sparql_results.yaml';
 Readonly my $CONFIGURATION_FILE => 'reports.yaml';
 Readonly my $REPORT_ROOT        => path('/pm20/web/report');
+Readonly my $URI_STUB           => 'http://purl.org/pressemappe20/folder/';
+Readonly my $FOLDER_URL_ROOT    => 'https://pm20.zbw.eu/folder/';
 
 # read report definitions
 my %definition = %{ YAML::LoadFile($DEFINITIONS_FILE) };
@@ -55,7 +60,7 @@ foreach my $report ( keys %definition ) {
       '---',
       '' );
     push( @lines, "## $conf{subtitle}{$lang}", '' );
-    push( @lines, "# $title", '' );
+    push( @lines, "# $title",                  '' );
 
     # read table head with field names
     my @fields;
@@ -87,17 +92,27 @@ foreach my $report ( keys %definition ) {
           next;
         }
 
+        # handle URI fields
         if ( $entry->{$field}{type} eq 'uri' ) {
 
-          # handle URI fields
-          if ( my $text = $entry->{"${field}Label"}{value} ) {
-            push( @row, '[' . $text . '](' . $entry->{$field}{value} . ')' );
+          # create direct, language-specific links for PM20 links
+          my $url;
+          my $uri = $entry->{$field}{value};
+
+          if ( $uri =~ m;^$URI_STUB; ) {
+            my $folder = ZBW::PM20x::Folder->new_from_uri($uri);
+            $url =
+                $FOLDER_URL_ROOT
+              . $folder->get_folder_hashed_path()
+              . "/about.$lang.html";
           } else {
-            push( @row,
-                  '['
-                . $entry->{$field}{value} . ']('
-                . $entry->{$field}{value}
-                . ')' );
+            $url = $uri;
+          }
+
+          if ( my $text = $entry->{"${field}Label"}{value} ) {
+            push( @row, "[$text]($url )" );
+          } else {
+            push( @row, "[$url]($url)" );
           }
         } else {
 
