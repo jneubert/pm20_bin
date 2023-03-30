@@ -54,9 +54,10 @@ foreach my $report ( keys %definition ) {
 
     push( @lines,
       '---',
-      "title: \"$conf{rep}{title}{$lang}: $title | $conf{archive}{$lang}\"",
+      "title: \"$conf{rep}{title}{$lang}: $title\"",
       "backlink: ../about.$lang.html",
       "backlink-title: $conf{backlink_title}{$lang}",
+      "fn-stub: $report",
       '---',
       '' );
     push( @lines, "## $conf{subtitle}{$lang}", '' );
