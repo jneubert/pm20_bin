@@ -223,7 +223,23 @@ sub mk_folder {
     }
 
     if ( $folderdata_raw->{temporal} ) {
-      $tmpl_var{holdings} = join( '<br>', @{ $folderdata_raw->{temporal} } );
+      my @holdings;
+      foreach my $hold ( @{ $folderdata_raw->{temporal} } ) {
+        my $hold_str;
+        if ( $hold =~ m/^GB: (.+)$/ ) {
+          $hold_str =
+            $lang eq 'de' ? "Geschäftsberichte: $1" : "Annual reports: $1";
+        } else {
+          $hold_str =
+            $lang eq 'de'
+            ? "Zeitungsausschnitte: $hold"
+            : "Newspaper clippings: $hold";
+        }
+        push( @holdings, $hold_str );
+      }
+      push( @holdings,
+        ( $lang eq 'de' ? 'online bis' : 'online until' ) . ' 1949' );
+      $tmpl_var{holdings} = join( '<br>', @holdings );
     }
     if ( $collection eq 'pe' or $collection eq 'co' ) {
       $tmpl_var{from_to} =
@@ -269,6 +285,28 @@ sub mk_folder {
     if ( $folderdata_raw->{organizationType} ) {
       $tmpl_var{organization_type} =
         get_field_values( $lang, $folderdata_raw, 'organizationType' );
+    }
+
+    if ( $folderdata_raw->{includesInstitutionNamed} ) {
+      my @institutions;
+      foreach my $inst ( @{ $folderdata_raw->{includesInstitutionNamed} } ) {
+        my @ext;
+        if ( $inst->{note} ) {
+          push( @ext, $inst->{note}[0] );
+        }
+        if ( $inst->{gndIdentifier} ) {
+          push( @ext, "GND $inst->{gndIdentifier}" );
+        }
+        my $inst_entry = $inst->{name};
+        if (@ext) {
+          $inst_entry .= ' (' . join( ', ', @ext ) . ')';
+        }
+        push( @institutions, $inst_entry );
+      }
+      $tmpl_var{includes_institutions} = join( '; ', @institutions );
+    }
+    if ( $folderdata_raw->{editorialNote} ) {
+      $tmpl_var{editorial_note} = $folderdata_raw->{editorialNote};
     }
 
     $tmpl->clear_params;
