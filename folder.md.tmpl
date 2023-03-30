@@ -40,7 +40,7 @@ _<tmpl_if is_de>Für diese Mappe gibt es nur Metadaten, keine digitalisierten Do
 <tmpl_if organization_type><tmpl_if is_de>Typ</tmpl_if><tmpl_if is_en>Type</tmpl_if>|<tmpl_var organization_type></tmpl_if>
 <tmpl_if location><tmpl_if is_de>Sitz</tmpl_if><tmpl_if is_en>Location</tmpl_if>|<tmpl_var location></tmpl_if>
 <tmpl_if industry><tmpl_if is_de>Branche</tmpl_if><tmpl_if is_en>Industry</tmpl_if>|<tmpl_var industry></tmpl_if>
-<tmpl_if hasNACECode>NACE|<tmpl_var hasNACECode></tmpl_if>
+<tmpl_if hasNACECode>NACE<tmpl_if is_de>-Code</tmpl_if><tmpl_if is_en> code</tmpl_if>|<tmpl_var hasNACECode></tmpl_if>
 <tmpl_loop company_relations_loop>
 <tmpl_var field_label>|<tmpl_if url>[<tmpl_var name>](<tmpl_var url>)<tmpl_else><tmpl_var name></tmpl_if>
 </tmpl_loop>
@@ -48,6 +48,8 @@ _<tmpl_if is_de>Für diese Mappe gibt es nur Metadaten, keine digitalisierten Do
 <tmpl_if gnd>GND|[<tmpl_var gnd>](https://d-nb.info/gnd/<tmpl_var gnd>)</tmpl_if>
 <tmpl_if holdings><tmpl_if is_de>Bestand</tmpl_if><tmpl_if is_en>Holdings</tmpl_if>|<tmpl_var holdings></tmpl_if>
 <tmpl_if signature><tmpl_if is_de>Signatur</tmpl_if><tmpl_if is_en>Signature</tmpl_if>|<tmpl_var signature></tmpl_if>
+<tmpl_if includes_institutions><tmpl_if is_de>schließt ein</tmpl_if><tmpl_if is_en>includes</tmpl_if>|<tmpl_var includes_institutions></tmpl_if>
+<tmpl_if editorial_note><tmpl_if is_de>Notiz|<tmpl_var editorial_note></tmpl_if></tmpl_if>
 URI|<a href="<tmpl_var folder_uri>" rel="nofollow"><tmpl_var folder_uri></a>
 ID| <tmpl_var fid>
 
