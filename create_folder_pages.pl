@@ -237,8 +237,6 @@ sub mk_folder {
         }
         push( @holdings, $hold_str );
       }
-      push( @holdings,
-        ( $lang eq 'de' ? 'online bis' : 'online until' ) . ' 1949' );
       $tmpl_var{holdings} = join( '<br>', @holdings );
     }
     if ( $collection eq 'pe' or $collection eq 'co' ) {
@@ -246,6 +244,17 @@ sub mk_folder {
         ( $folderdata_raw->{dateOfBirthAndDeath} || $folderdata_raw->{fromTo} );
       $tmpl_var{gnd}       = $folderdata_raw->{gndIdentifier};
       $tmpl_var{signature} = $folderdata_raw->{notation};
+
+      foreach my $date (qw/birth death founding dissolution/) {
+        my $date_formatted = $folderdata_raw->{ $date . 'Date' };
+        next unless $date_formatted;
+        if ( $date_formatted =~ m/(\d{4})-00-00T00:00:00/ ) {
+          $date_formatted = $1;
+        } elsif ( $date_formatted =~ m/(.+)?T00:00:00/ ) {
+          $date_formatted = $1;
+        }
+        $tmpl_var{$date} = $date_formatted;
+      }
     }
 
     if ( $folderdata_raw->{activity} ) {
