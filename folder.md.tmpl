@@ -36,9 +36,13 @@ _<tmpl_if is_de>Für diese Mappe gibt es nur Metadaten, keine digitalisierten Do
 <tmpl_if activity><tmpl_if is_de>Wirkungsbereich</tmpl_if><tmpl_if is_en>Field of activity</tmpl_if>|<tmpl_var activity></tmpl_if>
 <tmpl_if occupation><tmpl_if is_de>Beruf</tmpl_if><tmpl_if is_en>Occupation</tmpl_if>|<tmpl_var occupation></tmpl_if>
 <tmpl_if nationality><tmpl_if is_de>Land</tmpl_if><tmpl_if is_en>Country</tmpl_if>|<tmpl_var nationality></tmpl_if>
+<tmpl_if birth><tmpl_if is_de>Geburt</tmpl_if><tmpl_if is_en>Birth</tmpl_if>|<tmpl_var birth></tmpl_if>
+<tmpl_if death><tmpl_if is_de>Tod</tmpl_if><tmpl_if is_en>Death</tmpl_if>|<tmpl_var death></tmpl_if>
 
 <tmpl_if organization_type><tmpl_if is_de>Typ</tmpl_if><tmpl_if is_en>Type</tmpl_if>|<tmpl_var organization_type></tmpl_if>
 <tmpl_if location><tmpl_if is_de>Sitz</tmpl_if><tmpl_if is_en>Location</tmpl_if>|<tmpl_var location></tmpl_if>
+<tmpl_if founding><tmpl_if is_de>Gründung</tmpl_if><tmpl_if is_en>Founding</tmpl_if>|<tmpl_var founding></tmpl_if>
+<tmpl_if dissolution><tmpl_if is_de>Auflösung</tmpl_if><tmpl_if is_en>Dissolution</tmpl_if>|<tmpl_var dissolution></tmpl_if>
 <tmpl_if industry><tmpl_if is_de>Branche</tmpl_if><tmpl_if is_en>Industry</tmpl_if>|<tmpl_var industry></tmpl_if>
 <tmpl_if hasNACECode>NACE<tmpl_if is_de>-Code</tmpl_if><tmpl_if is_en> code</tmpl_if>|<tmpl_var hasNACECode></tmpl_if>
 <tmpl_loop company_relations_loop>
@@ -46,7 +50,7 @@ _<tmpl_if is_de>Für diese Mappe gibt es nur Metadaten, keine digitalisierten Do
 </tmpl_loop>
 
 <tmpl_if gnd>GND|[<tmpl_var gnd>](https://d-nb.info/gnd/<tmpl_var gnd>)</tmpl_if>
-<tmpl_if holdings><tmpl_if is_de>Bestand</tmpl_if><tmpl_if is_en>Holdings</tmpl_if>|<tmpl_var holdings></tmpl_if>
+<tmpl_if holdings><tmpl_if is_de>Bestand:<br><span class="note">online bis 1949</span></tmpl_if><tmpl_if is_en>Holdings<br><span class="note">online until 1949</span></tmpl_if>|<tmpl_var holdings></tmpl_if>
 <tmpl_if signature><tmpl_if is_de>Signatur</tmpl_if><tmpl_if is_en>Signature</tmpl_if>|<tmpl_var signature></tmpl_if>
 <tmpl_if includes_institutions><tmpl_if is_de>schließt ein</tmpl_if><tmpl_if is_en>includes</tmpl_if>|<tmpl_var includes_institutions></tmpl_if>
 <tmpl_if editorial_note><tmpl_if is_de>Notiz|<tmpl_var editorial_note></tmpl_if></tmpl_if>
