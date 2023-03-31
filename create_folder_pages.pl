@@ -319,8 +319,11 @@ sub mk_folder {
       $tmpl_var{includes_institutions} = join( '; ', @institutions );
     }
     if ( $folderdata_raw->{editorialNote} ) {
+      ## TODO remove temporary fix (should always be array)
       $tmpl_var{editorial_note} =
-        join( '; ', @{ $folderdata_raw->{editorialNote} } );
+        ( ref $folderdata_raw->{editorialNote} eq 'ARRAY' )
+        ? join( '; ', @{ $folderdata_raw->{editorialNote} } )
+        : $folderdata_raw->{editorialNote};
     }
 
     $tmpl->clear_params;
