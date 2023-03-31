@@ -319,7 +319,8 @@ sub mk_folder {
       $tmpl_var{includes_institutions} = join( '; ', @institutions );
     }
     if ( $folderdata_raw->{editorialNote} ) {
-      $tmpl_var{editorial_note} = $folderdata_raw->{editorialNote};
+      $tmpl_var{editorial_note} =
+        join( '; ', @{ $folderdata_raw->{editorialNote} } );
     }
 
     $tmpl->clear_params;
