@@ -283,6 +283,10 @@ sub mk_folder {
       $tmpl_var{location} =
         get_field_values( $lang, $folderdata_raw, 'location' );
     }
+    if ( $folderdata_raw->{broaderLocation} ) {
+      $tmpl_var{broader_location} =
+        get_field_values( $lang, $folderdata_raw, 'broaderLocation' );
+    }
     if ( $folderdata_raw->{industry} ) {
       $tmpl_var{industry} =
         get_field_values( $lang, $folderdata_raw, 'industry' );
