@@ -8,9 +8,13 @@ use warnings;
 
 use utf8;
 
+use lib './lib';
+
 use Data::Dumper;
+use List::MoreUtils qw/uniq/;
 use Path::Tiny;
 use Web::Sitemap;
+use Web::Sitemap::Url_patched;
 
 $Data::Dumper::Sortkeys = 1;
 
@@ -63,6 +67,7 @@ my @main_url_list = (
 # work through all sets used in make, get all HTML urls (from file system) and
 # add them
 foreach my $set (qw/ default category co pe sh wa pdf /) {
+  print "$set ...\n";
   my $url_list_ref = get_urls($set);
   $sm->add( $url_list_ref, tag => $set );
 }
@@ -82,20 +87,87 @@ sub get_urls {
   if ( $set eq 'pdf' ) {
     ## get pdf from about-pm20 only (not doc)
     @temp = `cd /pm20/web ; find ./about-pm20 -name "*.pdf"`;
-  } elsif ( grep (/^$set$/, qw/ co pe sh wa /)) {
+  } elsif ( grep ( /^$set$/, qw/ co pe sh wa / ) ) {
     ## use prepared list of folders with documents
-    @temp = split(/\n/, path("/pm20/data/folderdata/${set}_for_sitemap.lst")->slurp);
+    @temp = split( /\n/,
+      path("/pm20/data/folderdata/${set}_for_sitemap.lst")->slurp );
   } else {
     ## get a list of .md files as used in make
     @temp = `/bin/sh /pm20/web/mk/find_md.sh $set`;
   }
   my $url_list_ref;
-  foreach my $line (@temp) {
+  ## for some strange reason, lines in ??_for_sitemap.lst are duplicate
+  foreach my $line ( uniq @temp ) {
     chomp($line);
     $line = substr( $line, 1, );
     $line =~ s/(.+)?\.md$/$1\.html/;
-    push( @$url_list_ref, $line );
+    next unless $line =~ m/\.(html|pdf)$/;
+    my $entry = {
+      loc      => $line,
+      priority => get_priority($line),
+    };
+    push( @$url_list_ref, $entry );
   }
 
   return $url_list_ref;
 }
+
+sub get_priority {
+  my $url = shift or die "param missing";
+
+  my $priority = '0.2';
+
+  my @url_prios = (
+    {
+      pattern  => qr{^/about\...\.html$},
+      priority => '1.0',
+    },
+    {
+      pattern  => qr{^/about-pm20/legal},
+      priority => '0.1',
+    },
+    {
+      pattern  => qr{^/about-pm20/(?:hwwa|fs|wia|publication/testimonial)},
+      priority => '0.9',
+    },
+    {
+      pattern  => qr{^/(?:doc/holding|film/about)},
+      priority => '0.9',
+    },
+    {
+      pattern  => qr{^/category/(?:geo|subject|ware)/about},
+      priority => '0.9',
+    },
+    {
+      pattern  => qr{^/folder/(?:co|pe)/[0-9]},
+      priority => '0.8',
+    },
+    {
+      pattern  => qr{^/about-pm20/(?:about|links|publication)},
+      priority => '0.7',
+    },
+    {
+      pattern  => qr{^/category/},
+      priority => '0.6',
+    },
+    {
+      pattern  => qr{^/report},
+      priority => '0.3',
+    },
+    {
+      pattern  => qr{^/error},
+      priority => '0.0',
+    },
+  );
+
+  foreach my $url_prio (@url_prios) {
+    my $pattern = $url_prio->{pattern};
+    my $prio    = $url_prio->{priority};
+    if ( $url =~ $pattern ) {
+      $priority = $prio;
+      last;
+    }
+  }
+  return $priority;
+}
+

@@ -48,10 +48,11 @@ sub to_xml_string
 	my ($self, %p) = @_;
 
 	return sprintf(
-		"\n<url><loc>%s%s</loc>%s%s%s</url>",
+		"\n<url><loc>%s%s</loc>%s%s%s%s</url>",
 		$self->{loc_prefix},
 		$self->{loc},
 		$self->{changefreq} ? sprintf('<changefreq>%s</changefreq>', $self->{changefreq}) : '',
+		$self->{priority} ? sprintf('<priority>%s</priority>', $self->{priority}) : '',
 		$self->{mobile} ? '<mobile:mobile/>' : '',
 		$self->_images_xml_string
 	);
@@ -153,6 +154,10 @@ Same as in L<Web::Sitemap/new>
 =item * C<changefreq>
 
 Will be inserted into C<< <changefreq> >> XML node.
+
+=item * C<priority>
+
+Will be inserted into C<< <priority> >> XML node.
 
 =item * C<images>
 
