@@ -22,6 +22,7 @@ use Path::Tiny;
 use Readonly;
 use YAML;
 use ZBW::PM20x::Folder;
+use ZBW::PM20x::Vocab;
 
 $Data::Dumper::Sortkeys = 1;
 
@@ -86,6 +87,7 @@ my %collection_ids;
 my %folder_id;
 
 load_ids( \%collection_ids, \%folder_id );
+my $subject_voc = ZBW::PM20x::Vocab->new('subject');
 
 # check arguments
 if ( scalar(@ARGV) == 1 ) {
@@ -242,8 +244,7 @@ sub mk_folder {
     if ( $collection eq 'pe' or $collection eq 'co' ) {
       $tmpl_var{from_to} =
         ( $folderdata_raw->{dateOfBirthAndDeath} || $folderdata_raw->{fromTo} );
-      $tmpl_var{gnd}       = $folderdata_raw->{gndIdentifier};
-      $tmpl_var{signature} = $folderdata_raw->{notation};
+      $tmpl_var{gnd} = $folderdata_raw->{gndIdentifier};
 
       foreach my $date (qw/birth death founding dissolution/) {
         my $date_formatted = $folderdata_raw->{ $date . 'Date' };
@@ -324,6 +325,44 @@ sub mk_folder {
         ( ref $folderdata_raw->{editorialNote} eq 'ARRAY' )
         ? join( '; ', @{ $folderdata_raw->{editorialNote} } )
         : $folderdata_raw->{editorialNote};
+    }
+
+    if ( $collection eq 'sh' ) {
+      ## hack for the labels
+      $label =~ m/^(.+?) : (.+)$/;
+      $tmpl_var{country_name} = $1;
+      $tmpl_var{subject_name} = $2;
+
+      $tmpl_var{signature} = $folderdata_raw->{notation};
+
+      foreach my $part (qw/country subject/) {
+        $folderdata_raw->{$part}{'@id'} =~ m;/pressemappe20(/.+)$;;
+        my $url = "$1/about.$lang.html";
+        $tmpl_var{"${part}_url"} = $url;
+        next unless $part eq 'subject';
+
+        $folderdata_raw->{subject}{'@id'} =~ m;/i/(.+)$;;
+        my $id         = $1;
+        my $broader_id = $subject_voc->broader($id);
+        ## skip if top class
+        next if $id eq '156329';
+        $tmpl_var{broader_name} = $subject_voc->label( $lang, $broader_id );
+        $tmpl_var{broader_url} =
+          "/category/subject/i/$broader_id/about.$lang.html";
+      }
+    }
+
+    if ( $collection eq 'wa' ) {
+      ## hack for the labels
+      $label =~ m/^(.+?) : (.+)$/;
+      $tmpl_var{ware_name}    = $1;
+      $tmpl_var{country_name} = $2;
+
+      foreach my $part (qw/country ware/) {
+        $folderdata_raw->{$part}{'@id'} =~ m;/pressemappe20(/.+)$;;
+        my $url = "$1/about.$lang.html";
+        $tmpl_var{"${part}_url"} = $url;
+      }
     }
 
     $tmpl->clear_params;
