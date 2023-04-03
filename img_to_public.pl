@@ -206,6 +206,7 @@ sub create_overview_page {
 ---
 title: $page_title{$lang}
 fn-stub: public_section.$holding_shortname
+robots: nofollow
 ---
 
 # $page_title{$lang}
