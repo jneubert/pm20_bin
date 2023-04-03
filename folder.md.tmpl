@@ -49,6 +49,10 @@ _<tmpl_if is_de>Für diese Mappe gibt es nur Metadaten, keine digitalisierten Do
 <tmpl_var field_label>|<tmpl_if url>[<tmpl_var name>](<tmpl_var url>)<tmpl_else><tmpl_var name></tmpl_if>
 </tmpl_loop>
 
+<tmpl_if ware_name><tmpl_if is_de>Ware</tmpl_if><tmpl_if is_en>Commodity/ware</tmpl_if>|[<tmpl_var ware_name>](<tmpl_var ware_url>)</tmpl_if>
+<tmpl_if country_name><tmpl_if is_de>Land/Geo</tmpl_if><tmpl_if is_en>Country/geo</tmpl_if>|[<tmpl_var country_name>](<tmpl_var country_url>)</tmpl_if>
+<tmpl_if subject_name><tmpl_if is_de>Sachthema</tmpl_if><tmpl_if is_en>Subject</tmpl_if>|[<tmpl_var subject_name>](<tmpl_var subject_url>)</tmpl_if>
+<tmpl_if broader_name><tmpl_if is_de>übergeordnet</tmpl_if><tmpl_if is_en>superordinated</tmpl_if>|[<tmpl_var broader_name>](<tmpl_var broader_url>)</tmpl_if>
 <tmpl_if gnd>GND|[<tmpl_var gnd>](https://d-nb.info/gnd/<tmpl_var gnd>)</tmpl_if>
 <tmpl_if holdings><tmpl_if is_de>Bestand</tmpl_if><tmpl_if is_en>Holdings</tmpl_if>|<tmpl_var holdings></tmpl_if>
 <tmpl_if signature><tmpl_if is_de>Signatur</tmpl_if><tmpl_if is_en>Signature</tmpl_if>|<tmpl_var signature></tmpl_if>
