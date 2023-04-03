@@ -371,12 +371,15 @@ sub mk_folder {
       my $id       = $1;
       my $world_nk = "$id,141728";
       if ( defined $folder_id{"$collection/$world_nk"} ) {
-        my $world_folder = ZBW::PM20x::Folder->new( $collection, $world_nk );
-        $tmpl_var{world_name} = $world_folder->get_folderlabel($lang);
-        $tmpl_var{world_url} =
-            '/folder/'
-          . $world_folder->get_folder_hashed_path
-          . "/about.$lang.html";
+        ## skip if the current folder is the world folder
+        if ( $folder_nk ne $world_nk ) {
+          my $world_folder = ZBW::PM20x::Folder->new( $collection, $world_nk );
+          $tmpl_var{world_name} = $world_folder->get_folderlabel($lang);
+          $tmpl_var{world_url} =
+              '/folder/'
+            . $world_folder->get_folder_hashed_path
+            . "/about.$lang.html";
+        }
       }
     }
 
