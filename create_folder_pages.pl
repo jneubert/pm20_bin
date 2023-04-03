@@ -127,6 +127,7 @@ sub mk_collection {
 
   my @pages_for_sitemap;
   my $i = 0;
+
   foreach my $folder_nk ( sort @{ $collection_ids{$collection} } ) {
     $i++;
     ##next if ($i < 8100);
@@ -140,7 +141,7 @@ sub mk_collection {
   }
 
   # write a list of pages to index for Google etc.
-  # (used in create_sitemap.pl
+  # (used in create_sitemap.pl)
   $URL_DATA_ROOT->child("${collection}_for_sitemap.lst")
     ->spew( join( "\n", @pages_for_sitemap ) );
 }
@@ -346,6 +347,7 @@ sub mk_folder {
         my $broader_id = $subject_voc->broader($id);
         ## skip if top class
         next if $id eq '156329';
+        next if not $broader_id;
         $tmpl_var{broader_name} = $subject_voc->label( $lang, $broader_id );
         $tmpl_var{broader_url} =
           "/category/subject/i/$broader_id/about.$lang.html";
@@ -362,6 +364,19 @@ sub mk_folder {
         $folderdata_raw->{$part}{'@id'} =~ m;/pressemappe20(/.+)$;;
         my $url = "$1/about.$lang.html";
         $tmpl_var{"${part}_url"} = $url;
+      }
+
+      # check, if there is a 'World' folder for the ware
+      $folderdata_raw->{ware}{'@id'} =~ m;/i/(.+)$;;
+      my $id       = $1;
+      my $world_nk = "$id,141728";
+      if ( defined $folder_id{"$collection/$world_nk"} ) {
+        my $world_folder = ZBW::PM20x::Folder->new( $collection, $world_nk );
+        $tmpl_var{world_name} = $world_folder->get_folderlabel($lang);
+        $tmpl_var{world_url} =
+            '/folder/'
+          . $world_folder->get_folder_hashed_path
+          . "/about.$lang.html";
       }
     }
 
