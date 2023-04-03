@@ -100,6 +100,7 @@ foreach my $prov ( keys %page ) {
       "title: \"$page_name: $title\"",
       "backlink: ./about.de.html",
       "backlink-title: Film-Überblick",
+      "robots: noindex",
       '---', '' );
     push( @lines, "### $page{$prov}{name}",                  '' );
     push( @lines, "# $page{$prov}{list}{$page_name}{title}", '' );
