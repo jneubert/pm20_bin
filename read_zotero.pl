@@ -19,7 +19,7 @@ Readonly my $FILMDATA_STUB => '/pm20/data/filmdata/zotero.';
 
 # TODO extend to other holdings beyond Hamburg and sh or co
 # (currently set is not restricted to a certain filming (1/2))
-Readonly my @VALID_SUBSETS => qw/ h1_sh h1_co h1_wa /;
+Readonly my @VALID_SUBSETS => qw/ h1_sh h1_co h1_wa h2_co /;
 Readonly my %CONF          => (
   'h' => {
     co => {
@@ -99,6 +99,7 @@ while ($more) {
 }
 
 # second level are items (sections) within the films
+FILM_KEY:
 foreach my $key (
   sort { $collection{$a} cmp $collection{$b} }
   keys %collection
@@ -108,7 +109,6 @@ foreach my $key (
 
   # only work on films of a specific set
   next unless $film_name =~ $conf{film_qr};
-  $film_count++;
 
   my %item_film;
 
@@ -142,6 +142,10 @@ foreach my $key (
 
       my %item;
       my $location = $entry->{data}{archiveLocation};
+
+      # is the filming of the subset correct? otherwise skip this film entirely
+      next FILM_KEY unless $location =~ m;film/$provenance$filming/;;
+
       if ( $location =~ m;film/(.+\d{4})(/(L|R))?$; ) {
 
         $item{signature_string} = $entry->{data}{callNumber};
@@ -185,6 +189,8 @@ foreach my $key (
 
   # save complete film
   $film{$film_name}{item} = \%item_film;
+
+  $film_count++;
 }
 
 # save data (only if output dir exists)
