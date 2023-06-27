@@ -15,6 +15,8 @@ use Scalar::Util qw(looks_like_number);
 
 my $filmdata_root = path('../data/filmdata');
 
+my $type = 'INDIVIDUAL';
+
 my %page = (
   h => {
     name      => 'Hamburgisches Welt-Wirtschafts-Archiv (HWWA)',
@@ -60,6 +62,7 @@ my %page = (
   },
 );
 
+my $film_cnt=0;
 foreach my $prov (qw/ h /) {
   foreach my $page_name ( sort keys %{ $page{$prov}{list} } ) {
 
@@ -86,14 +89,15 @@ foreach my $prov (qw/ h /) {
 
       my $description = "$desc_stub $film, enthaltend: $from bis $to";
 
-      push( @lines, "$film\t$description" );
+      push( @lines, "$type|film/$film|LITERARY|||||||||||||||||||||||||||||||||||||$description" );
     }
 
     # write output to public
     my $out = $filmdata_root->child( 'euipo.' . $page_name . '.txt' );
-    $out->spew_utf8( join( "\n", @lines ) );
+    $out->spew_utf8( join( "\n", @lines, "\n" ) );
 
     print "$page_name: $i films written\n";
+    $film_cnt += $i;
   }
 }
-
+print "total: $film_cnt\n";
