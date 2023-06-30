@@ -24,7 +24,7 @@ my %page = (
   h => {
     name      => 'Hamburgisches Welt-Wirtschafts-Archiv (HWWA)',
     desc_tmpl =>
-'des ehemaligen Hamburgischen Welt-Wirtschafts-Archivs. Themenbezogene Mappen mit Ausschnitten aus über 1500 Zeitungen und Zeitschriften des In- und Auslands (weltweit), Firmenschriften u.ä. aus der Zeit $covers$. Archiviert als digitalisierter Rollfilm, hier:',
+'des ehemaligen Hamburgischen Welt-Wirtschafts-Archivs (HWWA). Themenbezogene Mappen mit Ausschnitten aus über 1500 Zeitungen und Zeitschriften des In- und Auslands (weltweit), Firmenschriften u.ä. aus der Zeit $covers$. Archiviert als digitalisierter Mikrofilm, hier:',
     list => {
       'h1_sh' => {
         title  => 'Länder-Sacharchiv',
@@ -103,10 +103,10 @@ foreach my $prov (qw/ h /) {
       next unless -d "$film_web_root/$set/$coll/$film_id";
 
       my $id   = "film/$set/$coll/$film_id";
-      my $from = "$film_section->{start_sig} ($film_section->{start_date})";
-      my $to   = "$film_section->{end_sig} ($film_section->{end_date})";
+      my $from = "$film_section->{start_sig}";
+      my $to   = "$film_section->{end_sig}";
 
-      my $description = "$desc_stub $film_id, mit: $from bis $to";
+      my $description = "$desc_stub $film_id, von: \"$from\" bis: \"$to\"";
       $description = cleanup($description);
 
       # if the film is already online as part of folders, add url
