@@ -114,8 +114,12 @@ foreach my $prov ( keys %page ) {
     push( @lines, $page{$prov}{head}, $page{$prov}{delim} );
 
     # read json input
+    my $filmfile = $filmdata_root->child( $page_name . '.expanded.json' );
+    if (not $filmfile->exists) {
+      $filmfile = $filmdata_root->child( $page_name . '.json' );
+    }
     my @film_sections =
-      @{ decode_json( $filmdata_root->child( $page_name . '.json' )->slurp ) };
+      @{ decode_json( $filmfile->slurp ) };
 
     # iterate through the list of film sections (from the excel file)
     foreach my $film_section (@film_sections) {

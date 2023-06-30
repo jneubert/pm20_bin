@@ -91,8 +91,11 @@ foreach my $prov (qw/ h /) {
     $desc_stub =~ s/\$covers\$/$page{$prov}{list}{$page_name}{covers}/;
 
     # read json input
-    my @film_sections =
-      @{ decode_json( $filmdata_root->child( $page_name . '.json' )->slurp ) };
+    my @film_sections = @{
+      decode_json(
+        $filmdata_root->child( $page_name . '.expanded.json' )->slurp
+      )
+    };
 
     # iterate through the list of film sections (from the excel file)
     my $i = 0;

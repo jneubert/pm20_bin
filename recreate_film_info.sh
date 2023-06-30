@@ -10,6 +10,7 @@ LOG_DIR=$BASE_DIR/web/tmp/film_meta
 export PERL5LIB=/opt/perllib:/opt/perl5/lib/perl5
 
 cd $BASE_DIR/bin
+perl expand_signatures.pl
 perl create_filmlists.pl > $LOG_DIR/create_filmlists.log 2>&1
 
 for subset in h1_sh h1_co h1_wa ; do
