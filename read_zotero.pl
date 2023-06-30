@@ -65,6 +65,17 @@ my ( $translate_geo,     $lookup_geo )     = get_lookup_tables('ag');
 my ( $translate_subject, $lookup_subject ) = get_lookup_tables('je');
 my ( $translate_company, $lookup_company ) = get_company_lookup_tables();
 
+# save company lookup table for use in filmlists
+# for duplicate signatures, resulting label is arbitrary
+my %lookup_tmp;
+foreach my $nta ( keys %{$lookup_company} ) {
+  $nta =~ s/^A10\/19/A10(19)/;
+  $lookup_tmp{$nta} = $lookup_company->{$nta}{label};
+}
+my $fn_tmp = path('/pm20/data/filmdata/co_lookup.json');
+$fn_tmp->spew( encode_json (\%lookup_tmp) );
+exit;
+
 # all Zotero information is read from the web
 my $zclient = WWW::Zotero->new();
 
