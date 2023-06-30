@@ -19,6 +19,7 @@ use Path::Tiny;
 use Readonly;
 use Scalar::Util qw(looks_like_number);
 
+## for debug output
 binmode( STDOUT, ":utf8" );
 
 my $klassdata_root = path('../data/klassdata');
@@ -124,13 +125,13 @@ foreach my $prov (qw/ h /) {
       }
       $old_end_sig =~ s/\s+/ /g;
       if ( $film_section->{end_sig} ne $old_end_sig ) {
-        print "$old_end_sig} ==> $film_section->{end_sig}\n";
+        ##print "$old_end_sig} ==> $film_section->{end_sig}\n";
       }
     }
 
     # write output (replace file)
     my $out = $filmdata_root->child( $page_name . '.expanded.json' );
-    $out->spew_utf8( encode_json( \@film_sections ) );
+    $out->spew( encode_json( \@film_sections ) );
   }
 }
 
