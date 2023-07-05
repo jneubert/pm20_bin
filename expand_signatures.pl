@@ -38,7 +38,7 @@ my %co =
 
 my %page = (
   h => {
-    name      => 'Hamburgisches Welt-Wirtschafts-Archiv (HWWA)',
+    name => 'Hamburgisches Welt-Wirtschafts-Archiv (HWWA)',
     list => {
       'h1_sh' => {
         title  => 'Länder-Sacharchiv',
@@ -120,7 +120,7 @@ foreach my $prov (qw/ h /) {
         $film_section->{end_sig} = expand_sh_signature( $end_sig, $film_id );
       }
       if ( $coll eq 'co' ) {
-        next unless ($film_section->{start_sig} and $film_section->{end_sig});
+        next unless ( $film_section->{start_sig} and $film_section->{end_sig} );
         $film_section->{start_sig} =
           expand_co_signature( $start_sig, $film_id );
         $film_section->{end_sig} = expand_co_signature( $end_sig, $film_id );
@@ -345,7 +345,7 @@ sub expand_co_signature {
 
   # company signature includes the geographic part
   $signature =~ m/^(\S+)(\s(.*))?$/;
-  my $geo   = $1;
+  my $geo     = $1;
   my $company = $signature;
 
   if ( not $geo ) {
@@ -416,7 +416,7 @@ sub expand_wa_signature {
     my $rest = $2;
 
     if ( $rest =~ m/([A-H]\d+[a-z]?)(?: (.+))?$/ ) {
-      my $geo = $1;
+      my $geo   = $1;
       my $rest2 = $2 || '';
 
       if ( $country{$geo} ) {
