@@ -33,6 +33,9 @@ my %country =
 my %sh =
   %{ decode_json( $klassdata_root->child('je_lookup.json')->slurp ) };
 
+my %co =
+  %{ decode_json( $filmdata_root->child('co_lookup.json')->slurp ) };
+
 my %page = (
   h => {
     name      => 'Hamburgisches Welt-Wirtschafts-Archiv (HWWA)',
@@ -78,8 +81,7 @@ my %page = (
 
 foreach my $prov (qw/ h /) {
 
-  ##foreach my $page_name ( sort keys %{ $page{$prov}{list} } ) {
-  foreach my $page_name (qw/ h1_sh h2_sh /) {
+  foreach my $page_name ( sort keys %{ $page{$prov}{list} } ) {
 
     my $coll = substr( $page_name, 3, 2 );
     my $set  = substr( $page_name, 0, 2 );
@@ -116,6 +118,17 @@ foreach my $prov (qw/ h /) {
         $film_section->{start_sig} =
           expand_sh_signature( $start_sig, $film_id );
         $film_section->{end_sig} = expand_sh_signature( $end_sig, $film_id );
+      }
+      if ( $coll eq 'co' ) {
+        next unless ($film_section->{start_sig} and $film_section->{end_sig});
+        $film_section->{start_sig} =
+          expand_co_signature( $start_sig, $film_id );
+        $film_section->{end_sig} = expand_co_signature( $end_sig, $film_id );
+      }
+      if ( $coll eq 'wa' ) {
+        $film_section->{start_sig} =
+          expand_wa_signature( $start_sig, $film_id );
+        $film_section->{end_sig} = expand_wa_signature( $end_sig, $film_id );
       }
 
       # output old/new differences for debugging
@@ -182,6 +195,58 @@ sub clean_sh_signature {
   # dot before roman Sm number extension
   if ( $signature =~ m/^(.+Sm\d+)([IVX].*)$/ ) {
     $signature = "$1.$2";
+  }
+
+  return $signature;
+}
+
+sub clean_co_signature {
+  my $signature = shift || die "param missing";
+
+  # replace individual typos
+  $signature =~ s/^A 10\/19 (.*)$/A10(19) $1/;
+  $signature =~ s/^A10\/19 (.*)$/A10(19) $1/;
+  $signature =~ s/^A10A35$/A10 A35/;
+  $signature =~ s/^E87 B7$/E86 B7/;
+  $signature =~ s/^(.*?\(Magazin)$/$1\)/;
+
+  # geo
+
+  # blank after continent
+  if ( $signature =~ m/^([A-H]) (\d.*)$/ ) {
+    $signature = "$1$2";
+  }
+
+  # company
+  if ( $signature =~ m/^([A-H]\d+ [A-Z])(\d.*)$/ ) {
+    $signature = "$1 $2";
+  }
+
+  return $signature;
+}
+
+sub clean_wa_signature {
+  my $signature = shift || die "param missing";
+
+  # replace individual typos
+  $signature =~ s/^Zucker A10 I 4$/Zucker - A10 I 4/;
+  $signature =~ s/^Wein C19 IV$/Wein - C19 IV/;
+  $signature =~ s/^k35 n13a$/Eisen - A35/;
+  $signature =~ s/^Metalle - A35$/Eisen - A35/;
+  $signature =~ s/^Chemikalien B102 IV$/Chemikalien - B102 IV/;
+  $signature =~ s/^B58\/59$/B58 B59/;
+  $signature =~ s/ \/ Räder/ (Räder)/;
+  $signature =~ s/A1\/W/A1 IV/;
+  $signature =~ s/ A86/ E86/;
+  $signature =~ s/ B93/ C93/;
+  $signature =~ s/ B97/ E97/;
+  $signature =~ s/ B87/ C87/;
+  $signature =~ s/ B69/ B64/;
+  $signature =~ s/ A40o/ A40c/;
+
+  # with slash
+  if ( $signature =~ m;^(?:.+?) - (.+?)/(.+)$; ) {
+    $signature = "$1 $2";
   }
 
   return $signature;
@@ -257,6 +322,121 @@ sub expand_sh_signature {
 
   # squeeze multiple blanks
   $expanded_signature =~ s/\s+/ /g;
+
+  return $expanded_signature;
+}
+
+sub expand_co_signature {
+  my $signature = shift || die "param missing";
+  my $film_id   = shift || die "param missing";
+
+  return $signature if ( $signature eq 'x' );
+  return $signature if ( $signature =~ m/ \(Magazin\)$/ );
+
+  # squeeze multiple blanks
+  $signature =~ s/\s+/ /g;
+
+  my $old_signature = $signature;
+  $signature = clean_co_signature($signature);
+
+  if ( $signature ne $old_signature ) {
+    ##print "$old_signature\t->\t$signature\n";
+  }
+
+  # company signature includes the geographic part
+  $signature =~ m/^(\S+)(\s(.*))?$/;
+  my $geo   = $1;
+  my $company = $signature;
+
+  if ( not $geo ) {
+    warn "Unmatching signature: $signature\n";
+  }
+
+  # expand geo
+  my $expanded_signature;
+  if ( $country{$geo} ) {
+    $expanded_signature = $country{$geo};
+  } else {
+    $expanded_signature = '???';
+  }
+
+  # expand company
+  if ($company) {
+
+    # check backwards to recognize the longest possible substring
+    my @parts = split( / /, $company );
+    my @unrecognized;
+    my $company_expanded = '';
+
+    my $i = @parts;
+    PART: while ( $i > 0 ) {
+
+      # if matched
+      if ( $co{ join( ' ', @parts ) } ) {
+
+        # append the unrecognized parts to the expanded recognized
+        $company_expanded =
+          $co{ join( ' ', @parts ) } . ' ' . join( ' ', @unrecognized );
+        last PART;
+      }
+      if ( $i == 1 ) {
+        ##print "$film_id not found:\t$company\n";
+        $company_expanded = $company;
+      }
+      my $last = pop(@parts);
+      unshift( @unrecognized, $last );
+      $i--;
+    }
+
+    # use en dash as separator
+    $expanded_signature = "$expanded_signature – $company_expanded";
+  }
+
+  $expanded_signature = "$expanded_signature [$signature]";
+
+  # squeeze multiple blanks
+  $expanded_signature =~ s/\s+/ /g;
+
+  return $expanded_signature;
+}
+
+sub expand_wa_signature {
+  my $signature = shift || die "param missing";
+  my $film_id   = shift || die "param missing";
+
+  # squeeze multiple blanks
+  $signature =~ s/\s+/ /g;
+
+  my $old_signature = $signature;
+  $signature = clean_wa_signature($signature);
+
+  my $expanded_signature;
+  if ( $signature =~ m/^(.+) - (.+)$/ ) {
+    my $ware = $1;
+    my $rest = $2;
+
+    if ( $rest =~ m/([A-H]\d+[a-z]?)(?: (.+))?$/ ) {
+      my $geo = $1;
+      my $rest2 = $2 || '';
+
+      if ( $country{$geo} ) {
+        $expanded_signature = $country{$geo};
+      } else {
+        $expanded_signature = '???';
+      }
+      $expanded_signature = "$ware - $expanded_signature";
+      if ($rest2) {
+        $expanded_signature .= " $rest2";
+      }
+      $expanded_signature .= " [$rest]";
+      print "$expanded_signature\n";
+    } else {
+      $expanded_signature = "$ware - $rest";
+    }
+
+  } else {
+    $expanded_signature = $signature;
+  }
 
   return $expanded_signature;
 }
