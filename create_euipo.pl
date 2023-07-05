@@ -102,12 +102,12 @@ foreach my $prov (qw/ h /) {
     foreach my $film_section (@film_sections) {
       my $film_id = $film_section->{film_id};
 
-      # skip film if it has no content (is only a line in the list)
-      next unless -d "$film_web_root/$set/$coll/$film_id";
-
       my $id   = "film/$set/$coll/$film_id";
       my $from = "$film_section->{start_sig}";
       my $to   = "$film_section->{end_sig}";
+
+      # skip film if it has no metadata
+      next unless $from and $from ne 'x';
 
       my $description = "$desc_stub $film_id, von: \"$from\" bis: \"$to\"";
       $description = cleanup($description);
