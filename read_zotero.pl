@@ -13,9 +13,10 @@ use Readonly;
 use REST::Client;
 use WWW::Zotero;
 
-Readonly my $USER          => '224220';
-Readonly my $PM20_GROUP    => '4548009';
-Readonly my $FILMDATA_STUB => '/pm20/data/filmdata/zotero.';
+Readonly my $USER           => '224220';
+Readonly my $PM20_GROUP     => '4548009';
+Readonly my $FILMDATA_STUB  => '/pm20/data/filmdata/zotero.';
+Readonly my $FILM_IMG_COUNT => path('/pm20/data/filmdata/img_count.json');
 
 # TODO extend to other holdings beyond Hamburg and sh or co
 # (currently set is not restricted to a certain filming (1/2))
@@ -59,22 +60,24 @@ if ( $ARGV[0] and $ARGV[0] =~ m/(h|k)(1|2)_(co|sh|wa)/ ) {
 my ( %qid, %type_count, $good_count, $film_count );
 my $error_count = 0;
 
+# get image counts for all films
+my $img_count_ref = decode_json( $FILM_IMG_COUNT->slurp() );
+
 # initialize a lookup table for short notations and a supporting translate
 # table from long to short notations (from web)
 my ( $translate_geo,     $lookup_geo )     = get_lookup_tables('ag');
 my ( $translate_subject, $lookup_subject ) = get_lookup_tables('je');
 my ( $translate_company, $lookup_company ) = get_company_lookup_tables();
 
-# save company lookup table for use in filmlists
-# for duplicate signatures, resulting label is arbitrary
+# save company lookup table for use in filmlists.
+# For duplicate signatures, resulting label is arbitrary
 my %lookup_tmp;
 foreach my $nta ( keys %{$lookup_company} ) {
   $nta =~ s/^A10\/19/A10(19)/;
   $lookup_tmp{$nta} = $lookup_company->{$nta}{label};
 }
 my $fn_tmp = path('/pm20/data/filmdata/co_lookup.json');
-$fn_tmp->spew( encode_json (\%lookup_tmp) );
-exit;
+$fn_tmp->spew( encode_json( \%lookup_tmp ) );
 
 # all Zotero information is read from the web
 my $zclient = WWW::Zotero->new();
@@ -204,21 +207,20 @@ foreach my $key (
   $film_count++;
 }
 
-# save data (only if output dir exists)
-my $output = path("$FILMDATA_STUB$subset.json");
-if ( -d $output->parent ) {
-  $output->spew( encode_json( \%film ) );
-}
-
-# output for debugging
+# print output for debugging and count images/item
 foreach my $film_name ( sort keys %film ) {
   next unless $film_name =~ $conf{film_qr};
 
   my @items = sort keys %{ $film{$film_name}{item} };
   print "\n$film_name (" . scalar(@items) . " items)\n";
 
-  foreach my $location (@items) {
+  my ( $old_location, $location );
+  foreach $location (@items) {
     my %data = %{ $film{$film_name}{item}{$location} };
+
+    # compute and add the number of images to the *previous* film
+    add_number_of_images( $location, $old_location );
+    $old_location = $location;
 
     next unless $data{valid_sig};
 
@@ -236,11 +238,20 @@ foreach my $film_name ( sort keys %film ) {
       print "\t$data{id}\t$data{lr}\t$data{signature}";
       if ( $data{pm20Id} ) {
         print "\t$data{pm20Id}\t$data{company_name}\n";
+        $type_count{identified_by_pm20id}++;
       } else {
         print "\t$data{qid}\n";
+        $type_count{identified_by_qid}++;
       }
     }
   }
+  add_number_of_images( 'last', $old_location );
+}
+
+# save data (only if output dir exists)
+my $output = path("$FILMDATA_STUB$subset.json");
+if ( -d $output->parent ) {
+  $output->spew( encode_json( \%film ) );
 }
 
 print Dumper \%type_count;
@@ -248,6 +259,27 @@ print
 "$good_count good document items, $error_count errors in $film_count films from $subset\n";
 
 ##############################
+
+sub add_number_of_images {
+  my $location     = shift or die "param missing";
+  my $old_location = shift;
+
+  # skip first section of a film
+  return unless $old_location;
+
+  my $film_name = ( split( '/', $old_location ) )[3];
+  my $old_pos   = ( split( '/', $old_location ) )[4];
+  my $pos       = ( split( '/', $location ) )[4];
+
+  # take care of last section of a film
+  if ( $location eq 'last' ) {
+    my $film_id = join( '/', ( split( /\//, $old_location ) )[ 0 .. 3 ] );
+    $pos = $img_count_ref->{"/mnt/intares/$film_id"} || 0;
+  }
+  my $number_of_images = int($pos) - int($old_pos);
+
+  $film{$film_name}{item}{$old_location}{number_of_images} = $number_of_images;
+}
 
 sub parse_sh_signature {
   my $location = shift or die "param missing";
