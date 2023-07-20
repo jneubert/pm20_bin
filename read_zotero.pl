@@ -68,6 +68,7 @@ my $img_count_ref = decode_json( $FILM_IMG_COUNT->slurp() );
 my ( $translate_geo,     $lookup_geo )     = get_lookup_tables('ag');
 my ( $translate_subject, $lookup_subject ) = get_lookup_tables('je');
 my ( $translate_company, $lookup_company ) = get_company_lookup_tables();
+my $lookup_qid = get_wikidata_lookup_table();
 
 # save company lookup table for use in filmlists.
 # For duplicate signatures, resulting label is arbitrary
@@ -222,11 +223,13 @@ foreach my $film_name ( sort keys %film ) {
     add_number_of_images( $location, $old_location );
     $old_location = $location;
 
-    next unless $data{valid_sig};
+    # do not require valid signature
+    ##next unless $data{valid_sig};
 
+    # output for sh
     if ( $collection eq 'sh' ) {
       my $signature = $data{geo}{signature};
-      print "\t$data{id}\t$data{lr}\t$signature";
+      print "\t$data{id}\t$signature";
       if ( $data{subject}{signature} ) {
         print " $data{subject}{signature}";
       }
@@ -234,15 +237,51 @@ foreach my $film_name ( sort keys %film ) {
         print " - $data{keyword}";
       }
       print "\t$data{geo}{label}{de} : $data{subject}{label}{de}\n";
-    } elsif ( $collection eq 'co' ) {
-      print "\t$data{id}\t$data{lr}\t$data{signature}";
-      if ( $data{pm20Id} ) {
-        print "\t$data{pm20Id}\t$data{company_name}\n";
-        $type_count{identified_by_pm20id}++;
+    }
+
+    # output for co
+    elsif ( $collection eq 'co' ) {
+      if ( $data{signature} ) {
+        print "\t$data{id}\t$data{signature}";
       } else {
-        print "\t$data{qid}\n";
-        $type_count{identified_by_qid}++;
+        print "\t$data{id}\t", Dumper \%data;
       }
+      if ( not $data{signature} or length( $data{signature} ) < 8 ) {
+        print "\t";
+      }
+
+      # normally, qid exists
+      if ( $data{qid} ) {
+        print "\t$data{qid}";
+        $type_count{identified_by_qid}++;
+      } else {
+        print "\t--------";
+      }
+      if ( length( $data{qid} ) < 8 ) {
+        print "\t";
+      }
+
+      # pm20Id derived from signature
+      if ( $data{pm20Id} ) {
+        print "\t$data{pm20Id}";
+        $type_count{identified_by_signature_to_pm20id}++;
+      }
+
+      # try to derive pm20Id from qid
+      else {
+        if ( my $pm20Id = $lookup_qid->{ $data{qid} } ) {
+          $film{$film_name}{item}{$location}{pm20Id} =
+            $lookup_qid->{ $data{qid} };
+          print "\t$pm20Id *";
+          $type_count{identified_by_qid_to_pm20id}++;
+        } else {
+          print "\t\t";
+        }
+      }
+      if ( $data{company_string} ) {
+        print "\t$data{company_string}";
+      }
+      print "\n";
     }
   }
   add_number_of_images( 'last', $old_location );
@@ -396,10 +435,10 @@ sub parse_co_signature {
 
   my $signature = $item_ref->{signature_string};
   if ( defined $lookup_company->{$signature} ) {
-    $item_ref->{company_name} = $lookup_company->{$signature}{label};
-    $item_ref->{pm20Id}       = $lookup_company->{$signature}{pm20Id};
-    $item_ref->{signature}    = $signature;
-    $item_ref->{valid_sig}    = 1;
+    ##$item_ref->{company_string} = $lookup_company->{$signature}{label};
+    $item_ref->{pm20Id}    = $lookup_company->{$signature}{pm20Id};
+    $item_ref->{signature} = $signature;
+    $item_ref->{valid_sig} = 1;
     $good_count++;
   } elsif ( $item_ref->{qid} ) {
     $qid{ $item_ref->{qid} } = 1;
@@ -413,7 +452,19 @@ sub parse_co_signature {
   }
 
   my $geo_sig;
-  if ( $signature =~ m/^([A-H]\d{1,3}?[a-z]?) / ) {
+
+  # regex from check_film_notation.pl
+  if (
+    $signature =~ m/ ^ ( [A-Z]    # Continent
+        ( \d{0,3}             # optional numerical code for country
+          [a-z]?              # optional extension of country code
+          ( (              # optional subdivision in brackets
+            ( \(\d\d?\) )     # either numerical
+            | \((alt|Wn|Bln)\)# or special codes (old|Wien|Berlin)
+          ) ){0,1}
+        )? ) \s /x
+    )
+  {
     $geo_sig = $1;
   } else {
     warn "$location: missing geo: $signature\n";
@@ -529,6 +580,48 @@ EOF
 
   # %translate is currently empty
   return \%translate, \%lookup;
+}
+
+sub get_wikidata_lookup_table {
+
+  # retrieve info by SPARQL query
+  # (assume that the lowest id entry is the main entry when multiple exist)
+  my $query = <<EOF;
+PREFIX wd: <http://www.wikidata.org/entity/>
+PREFIX wdt: <http://www.wikidata.org/prop/direct/>
+#
+select (strafter(str(?wd), str(wd:)) as ?qid ) (min(?pm20IdX) as ?pm20Id)
+where {
+  ?wd wdt:P4293 ?pm20IdX .
+  filter(strstarts(?pm20IdX, 'co/'))
+}
+group by ?wd
+EOF
+
+  my $endpoint = 'https://query.wikidata.org/sparql';
+  my $client   = REST::Client->new;
+  $client->POST(
+    $endpoint,
+    $query,
+    {
+      'Content-type' => 'application/sparql-query; charset=utf8',
+      Accept         => 'application/sparql-results+json',
+    }
+  );
+
+  if ( $client->responseCode ne '200' ) {
+    warn "Could not execute query for wikidata company: ",
+      $client->responseCode, "\n";
+    return;
+  }
+  my $result_data = decode_json( $client->responseContent() );
+
+  my %lookup;
+  foreach my $entry ( @{ $result_data->{results}{bindings} } ) {
+    $lookup{ $entry->{qid}{value} } = $entry->{pm20Id}{value};
+  }
+
+  return \%lookup;
 }
 
 sub usage {
