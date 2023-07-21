@@ -145,7 +145,6 @@ foreach my $key (
       sort { $a->{data}{archiveLocation} cmp $b->{data}{archiveLocation} }
       @entries )
     {
-
       # skip entries for single publications
       my $type = $entry->{data}{itemType};
       if ( $type =~ m/^Document$/i ) {
@@ -164,7 +163,6 @@ foreach my $key (
       if ( $location =~ m;film/(.+\d{4})(/(L|R))?$; ) {
 
         $item{signature_string} = $entry->{data}{callNumber};
-        $item{date}             = $entry->{data}{date};
         $item{id}               = $1;
         $item{lr}               = $3 || 'L';
 
@@ -174,6 +172,10 @@ foreach my $key (
         }
         if ( $collection eq 'co' ) {
           $item{company_string} = $entry->{data}{title};
+        }
+
+        if ( defined $entry->{data}{date} ) {
+          $item{start_date} = $entry->{data}{date};
         }
 
         if ( defined $entry->{data}{libraryCatalog} ) {
