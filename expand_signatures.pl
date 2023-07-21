@@ -429,7 +429,7 @@ sub expand_wa_signature {
         $expanded_signature .= " $rest2";
       }
       $expanded_signature .= " [$rest]";
-      print "$expanded_signature\n";
+      ##print "$expanded_signature\n";
     } else {
       $expanded_signature = "$ware - $rest";
     }
