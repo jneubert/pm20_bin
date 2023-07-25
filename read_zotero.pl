@@ -13,6 +13,9 @@ use Readonly;
 use REST::Client;
 use WWW::Zotero;
 
+binmode( STDOUT, ":utf8" );
+$Data::Dumper::Sortkeys = 1;
+
 Readonly my $USER           => '224220';
 Readonly my $PM20_GROUP     => '4548009';
 Readonly my $FILMDATA_STUB  => '/pm20/data/filmdata/zotero.';
@@ -37,9 +40,6 @@ Readonly my %CONF          => (
     },
   },
 );
-
-binmode( STDOUT, ":utf8" );
-$Data::Dumper::Sortkeys = 1;
 
 my ( $provenance, $filming, $collection, $subset, %conf );
 if ( $ARGV[0] and $ARGV[0] =~ m/(h|k)(1|2)_(co|sh|wa)/ ) {
@@ -312,11 +312,19 @@ sub add_number_of_images {
   my $old_pos   = ( split( '/', $old_location ) )[4];
   my $pos       = ( split( '/', $location ) )[4];
 
-  # take care of last section of a film
+  # take care of last section of a film - read last image number from file
   if ( $location eq 'last' ) {
-    my $film_id = join( '/', ( split( /\//, $old_location ) )[ 0 .. 3 ] );
-    $pos = $img_count_ref->{"/mnt/intares/$film_id"} || 0;
+    my $film_id  = join( '/', ( split( /\//, $old_location ) )[ 0 .. 3 ] );
+    my $film_dir = path('/pm20')->child($film_id);
+    my @files    = sort $film_dir->children(qr/\.jpg\z/);
+    my $fn       = $files[-1]->relative($film_dir);
+    if ( $fn =~ m/^[A-Z]\d{4}(\d{4})/ ) {
+      $pos = $1;
+    } else {
+      die "Could not parse $fn\n";
+    }
   }
+
   my $number_of_images = int($pos) - int($old_pos);
 
   $film{$film_name}{item}{$old_location}{number_of_images} = $number_of_images;
