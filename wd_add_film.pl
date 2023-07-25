@@ -72,9 +72,9 @@ foreach my $qid ( sort keys %{$wd_item_ref} ) {
     if ( $entry->{start_date} =~ m/^(\d{4}(-\d{2}(-\d{2})?)?)$/ ) {
       my $date;
       if ($3) {
-        $date = "$3T00:00:00Z/11";
+        $date = "$1T00:00:00Z/11";
       } elsif ($2) {
-        $date = "$2-00T00:00:00Z/10";
+        $date = "$1-00T00:00:00Z/10";
       } else {
         $date = "$1-00-00T00:00:00Z/9";
       }
