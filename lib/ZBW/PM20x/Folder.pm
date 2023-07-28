@@ -39,7 +39,7 @@ our ( %folderdata, %blank_node );
 #     pulic
 #   docdata
 #     {full docdata file}
-#   filmsectionlist
+#   filmsectiondata
 
 my %data;
 foreach my $collection (qw/ co pe sh wa /) {
@@ -640,18 +640,16 @@ published as folders and not manually indexed).
 sub get_filmsectionlist {
   my $self = shift or croak('param missing');
 
-  my $collection          = $self->{collection};
-  my $folder_nk           = $self->{folder_nk};
-  my $filmsectionlist_ref = $data{$collection}{filmsectionlist};
+  my $collection = $self->{collection};
+  my $folder_nk  = $self->{folder_nk};
 
-  if ( not defined $filmsectionlist_ref ) {
-
-    # list has to be created
-    if ( not defined $data{$collection}{filmsectiondata} ) {
-      _load_filmsectiondata($collection);
-    }
+  # list has to be created, if not exists
+  if ( not defined $data{$collection}{filmsectiondata} ) {
+    _load_filmsectiondata($collection);
   }
-  return;
+  my $filmsectiondata_ref = $data{$collection}{filmsectiondata};
+
+  return $filmsectiondata_ref->{$folder_nk};
 }
 
 =back
@@ -687,15 +685,17 @@ sub _load_filmsectiondata {
       {
         my $section_ref = $filmsection_ref->{$film}{item}{$section_name};
         my $folder_nk;
-        if ( $section_ref->{pm20Id} =~ m;^(co|pe|sh|wa)/(\d{6}(,\d{6})?)$; ) {
-          $folder_nk = $2;
-          push( @{ $filmdata{$folder_nk} }, $section_ref );
+        if ( $section_ref->{pm20Id} ) {
+          if ( $section_ref->{pm20Id} =~ m;^(co|pe|sh|wa)/(\d{6}(,\d{6})?)$; ) {
+            $folder_nk = $2;
+            push( @{ $filmdata{$folder_nk} }, $section_ref );
+          } else {
+            croak "Illegal $section_ref->{pm20Id} in $section_name\n";
+          }
         }
       }
     }
   }
-  print Dumper \%filmdata;
-  exit;
   $data{$collection}{filmsectiondata} = \%filmdata;
 }
 
