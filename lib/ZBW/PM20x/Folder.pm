@@ -23,6 +23,7 @@ Readonly our $FOLDERDATA_FILE => path('/pm20/data/rdf/pm20.extended.jsonld');
 ##Readonly our $FOLDERDATA_FILE =>
 ##  path('../data/rdf/pm20.extended.examples.jsonld');
 Readonly our $DOCDATA_ROOT      => path('/pm20/data/docdata');
+Readonly our $FILMDATA_ROOT     => path('/pm20/data/filmdata');
 Readonly our @ACCESS_TYPES      => qw/ public intern /;
 Readonly our $URI_STUB          => 'http://purl.org/pressemappe20/folder';
 Readonly our $DFGVIEW_URL_STUB  => 'https://pm20.zbw.eu/dfgview';
@@ -38,6 +39,7 @@ our ( %folderdata, %blank_node );
 #     pulic
 #   docdata
 #     {full docdata file}
+#   filmsectionlist
 
 my %data;
 foreach my $collection (qw/ co pe sh wa /) {
@@ -628,6 +630,30 @@ sub get_doclist {
   return $doclist_ref;
 }
 
+=item get_filmsectionlist()
+
+Return a sorted list of film sections for a folder (leaves out sections already
+published as folders and not manually indexed).
+
+=cut
+
+sub get_filmsectionlist {
+  my $self = shift or croak('param missing');
+
+  my $collection          = $self->{collection};
+  my $folder_nk           = $self->{folder_nk};
+  my $filmsectionlist_ref = $data{$collection}{filmsectionlist};
+
+  if ( not defined $filmsectionlist_ref ) {
+
+    # list has to be created
+    if ( not defined $data{$collection}{filmsectiondata} ) {
+      _load_filmsectiondata($collection);
+    }
+  }
+  return;
+}
+
 =back
 
 =cut
@@ -640,6 +666,37 @@ sub _load_docdata {
   my $docdata_file = $DOCDATA_ROOT->child("${collection}_docdata.json");
   my $docdata_ref  = decode_json( $docdata_file->slurp );
   $data{$collection}{docdata} = $docdata_ref;
+}
+
+sub _load_filmsectiondata {
+  my $collection = shift or croak('param missing');
+
+  my %filmdata;
+
+  # TODO currently reads zotero data -
+  # to be replaced by getting more complete data from Wikidata
+  foreach my $filming (qw/ h1 h2 /) {
+
+    my $subset           = "${filming}_$collection";
+    my $filmsection_file = $FILMDATA_ROOT->child("zotero.$subset.json");
+    my $filmsection_ref  = decode_json( $filmsection_file->slurp );
+
+    foreach my $film ( sort keys %{$filmsection_ref} ) {
+      foreach
+        my $section_name ( sort keys %{ $filmsection_ref->{$film}{item} } )
+      {
+        my $section_ref = $filmsection_ref->{$film}{item}{$section_name};
+        my $folder_nk;
+        if ( $section_ref->{pm20Id} =~ m;^(co|pe|sh|wa)/(\d{6}(,\d{6})?)$; ) {
+          $folder_nk = $2;
+          push( @{ $filmdata{$folder_nk} }, $section_ref );
+        }
+      }
+    }
+  }
+  print Dumper \%filmdata;
+  exit;
+  $data{$collection}{filmsectiondata} = \%filmdata;
 }
 
 # load complete folderdata (from jsonld)
