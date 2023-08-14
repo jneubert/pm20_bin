@@ -3,7 +3,7 @@
 
 # create xml files from filmdata/*.json for bulk upload to EUIPO portal
 
-# validate output against records.xsd
+# TODO validate output against records.xsd
 
 use strict;
 use warnings;
@@ -12,11 +12,8 @@ use utf8;
 use Data::Dumper;
 use JSON;
 use Path::Tiny;
-use Readonly;
-use Scalar::Util qw(looks_like_number);
 
 my $filmdata_root = path('../data/filmdata');
-my $film_web_root = path('../web/film');
 
 my $type = 'INDIVIDUAL';
 
