@@ -697,6 +697,11 @@ sub _load_filmsectiondata {
     }
   }
   $data{$collection}{filmsectiondata} = \%filmdata;
+  
+  # debug?
+  foreach my $folder (keys %filmdata) {
+    ##print "$folder\n" if scalar(@{$filmdata{$folder}}) gt 2;
+  }
 }
 
 # load complete folderdata (from jsonld)
