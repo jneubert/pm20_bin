@@ -1,11 +1,10 @@
-## Please see file perltidy.ERR
 #!/bin/env perl
 # nbt, 2020-04-20
 
 # Create .htaccess files that *allow* access for listed film images
 # plus an overview page
 # (requires a checked.yaml file in the film directory)
-# see https://pm20intern.zbw.eu/film/meta
+# see https://pm20.zbw.eu/doc/tech/film_meta
 
 # TODO
 # - rename {image_name}.locked.txt {image_name}.access_locked.txt
@@ -18,11 +17,13 @@
 use strict;
 use warnings;
 use utf8;
+use lib './lib';
 
 use Data::Dumper;
 use JSON;
 use Path::Tiny;
 use YAML::Tiny;
+use ZBW::PM20x::Vocab;
 
 binmode( STDOUT, ":utf8" );
 
@@ -56,11 +57,9 @@ if ( scalar(@ARGV) < 1 ) {
   }
 }
 
-# lookup file
-# (currently, only in German)
-my $lookup = decode_json( $klassdata_root->child('ag_lookup.json')->slurp );
+# vocabulary for signature lookup
+my $voc = ZBW::PM20x::Vocab->new('geo');
 
-# processing
 if ( defined $film_id ) {
 
   # one single film directory
@@ -141,7 +140,7 @@ sub add_section {
     push( @{$img_allowed_ref}, $img_fn );
     $count++;
 
-    print $i+ 0, ": $src\n";
+    printf "%04d: $src\n", $i;
   }
   return $count;
 }
@@ -200,6 +199,12 @@ sub create_overview_page {
     de => 'Veröffentlichte Abschnitte aus digitalisierten Rollfilmen',
     en => 'Published sections from digitized roll films',
   );
+  my %note = (
+    de =>
+'In den Abschnitten können einzelne Artikel aus urheberrechtlichen Gründen ausgeblendet sein.',
+    en =>
+'Some articles within the sections may be left out due to intellectual property law.',
+  );
 
   foreach my $lang (qw/ de en/) {
     my $head = <<"EOF";
@@ -211,15 +216,15 @@ robots: nofollow
 
 # $page_title{$lang}
 
+$note{$lang}
+
 EOF
 
     my @page;
     foreach my $country ( sort keys %{$pub_film_sect} ) {
-      if ( $lang eq 'de' ) {
-        push( @page, "## " . $lookup->{$country} );
-      } else {
-        push( @page, "## $country" );
-      }
+      my $term_id = $voc->lookup_signature($country);
+      my $label   = $voc->label( $lang, $term_id );
+      push( @page, "## $label" );
       foreach my $film_id ( sort keys %{ $pub_film_sect->{$country} } ) {
         push( @page, "### $film_id" );
         foreach my $section ( @{ $pub_film_sect->{$country}->{$film_id} } ) {
