@@ -15,14 +15,12 @@ use Readonly;
 use Scalar::Util qw(looks_like_number);
 
 # filmdata publicly available now
-my $film_intern_root = path('../web.intern/film');
-my $film_public_root = path('../web.public/film');
 my $filmdata_root    = path('../data/filmdata');
 my $klassdata_root   = path('../data/klassdata');
 ##my $filmdata_root    = $film_public_root;
 my $img_file = $filmdata_root->child('img_count.json');
 my $ip_hints =
-  path('../web.public/templates/fragments/ip_hints.de.md.frag')->slurp_utf8;
+  path('../web/templates/fragments/ip_hints.de.md.frag')->slurp_utf8;
 
 my %page = (
   h => {
