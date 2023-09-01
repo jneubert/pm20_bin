@@ -13,7 +13,6 @@ use JSON;
 use Path::Tiny;
 use Readonly;
 use REST::Client;
-use WWW::Zotero;
 
 binmode( STDOUT, ":utf8" );
 $Data::Dumper::Sortkeys = 1;
