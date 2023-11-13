@@ -383,6 +383,24 @@ sub mk_folder {
       }
     }
 
+    # film sections
+    my @filmsections;
+    foreach my $filmsection ( @{ $folder->get_filmsectionlist() } ) {
+      my $id = $filmsection->{id};
+      if ( $filmsection->{lr} ) {
+        $id .= "/$filmsection->{lr}";
+      }
+      my $entry = {
+        "is_$lang"       => 1,
+        id               => $id,
+        url              => "/film/$id",
+        number_of_images => $filmsection->{number_of_images},
+        start_date       => $filmsection->{start_date} || '',
+      };
+      push( @filmsections, $entry );
+    }
+    $tmpl_var{filmsection_loop} = \@filmsections;
+
     $tmpl->clear_params;
     $tmpl->param( \%tmpl_var );
     ##print Dumper \%tmpl_var;
