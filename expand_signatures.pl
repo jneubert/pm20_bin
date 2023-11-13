@@ -156,6 +156,7 @@ sub clean_sh_signature {
   # replace individual typos
   $signature =~ s/^C85 q m32$/C85 q Sm32/;
   $signature =~ s/^A1 n4 sm40$/A1 n4 Sm40/;
+  $signature =~ s/^A24g 4 a/A29 g4a/;
 
   # geo
 
