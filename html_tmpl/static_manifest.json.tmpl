@@ -1,0 +1,145 @@
+{
+  "@context": "http://iiif.io/api/presentation/3/context.json",
+  "id": "<tmpl_var name='manifest_uri'>",
+  "type": "Manifest",
+  "label": {
+    "en": [ "<tmpl_var name='folder_label_en'>" ],
+    "de": [ "<tmpl_var name='folder_label_de'>" ]
+  },
+  "rights": "http://rightsstatements.org/vocab/NKC/1.0/",
+  "requiredStatement": {
+    "label": {
+      "en": [ "Attribution" ],
+      "de": [ "Zuordnung" ]
+    },
+    "value": {
+      "en": [ "Provided by <a href='https://www.zbw.eu/en/'><img src='https://pm20.zbw.eu/images/ZBW-Logo_200px_01.png' alt='ZBW - Leibniz Information Centre for Economics'></a>" ],
+      "de": [ "Bereitgestellt von <a href='https://www.zbw.eu/de/'><img src='https://pm20.zbw.eu/images/ZBW-Logo_200px_01.png' alt='ZBW - Leibniz Informationszentrum Wirtschaft'></a>" ]
+    }
+  },
+  "metadata": [
+    <tmpl_if name='from_to'>
+    {
+      "label": { "en" : [ "Life time" ], "de" : [ "Lebenszeit" ] },
+      "value": { "none" : [ "<tmpl_var name='from_to'>" ] }
+    },
+    </tmpl_if>
+    {
+      "label": { "en": [ "Folder home (persistent URI)" ], "de" : [ "Mappen Homepage (persistente URI)" ] },
+      "value": { "none": [ "<a href='<tmpl_var folder_uri>'><tmpl_var folder_uri></a>" ] }
+    }
+  ],
+  "provider": [
+    {
+      "id": "https://www.zbw.eu",
+      "type": "Agent",
+      "homepage": [
+        {
+          "id": "<tmpl_var name='folder_uri'>",
+          "type": "Text",
+          "format": "text/html",
+          "language": [ "en", "de" ]
+        }
+      ],
+      "logo": [
+        {
+          "id": "https://www.zbw.eu/fileadmin/images/press/logos/logo-zbw.gif",
+          "type": "Image",
+          "format": "image/gif"
+        }
+      ]
+    }
+  ],
+  "items": [
+<tmpl_loop name='main_loop'><tmpl_if doc_label_en><tmpl_if doc_label_de></tmpl_if></tmpl_if>
+    {
+      "id": "<tmpl_var name='canvas_uri'>",
+      "type": "Canvas",
+      "label": {
+        "en": [ "<tmpl_var escape='js' name='canvas_label_en'>" ],
+        "de": [ "<tmpl_var escape='js' name='canvas_label_de'>" ]
+      },
+      "width": <tmpl_var name='width'>,
+      "height": <tmpl_var name='height'>,
+      "thumbnail": [
+        {
+          "id": "<tmpl_var name='thumb_uri'>",
+          "type": "Image",
+          "format": "image/jpeg"
+        }
+      ],
+      "metadata": [
+        <tmpl_if name='is_locked'>{
+          "label": { "en": [ "Rights information" ], "de" : [ "Rechteinformation" ] },
+          "value": { 
+            "en": [ "<b>For internal use only -  under copyright, or status undetermined</b>" ],
+            "de": [ "<b>Nur zur internen Verwendung - unter Urheberrecht oder Status ungeklärt</b>" ]
+          }
+        },</tmpl_if>
+        {
+          "label": { "en": [ "Persistent document URI" ], "de" : [ "Persistente Dokument-URI" ] },
+          "value": { "none": [ "<tmpl_var name='document_uri'>" ] }
+        },
+        {
+          "label": { "en": [ "Persistent page URI" ], "de" : [ "Persistente Seiten-URI" ] },
+          "value": { "none": [ "<tmpl_var name='page_uri'>" ] }
+        }
+      ],
+      "items": [
+        {
+          "id": "<tmpl_var name='img_uri'>/ap",
+          "type": "AnnotationPage",
+          "items": [
+            {
+              "id": "<tmpl_var name='img_uri'>/a",
+              "type": "Annotation",
+              "motivation": "painting",
+              "body": {
+                "id": "<tmpl_var name='max_url'>",
+                "type": "Image",
+                "format": "image/jpeg",
+                "service": [
+                  {
+                    "id": "<tmpl_var name='img_uri'>",
+                   "type": "ImageService3",
+                    "profile": "level0"
+                  }
+                ]
+
+              },
+              "target": "<tmpl_var name='canvas_uri'>"
+            }
+          ]
+        }
+      ]
+    }<tmpl_unless name='__last__'>,</tmpl_unless>
+</tmpl_loop>
+  ],
+  "structures": [
+<tmpl_loop name='doc_loop'>
+    {
+      "id": "<tmpl_var name='doc_range_uri'>",
+      "type": "Range",
+      "metadata": [
+        {
+          "label": { "en": [ "Persistent document URI" ], "de" : [ "Persistente Dokumenten-URI" ] },
+          "value": { "none": [ "<tmpl_var name='document_uri'>" ] }
+        }
+      ],
+      "label": {
+        "en": [ "<tmpl_var escape='js' name='doc_label_en'>" ],
+        "de": [ "<tmpl_var escape='js' name='doc_label_de'>" ]
+      },
+      "items": [
+<tmpl_loop name="page_loop">
+        {
+          "id": "<tmpl_var name='canvas_uri'>",
+          "type": "Canvas"
+        }<tmpl_unless name='__last__'>,</tmpl_unless>
+</tmpl_loop>
+      ]
+    }<tmpl_unless name='__last__'>,</tmpl_unless>
+</tmpl_loop>
+  ]
+}
+

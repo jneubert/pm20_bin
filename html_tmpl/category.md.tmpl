@@ -1,0 +1,85 @@
+---
+title: "<tmpl_if signature><tmpl_var signature> </tmpl_if><tmpl_var label>"
+modified: <tmpl_var modified>
+backlink: <tmpl_var backlink>
+backlink-title: "<tmpl_var backlink_title>"
+fn-stub: about
+---
+
+### <tmpl_var provenance>
+
+# <tmpl_if signature>[<tmpl_var signature>]{.gray}&#8201; </tmpl_if><tmpl_var label><tmpl_if wdlink> &#160; [![Wikidata](/images/Wikidata-logo.svg "Wikidata"){.inline-icon}](<tmpl_var wdlink>)</tmpl_if><tmpl_if wplink> [![Wikipedia](/images/Wikipedia-W.svg "Wikipedia"){.inline-icon}](<tmpl_var wplink>)</tmpl_if>
+
+<div class="hint">Persistent Identifier: `<tmpl_var uri>`</div>
+
+<tmpl_if is_de><tmpl_if scope_note><div class="hint">
+Scope Note: <tmpl_var scope_note><tmpl_if is_en></tmpl_if>
+</div></tmpl_if></tmpl_if>
+
+<tmpl_if show_tabs>
+<tmpl_if is_de>[Sacharchiv](#sacharchiv) &#160; [Warenarchiv](#warenarchiv)</tmpl_if>
+<tmpl_if is_en>[Subject archives](#subject-archives) &#160; [Commodities/wares archives](#commoditieswares-archives)</tmpl_if>
+</tmpl_if>
+
+<tmpl_loop detail_type_loop>
+
+## <tmpl_var detail_title>
+
+<tmpl_if is_geo>
+
+<tmpl_if is_de>
+Insgesamt <tmpl_var folder_count1> Mappen, <tmpl_var document_count1> Dokumente - Mappen <tmpl_if complete>komplett<tmpl_else>unvollständig.
+Nicht als Mappe aufbereitetes Material finden Sie unter [digitalisierte Microfilme](/film/h1_sh.de.html)</tmpl_if>.
+
+_Klicken Sie "(xy Dokumente)" für die Dokumentanzeige im Viewer und "(Mappe)" für Mappeninformation._
+</tmpl_if>
+<tmpl_if is_en>
+In total <tmpl_var folder_count1> folders, <tmpl_var document_count1> documents - folders <tmpl_if complete>complete<tmpl_else>incomplete.
+For material not published as folders, please check the [digitized micro-films](/film/h1_sh.de.html) (in German)</tmpl_if>.
+
+_For direct access to the documents, click the "(xy documents)" link, for folder information use the "(folder)" link._
+</tmpl_if>
+
+<tmpl_var lines>
+
+</tmpl_if>
+
+<tmpl_if is_subject>
+
+<tmpl_if is_de>
+Insgesamt <tmpl_var folder_count1> Mappen, <tmpl_var document_count1> Dokumente - Mappen <tmpl_if complete>komplett<tmpl_else>unvollständig.
+Nicht als Mappe aufbereitetes Material finden Sie unter [digitalisierte Microfilme](/film/h1_sh.de.html)</tmpl_if>.
+
+_Klicken Sie "(xy Dokumente)" für die Dokumentanzeige im Viewer und "(Mappe)" für Mappeninformation._
+</tmpl_if>
+<tmpl_if is_en>
+In total <tmpl_var folder_count1> folders, <tmpl_var document_count1> documents - folders <tmpl_if complete>complete<tmpl_else>incomplete.
+For material not published as folders, please check the [digitized micro-films](/film/h1_sh.de.html) (in German)</tmpl_if>.
+
+_For direct access to the documents, click the "(xy documents)" link, for folder information use the "(folder)" link._
+</tmpl_if>
+
+<tmpl_var lines>
+
+</tmpl_if>
+
+<tmpl_if is_ware>
+
+<tmpl_if is_de>
+Insgesamt <tmpl_var folder_count1> Mappen, <tmpl_var document_count1> Dokumente - Mappen unvollständig.
+Nicht als Mappe aufbereitetes Material finden Sie unter [digitalisierte Microfilme](/film/h1_wa.de.html).
+
+_Klicken Sie "(xy Dokumente)" für die Dokumentanzeige im Viewer und "(Mappe)" für Mappeninformation._
+</tmpl_if>
+<tmpl_if is_en>
+In total <tmpl_var folder_count1> folders, <tmpl_var document_count1> documents - folders incomplete.
+For material not published as folders, please check the [digitized micro-films](/film/h1_wa.de.html) (in German).
+
+_For direct access to the documents, click the "(xy documents)" link, for folder information use the "(folder)" link._
+</tmpl_if>
+
+<tmpl_var lines>
+
+</tmpl_if>
+
+</tmpl_loop detail_type_loop>

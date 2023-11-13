@@ -1,0 +1,99 @@
+---
+title: "<tmpl_var label>"
+modified: <tmpl_var modified>
+backlink: <tmpl_var backlink>
+backlink-title: "<tmpl_var backlink_title>"
+fn-stub: about
+desc-meta: "<tmpl_var meta_description>"
+<tmpl_unless doc_counts>robots: noindex</tmpl_unless>
+---
+
+### <tmpl_var provenance> - <tmpl_var coll><tmpl_if is_de>-Mappen</tmpl_if><tmpl_if is_en> folders</tmpl_if>
+# <tmpl_var label>&#160; <tmpl_if wdlink>[![Wikidata item](/images/Wikidata-logo.svg){.inline-icon}](<tmpl_var wdlink>)</tmpl_if>
+<tmpl_if from_to>## (<tmpl_var from_to>)</tmpl_if>
+
+<div class="spacer">&#160;</div>
+
+<tmpl_if doc_counts>
+<a class="btn" href="<tmpl_var iiifview_url>" rel="nofollow"><tmpl_if is_de>Dokumente anzeigen (IIIF-Viewer)</tmpl_if><tmpl_if is_en>View documents (IIIF viewer)</tmpl_if></a> &#160; (<tmpl_var doc_counts>)
+&#160; <a class="btn-small" href="<tmpl_var dfgview_url>" rel="nofollow"><tmpl_if is_de>Dokumente anzeigen (DFG-Viewer)</tmpl_if><tmpl_if is_en>View documents (DFG viewer)</tmpl_if></a>
+</tmpl_if>
+
+<tmpl_if filmsection_loop>
+<div class="spacer">&#160;</div>
+<tmpl_if is_de>Abschnitte auf digitalisierten Microfilmen - aus urheberrechtlchen Gründen nur im ZBW Lesesaal zugänglich.</tmpl_if><tmpl_if is_en>Sections on digitized microfim - for intellectual property reasons, only available in ZBW reading room.</tmpl_if>
+<tmpl_loop filmsection_loop>
+* [<tmpl_var id>](<tmpl_var url>) &#160;<tmpl_if start_date><tmpl_var start_date>&#8211; &#160; </tmpl_if> (<tmpl_var number_of_images> <tmpl_if is_de>Bilder</tmpl_if><tmpl_if is_en>images</tmpl_if>)
+</tmpl_loop>
+<tmpl_else>
+<tmpl_unless doc_count>
+_<tmpl_if is_de>Für diese Mappe gibt es nur Metadaten, keine digitalisierten Dokumente.</tmpl_if><tmpl_if is_en>Only metadata for this folder, no digitized documents.</tmpl_if>_
+</tmpl_unless>
+</tmpl_if>
+
+<div class="spacer">&#160;</div>
+
+<tmpl_if scope_note>
+> Scope Note: <tmpl_var scope_note>
+</tmpl_if>
+
+<tmpl_if note><tmpl_var note></tmpl_if>
+
+::: {.fieldtable}
+
+ | 
+--:|-----
+<tmpl_if activity><tmpl_if is_de>Wirkungsbereich</tmpl_if><tmpl_if is_en>Field of activity</tmpl_if>|<tmpl_var activity></tmpl_if>
+<tmpl_if occupation><tmpl_if is_de>Beruf</tmpl_if><tmpl_if is_en>Occupation</tmpl_if>|<tmpl_var occupation></tmpl_if>
+<tmpl_if nationality><tmpl_if is_de>Land</tmpl_if><tmpl_if is_en>Country</tmpl_if>|<tmpl_var nationality></tmpl_if>
+<tmpl_if birth><tmpl_if is_de>Geburt</tmpl_if><tmpl_if is_en>Birth</tmpl_if>|<tmpl_var birth></tmpl_if>
+<tmpl_if death><tmpl_if is_de>Tod</tmpl_if><tmpl_if is_en>Death</tmpl_if>|<tmpl_var death></tmpl_if>
+
+<tmpl_if organization_type><tmpl_if is_de>Typ</tmpl_if><tmpl_if is_en>Type</tmpl_if>|<tmpl_var organization_type></tmpl_if>
+<tmpl_if location><tmpl_if is_de>Sitz</tmpl_if><tmpl_if is_en>Location</tmpl_if>|<tmpl_var location></tmpl_if><tmpl_if broader_location> &#160;<span class="gray">(<tmpl_var broader_location>)</span></tmpl_if>
+<tmpl_if founding><tmpl_if is_de>Gründung</tmpl_if><tmpl_if is_en>Founding</tmpl_if>|<tmpl_var founding></tmpl_if>
+<tmpl_if dissolution><tmpl_if is_de>Auflösung</tmpl_if><tmpl_if is_en>Dissolution</tmpl_if>|<tmpl_var dissolution></tmpl_if>
+<tmpl_if industry><tmpl_if is_de>Branche</tmpl_if><tmpl_if is_en>Industry</tmpl_if>|<tmpl_var industry></tmpl_if>
+<tmpl_if hasNACECode>NACE<tmpl_if is_de>-Code</tmpl_if><tmpl_if is_en> code</tmpl_if>|<tmpl_var hasNACECode></tmpl_if>
+<tmpl_loop company_relations_loop>
+<tmpl_var field_label>|<tmpl_if url>[<tmpl_var name>](<tmpl_var url>)<tmpl_else><tmpl_var name></tmpl_if>
+</tmpl_loop>
+
+<tmpl_if ware_name><tmpl_if is_de>Ware</tmpl_if><tmpl_if is_en>Commodity/ware</tmpl_if>|[<tmpl_var ware_name>](<tmpl_var ware_url>)</tmpl_if>
+<tmpl_if country_name><tmpl_if is_de>Land/Geo</tmpl_if><tmpl_if is_en>Country/geo</tmpl_if>|[<tmpl_var country_name>](<tmpl_var country_url>)</tmpl_if>
+<tmpl_if subject_name><tmpl_if is_de>Sachthema</tmpl_if><tmpl_if is_en>Subject</tmpl_if>|[<tmpl_var subject_name>](<tmpl_var subject_url>)</tmpl_if>
+<tmpl_if broader_name><tmpl_if is_de>übergeordnet</tmpl_if><tmpl_if is_en>superordinated</tmpl_if>|[<tmpl_var broader_name>](<tmpl_var broader_url>)</tmpl_if>
+<tmpl_if world_name>International|[<tmpl_var world_name>](<tmpl_var world_url>)</tmpl_if>
+<tmpl_if gnd>GND|[<tmpl_var gnd>](https://d-nb.info/gnd/<tmpl_var gnd>)</tmpl_if>
+<tmpl_if holdings><tmpl_if is_de>Bestand</tmpl_if><tmpl_if is_en>Holdings</tmpl_if>|<tmpl_var holdings></tmpl_if>
+<tmpl_if signature><tmpl_if is_de>Signatur</tmpl_if><tmpl_if is_en>Signature</tmpl_if>|<tmpl_var signature></tmpl_if>
+<tmpl_if includes_institutions><tmpl_if is_de>schließt ein</tmpl_if><tmpl_if is_en>includes</tmpl_if>|<tmpl_var includes_institutions></tmpl_if>
+<tmpl_if editorial_note><tmpl_if is_de>Notiz|<tmpl_var editorial_note></tmpl_if></tmpl_if>
+URI|<a href="<tmpl_var folder_uri>" rel="nofollow"><tmpl_var folder_uri></a>
+ID| <tmpl_var fid>
+
+:::
+
+<script type="application/ld+json">
+{
+	"@context" : "http://schema.org",
+	"@type" : "WebSite",
+	"name" : "<tmpl_if is_en>ZBW Press Archives</tmpl_if><tmpl_if is_de>ZBW Pressearchive</tmpl_if>",
+  "publisher" : {
+    "@type" : "EducationalOrganization",
+    "name" : "ZBW - <tmpl_if is_en>Leibniz Information Centre for Economics</tmpl_if><tmpl_if is_de>Leibniz-Informtionszentrum Wirtschaft</tmpl_if>",
+    "sameAs" : "http://www.wikidata.org/entity/Q317179"
+  },
+	"url" : "https://pm20.zbw.eu"
+}
+</script>
+
+<script type="application/ld+json">
+<tmpl_var schema_jsonld>
+</script>
+
+<tmpl_if jsonld>
+<script type="application/ld+json">
+<tmpl_var jsonld>
+</script>
+</tmpl_if>
