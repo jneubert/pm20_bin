@@ -35,7 +35,7 @@ Readonly my $IMAGE_ROOT_URI  => 'https://pm20.zbw.eu/film/';
 Readonly my $METS_ROOT       => path('../web/folder');
 Readonly my @SUSETS => qw/ h1_sh /;
 
-my $tmpl = HTML::Template->new( filename => '../etc/html_tmpl/film.mets.tmpl' );
+my $tmpl = HTML::Template->new( filename => 'html_tmpl/film.mets.tmpl' );
 
 # check arguments
 if ( scalar(@ARGV) == 1 ) {

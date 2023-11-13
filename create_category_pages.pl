@@ -35,7 +35,7 @@ binmode( STDOUT, ":encoding(UTF-8)" );
 Readonly my $WEB_ROOT        => path('../web/category');
 Readonly my $KLASSDATA_ROOT  => path('../data/klassdata');
 Readonly my $FOLDERDATA_ROOT => path('../data/folderdata');
-Readonly my $TEMPLATE_ROOT   => path('../etc/html_tmpl');
+Readonly my $TEMPLATE_ROOT   => path('html_tmpl');
 Readonly my $TO_ROOT         => path('../../../..');
 
 my %PROV = (

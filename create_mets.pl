@@ -45,7 +45,7 @@ Readonly my @COLLECTIONS => qw/ co pe sh wa /;
 
 my ( $docdata_file, $imagedata_file, $docdata_ref, $imagedata_ref, );
 
-my $tmpl = HTML::Template->new( filename => '../etc/html_tmpl/mets.tmpl' );
+my $tmpl = HTML::Template->new( filename => 'html_tmpl/mets.tmpl' );
 
 # check arguments
 if ( scalar(@ARGV) == 1 ) {

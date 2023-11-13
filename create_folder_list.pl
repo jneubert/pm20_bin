@@ -34,7 +34,7 @@ Readonly my @COLLECTIONS    => qw/ co pe /;
 Readonly my @LANGUAGES      => qw/ en de /;
 
 my $tmpl = HTML::Template->new(
-  filename => '../etc/html_tmpl/folderlist.md.tmpl',
+  filename => 'html_tmpl/folderlist.md.tmpl',
   utf8     => 1,
 );
 

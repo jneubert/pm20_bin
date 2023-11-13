@@ -33,7 +33,7 @@ Readonly my $SUBSET_QR => qr/^[hk][12]_(co|sh|wa)$/;
 Readonly my $FILM_QR   => qr/^S\d{4}H$/;
 
 my $info_tmpl =
-  HTML::Template->new( filename => '../etc/html_tmpl/film.info.json.tmpl', );
+  HTML::Template->new( filename => 'html_tmpl/film.info.json.tmpl', );
 
 my ( $imagedata_file, $imagesize_file, $imagedata_ref, $imagesize_ref, );
 

@@ -43,7 +43,7 @@ Readonly my @LANGUAGES   => qw/ en de /;
 Readonly my @COLLECTIONS => qw/ co pe sh wa /;
 
 my $tmpl = HTML::Template->new(
-  filename          => '../etc/html_tmpl/static_manifest.json.tmpl',
+  filename          => 'html_tmpl/static_manifest.json.tmpl',
   utf8              => 1,
   default_escape    => 'js',
   loop_context_vars => 1

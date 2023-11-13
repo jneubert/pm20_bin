@@ -34,7 +34,7 @@ Readonly my %RES_EXT        => (
 );
 
 my $info_tmpl =
-  HTML::Template->new( filename => '../etc/html_tmpl/info.json.tmpl', );
+  HTML::Template->new( filename => 'html_tmpl/info.json.tmpl', );
 
 my ( $imagedata_file, $imagesize_file, $imagedata_ref, $imagesize_ref, );
 
