@@ -23,7 +23,7 @@ Readonly my $FILM_IMG_COUNT => path('/pm20/data/filmdata/img_count.json');
 
 # TODO extend to other holdings beyond Hamburg and sh or co
 # (currently set is not restricted to a certain filming (1/2))
-Readonly my @VALID_SUBSETS => qw/ h1_sh h1_co h1_wa h2_co /;
+Readonly my @VALID_SUBSETS => qw/ h1_sh h1_co h1_wa h2_co h2_sh /;
 Readonly my %CONF          => (
   'h' => {
     co => {
@@ -57,7 +57,8 @@ if ( $ARGV[0] and $ARGV[0] =~ m/(h|k)(1|2)_(co|sh|wa)/ ) {
   exit 1;
 }
 
-my ( %qid, %type_count, $good_count, $film_count );
+my ( %qid, %type_count, $film_count );
+my $good_count = 0;
 my $error_count = 0;
 
 # get image counts for all films
@@ -160,6 +161,7 @@ foreach my $key (
       # is the filming of the subset correct? otherwise skip this film entirely
       next FILM_KEY unless $location =~ m;film/$provenance$filming/;;
 
+      ##print Dumper $entry;
       if ( $location =~ m;film/(.+\d{4})(/(L|R))?$; ) {
 
         $item{signature_string} = $entry->{data}{callNumber};
@@ -238,7 +240,11 @@ foreach my $film_name ( sort keys %film ) {
       if ( $data{keyword} ) {
         print " - $data{keyword}";
       }
-      print "\t$data{geo}{label}{de} : $data{subject}{label}{de}\n";
+      print "\t$data{geo}{label}{de}";
+      if ( defined $data{subject}{label}{de} ) {
+        print " : $data{subject}{label}{de}";
+      }
+      print "\n";
     }
 
     # output for co
