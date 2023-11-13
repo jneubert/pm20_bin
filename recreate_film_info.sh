@@ -13,7 +13,7 @@ cd $BASE_DIR/bin
 perl expand_signatures.pl
 perl create_filmlists.pl > $LOG_DIR/create_filmlists.log 2>&1
 
-for subset in h1_sh h1_co h1_wa h2_co ; do
+for subset in h1_sh h1_co h1_wa h2_co h2_sh ; do
   perl read_zotero.pl $subset  > $LOG_DIR/read_zotero.$subset.log 2>&1
   perl create_filmviewer_links.pl $subset > $LOG_DIR/create_filmviewer_links.$subset.log 2>&1
 done
