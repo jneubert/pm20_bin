@@ -35,6 +35,8 @@ Readonly my $IMAGE_ROOT_URI  => 'https://pm20.zbw.eu/folder/';
 Readonly my $PDF_ROOT_URI    => 'https://pm20.zbw.eu/pdf/';
 Readonly my $METS_ROOT       => path('../web/folder');
 Readonly my $IMAGEDATA_ROOT  => path('../data/imagedata');
+# Since at least 2020, DFG viewer exclusively uses DEFAULT resolution!!
+# see e.g. mail by Alexander Bigga to the mailing list, 29.9.2020
 Readonly my %RES_EXT         => (
   DEFAULT => '_B.JPG',
   MAX     => '_A.JPG',
