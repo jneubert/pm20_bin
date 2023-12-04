@@ -146,6 +146,7 @@ sub mk_collectionlist {
       my %tmpl_var = (
         "is_$lang"     => 1,
         provenance     => $TITLE{provenance}{hh}{$lang},
+        collection     => $collection,
         label          => $label,
         backlink       => "../../about.$lang.html",
         backlink_title => 'Home',

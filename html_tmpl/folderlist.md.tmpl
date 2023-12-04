@@ -10,13 +10,10 @@ fn-stub: <tmpl_var fn_stub>
 ### <tmpl_var provenance>
 # <tmpl_var label>
 
+<tmpl_if is_with_docs>**[<tmpl_if is_de>Mappen-Suche mit Synonymen</tmpl_if><tmpl_if is_en>Folder search with synonyms</tmpl_if>](https://pm20-search.toolforge.org?lang=<tmpl_var lang>&amp;coll=<tmpl_var collection>)** (via Wikidata)</tmpl_if>
+
 <tmpl_if is_with_docs>_<tmpl_if is_de>Metadaten für weitere Mappen (ohne digitalisierte Dokumente) [hier](without_docs.de.html).</tmpl_if><tmpl_if is_en>Metadata about additional folders (without digitized documents) are [here](without_docs.en.html)</tmpl_if>_</tmpl_if>
 <tmpl_if is_without_docs>_<tmpl_if is_de>Für alle hier aufgeführten Mappen gibt es nur Metadaten, keine digitalisierten Dokumente.</tmpl_if><tmpl_if is_en>Only metadata for these folders, no digitized documents.</tmpl_if>_</tmpl_if>
-
-<tmpl_if collection_wa>
-<tmpl_if is_de>Für eine strukturiertere Auswahl, siehe <a href="http://webopac.hwwa.de/pressemappe20/Digiview_MENU.cfm?T=W&W=x">PM20 Altanwendung</a>.</tmpl_if>
-<tmpl_if is_en>For a more structured selection, see <a href="http://webopac.hwwa.de/pressemappe20/Digiview_MENU.cfm?T=W&W=x">PM20 legacy application</a>.</tmpl_if>
-</tmpl_if>
 
 <div class="spacer">&#160;</div>
 
