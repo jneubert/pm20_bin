@@ -66,8 +66,9 @@ my $img_count_ref = decode_json( $FILM_IMG_COUNT->slurp() );
 
 # initialize a lookup table for short notations and a supporting translate
 # table from long to short notations (from web)
-my ( $translate_geo,     $lookup_geo )     = get_lookup_tables('ag');
-my ( $translate_subject, $lookup_subject ) = get_lookup_tables('je');
+my ( $translate_geo,     $lookup_geo )     = get_lookup_tables('geo');
+my ( $translate_subject, $lookup_subject ) = get_lookup_tables('subject');
+my ( $translate_ware, $lookup_ware )       = get_lookup_tables('ware');
 my ( $translate_company, $lookup_company ) = get_company_lookup_tables();
 my $lookup_qid = get_wikidata_lookup_table();
 
@@ -169,11 +170,14 @@ foreach my $key (
         $item{lr}               = $3 || 'L';
 
         # get string version of the subject or company name
-        if ( $entry->{data}{title} =~ m/^.+? : (.+)$/ ) {
+        if ( $entry->{data}{title} =~ m/^.+? : (.+)$/ and $collection eq 'sh') {
           $item{subject_string} = $1;
         }
         if ( $collection eq 'co' ) {
           $item{company_string} = $entry->{data}{title};
+        }
+        if ( $collection eq 'wa' ) {
+          $item{title} = $entry->{data}{title};
         }
 
         if ( defined $entry->{data}{date} ) {
@@ -182,6 +186,11 @@ foreach my $key (
 
         if ( defined $entry->{data}{libraryCatalog} ) {
           $item{qid} = $entry->{data}{libraryCatalog};
+        }
+
+        if ( defined $entry->{data}{archive} ) {
+          ## TODO parse id
+          $item{direct_pm20id} =  $entry->{data}{archive};
         }
 
         $conf{parser}->( $location, \%item );
@@ -269,8 +278,16 @@ foreach my $film_name ( sort keys %film ) {
         print "\t";
       }
 
+      # pm20Id entered directly in the Zotero record takes precedence
+      if ( my $pm20Id = $data{direct_pm20id} ) {
+        $film{$film_name}{item}{$location}{pm20Id} = $pm20Id;
+        print "\t$pm20Id #";
+        $type_count{identified_by_direct_pm20id}++;
+      }
+
       # pm20Id derived from signature
-      if ( $data{pm20Id} ) {
+      # (that's the default, because implemented first)
+      elsif ( $data{pm20Id} ) {
         print "\t$data{pm20Id}";
         $type_count{identified_by_signature_to_pm20id}++;
       }
@@ -291,6 +308,14 @@ foreach my $film_name ( sort keys %film ) {
       }
       print "\n";
     }
+
+    elsif ( $collection eq 'wa' ) {
+      print "\t$data{ware_string}";
+      if ( $data{geo_string} ) {
+        print " : $data{geo_string}";
+      }
+      print "\n";
+    }
   }
   add_number_of_images( 'last', $old_location );
 }
@@ -302,6 +327,7 @@ if ( -d $output->parent ) {
 }
 
 print Dumper \%type_count;
+print "# means pm20Id directly from Zotero, * means indirectly via wikidata, otherweise derived from signature\n";
 print
 "$good_count good document items, $error_count errors in $film_count films from $subset\n";
 
@@ -397,52 +423,16 @@ sub parse_wa_signature {
   my $item_ref = shift or die "param missing";
 
   # split into ware and geo part
-  # (allow for geo only, too)
-  my $signature = $item_ref->{signature_string};
-  my ( $ware_string, $geo_sig );
-  if ( $signature =~ m/(.+) (\S+)/ ) {
-    my $perhaps_ware = $1;
-    my $perhaps_geo  = $2;
-    my $geo_pattern  = qr/ ^ [A-Z]    # Continent
-        ( \d{0,3}             # optional numerical code for country
-          [a-z]?              # optional extension of country code
-          ( (              # optional subdivision in brackets
-            ( \(\d\d?\) )     # either numerical
-            | \((alt|Wn|Bln)\)# or special codes (old|Wien|Berlin)
-          ) ){0,1}
-        )? $ /x;
-    if ( $perhaps_geo =~ $geo_pattern ) {
-      $ware_string = $perhaps_ware;
-      $geo_sig     = $perhaps_geo;
-    }
-  }
-  if ( not $ware_string ) {
-    $ware_string = $signature;
-  }
-  $item_ref->{ware_string} = $ware_string;
-
-  # TODO lookup ware
-
-  # lookup geo (geo part can be ommitted)
-  if ($geo_sig) {
-    if ( defined $lookup_geo->{$geo_sig} ) {
-      $item_ref->{geo} = $lookup_geo->{$geo_sig};
-    } elsif ( defined $translate_geo->{$geo_sig} ) {
-      $geo_sig = $translate_geo->{$geo_sig};
-      $item_ref->{geo} = $lookup_geo->{$geo_sig};
-    } else {
-      warn "$location: $geo_sig not recognized\n";
+  # (allow for ware only, too)
+  if ( $item_ref->{title} =~ m/^(.+?)( : (.+))?$/ ) {
+    $item_ref->{ware_string} = $1;
+    if ($3) {
+      $item_ref->{geo_string} = $3;
     }
   }
 
-  # TODO check for valid ware
-  if ( defined $item_ref->{geo} or not $geo_sig ) {
-    $item_ref->{valid_sig} = 1;
-    $good_count++;
-  } else {
-    $item_ref->{valid_sig} = 0;
-    $error_count++;
-  }
+  # TODO map to classification
+
 }
 
 sub parse_co_signature {
@@ -525,7 +515,7 @@ EOF
 
   $query =~ s/GRAPH/$graph/;
 
-  my $endpoint = 'http://zbw.eu/beta/sparql/pm20/query';
+  my $endpoint = 'https://zbw.eu/beta/sparql/pm20/query';
   my $client   = REST::Client->new;
   $client->POST(
     $endpoint,
@@ -571,7 +561,7 @@ WHERE {
 }
 EOF
 
-  my $endpoint = 'http://zbw.eu/beta/sparql/pm20/query';
+  my $endpoint = 'https://zbw.eu/beta/sparql/pm20/query';
   my $client   = REST::Client->new;
   $client->POST(
     $endpoint,
