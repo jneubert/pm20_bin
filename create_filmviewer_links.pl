@@ -21,7 +21,7 @@ Readonly my $FILM_ROOT     => path('/pm20/web/film');
 Readonly my $FILMDATA_ROOT => path('/pm20/data/filmdata');
 Readonly my @COLLECTIONS   => qw/ co sh wa /;
 Readonly my @LANGUAGES     => qw/ en de /;
-Readonly my @VALID_SUBSETS => qw/ h1_sh h1_co h1_wa /;
+Readonly my @VALID_SUBSETS => qw/ h1_sh h1_co h1_wa h2_co /;
 ## films in film lists, but not on disk
 Readonly my @MISSING_FILMS =>
   qw/ S0005H S0010H S0371H S0843H S1009H S1010H S9393 S9398 /;
@@ -46,6 +46,7 @@ if ( $ARGV[0] and $ARGV[0] =~ m/(h|k)(1|2)_(co|sh|wa)/ ) {
 my %vocab;
 $vocab{geo}     = ZBW::PM20x::Vocab->new('ag');
 $vocab{subject} = ZBW::PM20x::Vocab->new('je');
+$vocab{ware}    = ZBW::PM20x::Vocab->new('ip');
 
 # all start positions of sections, from zotero and film lists
 my %position;
@@ -205,7 +206,7 @@ sub parse_filmlist {
           warn "cannot parse signature of ", Dumper $entry;
         }
       } elsif ( $film =~ m/^W/ ) {
-        ## TODO
+        # TODO include real translations
       }
 
       ## q&d fix "Osmanisches Reich/Türkei" signature (already online)
@@ -276,10 +277,13 @@ sub get_item_tag {
     }
   } elsif ( defined $item{ware_string} ) {
     $label = $item{ware_string};
-    if ($geolabel) {
-      $label .= " : $geolabel";
+    ##if ($geolabel) {
+    ##  $label .= " : $geolabel";
+    ##}
+    if ($item{geo_string}) {
+      $label .= " : $item{geo_string}";
     }
-    $title = $item{signature_string};
+    $title = $label;
   } elsif ( defined $item{subject} ) {
     if ($new_geo) {
       $geolabel = "<b>$geolabel</b>";
