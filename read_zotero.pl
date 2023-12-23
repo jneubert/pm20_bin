@@ -5,6 +5,7 @@
 
 use strict;
 use warnings;
+use utf8;
 
 use Data::Dumper;
 use JSON;
@@ -14,6 +15,7 @@ use REST::Client;
 use WWW::Zotero;
 
 binmode( STDOUT, ":utf8" );
+binmode( STDERR, ":utf8" );
 $Data::Dumper::Sortkeys = 1;
 
 Readonly my $USER           => '224220';
@@ -66,9 +68,9 @@ my $img_count_ref = decode_json( $FILM_IMG_COUNT->slurp() );
 
 # initialize a lookup table for short notations and a supporting translate
 # table from long to short notations (from web)
-my ( $translate_geo,     $lookup_geo )     = get_lookup_tables('geo');
-my ( $translate_subject, $lookup_subject ) = get_lookup_tables('subject');
-my ( $translate_ware, $lookup_ware )       = get_lookup_tables('ware');
+my ( $translate_geo,     $lookup_geo,     $reverse_geo )     = get_lookup_tables('geo');
+my ( $translate_subject, $lookup_subject, $reverse_subject ) = get_lookup_tables('subject');
+my ( $translate_ware,    $lookup_ware,    $reverse_ware )    = get_lookup_tables('ware');
 my ( $translate_company, $lookup_company ) = get_company_lookup_tables();
 my $lookup_qid = get_wikidata_lookup_table();
 
@@ -309,11 +311,35 @@ foreach my $film_name ( sort keys %film ) {
       print "\n";
     }
 
+    # output for wa
     elsif ( $collection eq 'wa' ) {
       print "\t$data{ware_string}";
+      my $title_length = length($data{ware_string});
       if ( $data{geo_string} ) {
         print " : $data{geo_string}";
+        $title_length += length($data{geo_string}) + 3;
       }
+      if ($title_length < 8) {
+        print "\t\t\t\t";
+      } elsif ($title_length < 16) {
+        print "\t\t\t";
+      } elsif ($title_length < 24) {
+        print "\t\t";
+      } elsif ($title_length < 32) {
+        print "\t";
+      }
+      print "\t\t";
+      if ($data{ware}) {
+        print "$data{ware}{id}";
+      } else {
+        print '?';
+      }
+      if ($data{geo}) {
+        print ", $data{geo}{id}";
+      } elsif ($data{geo_string}) {
+        print ', ?';
+      }
+
       print "\n";
     }
   }
@@ -424,15 +450,33 @@ sub parse_wa_signature {
 
   # split into ware and geo part
   # (allow for ware only, too)
+  my ( $ware_string, $geo_string);
   if ( $item_ref->{title} =~ m/^(.+?)( : (.+))?$/ ) {
     $item_ref->{ware_string} = $1;
+    $ware_string = $1;
     if ($3) {
       $item_ref->{geo_string} = $3;
+      $geo_string = $3;
     }
   }
 
-  # TODO map to classification
+  # supplement reverse geo lookup list with additional entry points
+  # used for wares in zotero
+  supplement_ware_geo();
 
+  # map to categories
+  if ( defined $reverse_ware->{ $ware_string } ) {
+    $item_ref->{ware} = $lookup_ware->{ $reverse_ware->{ $ware_string } };
+  } else {
+    warn "$location: ware  $ware_string  not recognized\n";
+  }
+  if ($geo_string) {
+    if ( defined $reverse_geo->{ $geo_string } ) {
+      $item_ref->{geo} = $lookup_geo->{ $reverse_geo->{ $geo_string } };
+    } else {
+      warn "$location: geo  $geo_string  not recognized\n";
+    }
+  }
 }
 
 sub parse_co_signature {
@@ -532,15 +576,16 @@ EOF
   }
   my $result_data = decode_json( $client->responseContent() );
 
-  my ( %translate, %lookup );
+  my ( %translate, %lookup, %reverse );
   foreach my $entry ( @{ $result_data->{results}{bindings} } ) {
     $lookup{ $entry->{notation}{value} }{label}{de} = $entry->{labelDe}{value};
     $lookup{ $entry->{notation}{value} }{label}{en} = $entry->{labelEn}{value};
     $lookup{ $entry->{notation}{value} }{signature} = $entry->{notation}{value};
     $lookup{ $entry->{notation}{value} }{id}        = $entry->{id}{value};
     $translate{ $entry->{long}{value} }             = $entry->{notation}{value};
+    $reverse{ $entry->{labelDe}{value} }            = $entry->{notation}{value};
   }
-  return \%translate, \%lookup;
+  return \%translate, \%lookup, \%reverse;
 }
 
 sub get_company_lookup_tables {
@@ -689,3 +734,29 @@ sub get_short_notation {
   return $notation;
 }
 
+sub supplement_ware_geo {
+
+  my $list_str =<< 'EOF';
+E9 Neufundland
+C60 Nigeria
+A43 Osmanisches Reich
+A10(19) Protektorat
+A10d Saarland
+A50 Sowjetunion
+E15 Vereinigte Staaten
+A40e Jugoslawien
+B24a Palästina
+B21 Türkei
+C87 Südwestafrika
+H Welt, Austellungen, Kongresse
+H Welt, Handel und Industrie
+H Welt, Industrie
+H Welt, Produktionstechnik
+EOF
+
+  my @list = split("\n", $list_str);
+  foreach my $line (@list) {
+    $line =~ m/^(\S+) (.+)$/;
+    $reverse_geo->{$2} = $1;
+  }
+}
