@@ -179,6 +179,7 @@ foreach my $category_type ( sort keys %{$definitions_ref} ) {
         ? 'Folders by Category system'
         : 'Mappen nach Systematik';
       my %tmpl_var = (
+        lang                => $lang,
         "is_$lang"          => 1,
         "is_$category_type" => 1,
         title               => $title,
