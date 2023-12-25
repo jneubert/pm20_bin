@@ -223,6 +223,7 @@ foreach my $key (
   $film_count++;
 }
 
+# complete ids and
 # print output for debugging and count images/item
 foreach my $film_name ( sort keys %film ) {
   next unless $film_name =~ $conf{film_qr};
@@ -346,12 +347,14 @@ foreach my $film_name ( sort keys %film ) {
   add_number_of_images( 'last', $old_location );
 }
 
-# save data (only if output dir exists)
+# save film data
 my $output = path("$FILMDATA_STUB$subset.json");
-if ( -d $output->parent ) {
-  $output->spew( encode_json( \%film ) );
-}
+$output->spew( encode_json( \%film ) );
 
+# build and save category_by_id date
+build_category_by_id_list(\%film, 'ware');
+
+# overall statistics
 print Dumper \%type_count;
 print "# means pm20Id directly from Zotero, * means indirectly via wikidata, otherweise derived from signature\n";
 print
@@ -752,6 +755,7 @@ H Welt, Austellungen, Kongresse
 H Welt, Handel und Industrie
 H Welt, Industrie
 H Welt, Produktionstechnik
+A10k Danzig
 EOF
 
   my @list = split("\n", $list_str);
@@ -760,3 +764,31 @@ EOF
     $reverse_geo->{$2} = $1;
   }
 }
+
+sub build_category_by_id_list {
+  my $film_ref = shift or die "param missing";
+  my $category = shift or die "param missing";
+
+  my %film = %{$film_ref};
+  my %category;
+  foreach my $film_name ( sort keys %film ) {
+    next unless $film_name =~ $conf{film_qr};
+
+    my @items = sort keys %{ $film{$film_name}{item} };
+
+    my ( $old_location, $location );
+    foreach $location (@items) {
+      my %data = %{ $film{$film_name}{item}{$location} };
+
+      next unless $data{$category};
+
+      my $category_id = $data{$category}{id};
+      push( @{ $category{$category_id}{locations} }, $location);
+    }
+  }
+
+  my $output = path("$FILMDATA_STUB$subset.by_${category}_id.json");
+  print "$output\n";
+  $output->spew( encode_json( \%category) );
+}
+
