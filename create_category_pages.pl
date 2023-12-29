@@ -25,6 +25,7 @@ use JSON;
 use Path::Tiny;
 use Readonly;
 use Scalar::Util qw(looks_like_number reftype);
+use Unicode::Collate;
 use YAML;
 use ZBW::PM20x::Folder;
 use ZBW::PM20x::Vocab;
@@ -35,6 +36,7 @@ binmode( STDOUT, ":encoding(UTF-8)" );
 Readonly my $WEB_ROOT        => path('../web/category');
 Readonly my $KLASSDATA_ROOT  => path('../data/klassdata');
 Readonly my $FOLDERDATA_ROOT => path('../data/folderdata');
+Readonly my $FILMDATA_ROOT   => path('../data/filmdata');
 Readonly my $TEMPLATE_ROOT   => path('html_tmpl');
 Readonly my $TO_ROOT         => path('../../../..');
 
@@ -146,6 +148,20 @@ my %linktitle = (
   },
 );
 
+my %film_only_note = (
+  de => 'Material auf digitalisiertem Mikrofilm',
+  en => 'Material on digitized microfilm',
+);
+
+# load data for additonal categories from films
+# recorded in Zotero
+my $id_file = $FILMDATA_ROOT->child('zotero.h1_wa.by_ware_id.json');
+my %id_from_film;
+$id_from_film{ware} = decode_json( $id_file->slurp );
+$id_from_film{geo} = {};
+$id_from_film{subject} = {};
+
+
 # category overview pages
 my ( $master_voc, $detail_voc );
 
@@ -195,28 +211,44 @@ foreach my $category_type ( sort keys %{$definitions_ref} ) {
       my @categories =
         @{ decode_json( $file->slurp )->{results}->{bindings} };
 
+      # sort ware by unicode label
+      if ( $category_type eq 'ware' ) {
+        my $uc = Unicode::Collate->new();
+        @categories = sort
+          { $uc->cmp( $a->{'categoryLabel'}{value}, $b->{'categoryLabel'}{value} ) }
+          @categories;
+      }
+
       # main loop
       my $firstletter     = '';
       my $firstletter_old = '';
+      my @tabs;
       foreach my $category (@categories) {
+        my $category_id = $category->{id}{value};
 
-        # skip result if no folders exist
+        # skip result if no folders or film sections exist
         next
           if not( exists $category->{shCountLabel}
           or exists $category->{waCountLabel}
-          or exists $category->{countLabel} );
+          or exists $category->{countLabel}
+          or $id_from_film{$category_type}{$category_id});
 
         # control break?
+        # (skip German Umlaut)
         $firstletter =
           $category_type eq 'ware'
           ? substr( $category->{categoryLabel}->{value}, 0, 1 )
           : substr( $category->{signature}->{value},     0, 1 );
-        if ( $firstletter ne $firstletter_old ) {
+        if ( $firstletter ne $firstletter_old
+            and $firstletter ne 'Ä'
+            and $firstletter ne 'Ö'
+            and $firstletter ne 'Ü' ) {
           my $subhead =
               $category_type eq 'ware'
             ? $firstletter
             : $master_voc->subheading( $lang, $firstletter );
-          push( @lines, '', "### $subhead <a name='$firstletter'></a>", '' );
+          push( @lines, '', "### $subhead <a name='id_$firstletter'></a>", '' );
+          push( @tabs, { startchar => $firstletter } );
           $firstletter_old = $firstletter;
         }
 
@@ -231,19 +263,31 @@ foreach my $category_type ( sort keys %{$definitions_ref} ) {
         my $label     = $master_voc->label( $lang, $id );
         my $signature = $master_voc->signature($id);
 
+        my $entry_body = '';
         my $folder_count =
           $master_voc->folder_count( $category_type, $detail_type, $id ) || 0;
-        my $count_label =
-          $category_type eq 'ware'
-          ? ( $lang eq 'en' ? ' ware folders'    : ' Waren-Mappen' )
-          : ( $lang eq 'en' ? ' subject folders' : ' Sach-Mappen' );
+        if ( $folder_count gt 0 ) {
+          my $count_label =
+            $category_type eq 'ware'
+            ? ( $lang eq 'en' ? ' ware folders'    : ' Waren-Mappen' )
+            : ( $lang eq 'en' ? ' subject folders' : ' Sach-Mappen' );
 
-        my $entry_body = "$folder_count $count_label"
-          . (
-            ( $master_voc->folders_complete($id) )
-          ? ( $lang eq 'en' ? ' (complete)' : ' (komplett)' )
-          : ''
-          );
+          $entry_body = "$folder_count $count_label"
+            . (
+              ( $master_voc->folders_complete($id) )
+            ? ( $lang eq 'en' ? ' (complete)' : ' (komplett)' )
+            : ''
+            );
+        }
+
+        # add note for film_only entries
+        if ( $id_from_film{$category_type}{$category_id} ) {
+          if ($entry_body) {
+            $entry_body .= " + $film_only_note{$lang}";
+          } else {
+            $entry_body = $film_only_note{$lang};
+          }
+        }
 
         # q&d extension for geo categories
         if ( $category_type eq 'geo' ) {
@@ -264,7 +308,7 @@ foreach my $category_type ( sort keys %{$definitions_ref} ) {
           ( $master_voc->geo_category_type($id) )
           ? $master_voc->geo_category_type($id) . ' '
           : ''
-        ) . "($entry_body)";
+        ) . "[($entry_body)]{.hint}";
 
         # main entry
         my $siglink = $master_voc->siglink($id);
@@ -299,6 +343,7 @@ foreach my $category_type ( sort keys %{$definitions_ref} ) {
       $tmpl->param( \%tmpl_var );
       ## q & d: add lines as large variable
       $tmpl->param(
+        tab_loop       => \@tabs,
         lines          => join( "\n", @lines ),
         category_count => $category_count,
       );
@@ -308,7 +353,6 @@ foreach my $category_type ( sort keys %{$definitions_ref} ) {
             $total_folder_count{$detail_type}, );
       }
       my $out = $WEB_ROOT->child($category_type)->child("about.$lang.md");
-      $out = path("$WEB_ROOT/$category_type/about.$lang.md");
       $out->spew_utf8( $tmpl->output );
 
       $firstletter     = '';
@@ -317,7 +361,7 @@ foreach my $category_type ( sort keys %{$definitions_ref} ) {
   }
 }
 
-# individual category pages
+# individual category pages (with folders)
 foreach my $category_type ( sort keys %{$definitions_ref} ) {
   ##next unless $category_type eq 'ware';
   print "\ncategory_type: $category_type\n";
@@ -352,14 +396,13 @@ foreach my $category_type ( sort keys %{$definitions_ref} ) {
         @{ decode_json( $file->slurp )->{results}->{bindings} };
 
       # sort entries by relevant notation (or label)
+      my $uc = Unicode::Collate->new();
       my @entries;
       if ( $category_type eq 'ware' ) {
         @entries =
-          sort {
-               $a->{'wareLabel'}{value} cmp $b->{'wareLabel'}{value}
-            or $a->{'geoNtaLong'}{value} cmp $b->{'geoNtaLong'}{value}
+          sort { $uc->cmp( $a->{'wareLabel'}{value}, $b->{'wareLabel'}{value} )
+            or $uc->cmp( $a->{'geoNtaLong'}{value}, $b->{'geoNtaLong'}{value} )
           } @unsorted_entries;
-##      print Dumper \@entries; exit;
       } else {
         my $key = "${category_type}NtaLong";
         @entries =
@@ -406,6 +449,10 @@ foreach my $category_type ( sort keys %{$definitions_ref} ) {
           );
           if ( $master_voc->folders_complete($master_id_old) ) {
             $category_type_detail{complete} = 1;
+          }
+          # save incomplete folder data for later processing with film sections
+          else {
+            $id_from_film{$category_type}{$master_id_old}{folders} = \%category_type_detail;
           }
 
           push( @{ $category_data{$master_id_old} }, \%category_type_detail );
@@ -490,6 +537,10 @@ foreach my $category_type ( sort keys %{$definitions_ref} ) {
       if ( $master_voc->folders_complete($master_id_old) ) {
         $category_type_detail{complete} = 1;
       }
+      # save incomplete folder data for later processing with film sections
+      else {
+        $id_from_film{$category_type}{$master_id_old}{folders} = \%category_type_detail;
+      }
 
       push( @{ $category_data{$master_id_old} }, \%category_type_detail );
       @lines     = ();
@@ -497,11 +548,67 @@ foreach my $category_type ( sort keys %{$definitions_ref} ) {
     }
 
     # actual output of all collected data for a category
+    # (for incomplete categories, the output is overwritten with the
+    # film section data)
     foreach my $category_id ( sort keys %category_data ) {
       my $data_ref = $category_data{$category_id};
       output_category_page( $lang, $category_type, $category_id, $data_ref );
     }
+  }
+}
 
+# individual category pages (without folders, only film sections)
+foreach my $category_type ( qw/ ware / ) {
+  print "\nfilm sections category_type: $category_type\n";
+
+  # master vocabulary reference
+  my $master_vocab_name = $definitions_ref->{$category_type}{vocab};
+  $master_voc = ZBW::PM20x::Vocab->new($master_vocab_name);
+
+  foreach my $lang (@LANGUAGES) {
+
+    # loop over detail types
+    my @detail_types =
+      sort keys %{ $definitions_ref->{$category_type}{detail} };
+    foreach my $detail_type (@detail_types) {
+      print "    detail_type $detail_type\n";
+      my $def_ref = $definitions_ref->{$category_type}->{detail}{$detail_type};
+      my $detail_title = $def_ref->{title}{$lang};
+
+      foreach my $category_id ( sort keys %{ $id_from_film{$category_type} } ) {
+        ##next unless $category_id eq '143119';
+
+        print '      ', $master_voc->label( $lang, $category_id ), "\n" if $lang eq 'de';
+
+        my @filmsection_loop;
+        foreach my $section ( sort @{ $id_from_film{$category_type}{$category_id}{sections} } ) {
+          my $film_id = substr($section->{location}, 5);
+          my $entry = {
+            "is_$lang"      => 1,
+            filmviewer_url  => "https://pm20.zbw.eu/film/$film_id",
+            film_id         => $film_id,
+            first_img       => $section->{first_img},
+          };
+          push( @filmsection_loop, $entry );
+        }
+
+        my %data = (
+          "is_$lang"        => 1,
+          "is_$detail_type" => 1,
+          detail_title      => $detail_title,
+          filmsection_loop  => \@filmsection_loop,
+        );
+
+        # add folder information, if folders exist (in addition to film sections)
+        if ( my $folder_info = $id_from_film{$category_type}{$category_id}{folders} ) {
+          $data{lines}            = $folder_info->{lines};
+          $data{document_count1}  = $folder_info->{document_count1};
+          $data{folder_count1}    = $folder_info->{folder_count1};
+        }
+
+        output_category_page( $lang, $category_type, $category_id, [ \%data ] );
+      }
+    }
   }
 }
 

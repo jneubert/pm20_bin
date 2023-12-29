@@ -27,20 +27,40 @@ Scope Note: <tmpl_var scope_note><tmpl_if is_en></tmpl_if>
 
 <tmpl_if is_geo>
 
+<tmpl_if lines>
+
 <tmpl_if is_de>
-Insgesamt <tmpl_var folder_count1> Mappen, <tmpl_var document_count1> Dokumente - Mappen <tmpl_if complete>komplett<tmpl_else>unvollständig.
-Nicht als Mappe aufbereitetes Material finden Sie unter [digitalisierte Microfilme](/film/h1_sh.de.html)</tmpl_if>.
+Insgesamt <tmpl_var folder_count1> Mappen, <tmpl_var document_count1> Dokumente - Mappen <tmpl_if complete>komplett<tmpl_else>unvollständig</tmpl_if>. <tmpl_if filmsection_loop>Weitere Mikrofilmabschnitte [siehe unten](#abschnitte-von-digitalisierten-mikrofilmen).</tmpl_if>
 
 _Klicken Sie "(xy Dokumente)" für die Dokumentanzeige im Viewer und "(Mappe)" für Mappeninformation._
 </tmpl_if>
 <tmpl_if is_en>
-In total <tmpl_var folder_count1> folders, <tmpl_var document_count1> documents - folders <tmpl_if complete>complete<tmpl_else>incomplete.
-For material not published as folders, please check the [digitized micro-films](/film/h1_sh.de.html) (in German)</tmpl_if>.
+In total <tmpl_var folder_count1> folders, <tmpl_var document_count1> documents - folders <tmpl_if complete>complete<tmpl_else>incomplete</tmpl_if>.<tmpl_if filmsection_loop>Further microfilm sections [see below](#sections-of-digitized-microfilms).</tmpl_if>
 
 _For direct access to the documents, click the "(xy documents)" link, for folder information use the "(folder)" link._
 </tmpl_if>
 
 <tmpl_var lines>
+
+</tmpl_if>
+
+<tmpl_if filmsection_loop>
+
+<tmpl_if is_de>
+## Abschnitte von digitalisierten Mikrofilmen
+
+Aus urheberrechtlichen Gründen nur im ZBW-Lesesaal zugänglich.</tmpl_if>
+
+<tmpl_if is_en>
+## Sections of digitized microfilms
+
+For intellectual property law reasons accessible only from ZBW reading room.</tmpl_if>
+
+<tmpl_loop filmsection_loop>
+<p><a class="btn" href="<tmpl_var filmviewer_url>" rel="nofollow"><tmpl_if is_de>Bilder auf Film </tmpl_if><tmpl_if is_en>Images on film </tmpl_if><tmpl_var film_id></a> &#160; <tmpl_if first_img>(<tmpl_var first_img>)</tmpl_if></p>
+</tmpl_loop filmsection_loop>
+
+</tmpl_if>
 
 </tmpl_if>
 
@@ -67,13 +87,13 @@ _For direct access to the documents, click the "(xy documents)" link, for folder
 
 <tmpl_if is_de>
 Insgesamt <tmpl_var folder_count1> Mappen, <tmpl_var document_count1> Dokumente - Mappen unvollständig.
-Nicht als Mappe aufbereitetes Material finden Sie unter [digitalisierte Microfilme](/film/h1_wa.de.html).
+Nicht als Mappe aufbereitetes Material finden Sie unter [digitalisierte Microfilme](/film/h1_sh.de.html).
 
 _Klicken Sie "(xy Dokumente)" für die Dokumentanzeige im Viewer und "(Mappe)" für Mappeninformation._
 </tmpl_if>
 <tmpl_if is_en>
 In total <tmpl_var folder_count1> folders, <tmpl_var document_count1> documents - folders incomplete.
-For material not published as folders, please check the [digitized micro-films](/film/h1_wa.de.html) (in German).
+For material not published as folders, please check the [digitized micro-films](/film/h1_sh.de.html) (in German).
 
 _For direct access to the documents, click the "(xy documents)" link, for folder information use the "(folder)" link._
 </tmpl_if>

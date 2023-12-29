@@ -15,5 +15,8 @@ fn-stub: about
 
 **[<tmpl_if is_de>Mappen-Suche</tmpl_if><tmpl_if is_en>Folder search</tmpl_if>](https://pm20-search.toolforge.org?lang=<tmpl_var lang>&amp;coll=<tmpl_if is_geo>sh_wa</tmpl_if><tmpl_if is_subject>sh</tmpl_if><tmpl_if is_ware>wa</tmpl_if>)** (via Wikidata)
 
+<tmpl_loop tab_loop>[<tmpl_var startchar>](#id_<tmpl_var startchar>)&#160;
+</tmpl_loop>
+
 <tmpl_var lines>
 
