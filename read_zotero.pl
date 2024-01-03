@@ -355,8 +355,8 @@ $output->spew( encode_json( \%film ) );
 build_category_by_id_list(\%film, 'ware');
 
 # overall statistics
-print Dumper \%type_count;
 print "# means pm20Id directly from Zotero, * means indirectly via wikidata, otherweise derived from signature\n";
+print Dumper \%type_count;
 print
 "$good_count good document items, $error_count errors in $film_count films from $subset\n";
 
@@ -388,6 +388,7 @@ sub add_number_of_images {
 
   my $number_of_images = int($pos) - int($old_pos);
 
+  # number of images per film
   $film{$film_name}{item}{$old_location}{number_of_images} = $number_of_images;
 }
 
@@ -766,28 +767,43 @@ EOF
 }
 
 sub build_category_by_id_list {
-  my $film_ref = shift or die "param missing";
-  my $category = shift or die "param missing";
+  my $film_ref      = shift or die "param missing";
+  my $category_type = shift or die "param missing";
 
   my %film = %{$film_ref};
   my %category;
+
+  # collect film sections
   foreach my $film_name ( sort keys %film ) {
     next unless $film_name =~ $conf{film_qr};
 
     my @items = sort keys %{ $film{$film_name}{item} };
 
-    my ( $old_location, $location );
-    foreach $location (@items) {
+    foreach my $location (@items) {
       my %data = %{ $film{$film_name}{item}{$location} };
 
-      next unless $data{$category};
+      next unless $data{$category_type};
+      print Dumper \%data;
 
-      my $category_id = $data{$category}{id};
-      push( @{ $category{$category_id}{locations} }, $location);
+      my $first_img;
+      if ( $location =~ m/\/000[12]$/ ) {
+        $first_img = $data{title};
+      }
+
+      my $category_id = $data{$category_type}{id};
+      my $entry_ref = {
+        location  => $location,
+        first_img => $first_img,
+      };
+
+      push( @{ $category{$category_id}{sections} }, $entry_ref );
+
+      # compute totals
+      $category{$category_id}{total_number_of_images} += $data{number_of_images};
     }
   }
 
-  my $output = path("$FILMDATA_STUB$subset.by_${category}_id.json");
+  my $output = path("$FILMDATA_STUB$subset.by_${category_type}_id.json");
   print "$output\n";
   $output->spew( encode_json( \%category) );
 }
