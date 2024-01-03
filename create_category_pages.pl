@@ -149,8 +149,8 @@ my %linktitle = (
 );
 
 my %film_only_note = (
-  de => 'Material auf digitalisiertem Mikrofilm',
-  en => 'Material on digitized microfilm',
+  de => 'Aufnahmen auf digitalisiertem Mikrofilm',
+  en => 'images on digitized microfilm',
 );
 
 # load data for additonal categories from films
@@ -174,7 +174,7 @@ foreach my $category_type ( sort keys %{$definitions_ref} ) {
   $master_voc = ZBW::PM20x::Vocab->new($master_vocab_name);
 
   # loop over detail types
-  my %total_folder_count;
+  my ( %total_folder_count, %total_image_count );
   foreach my $detail_type ( keys %{ $def_ref->{detail} } ) {
 
     # detail vocabulary reference
@@ -275,17 +275,25 @@ foreach my $category_type ( sort keys %{$definitions_ref} ) {
           $entry_body = "$folder_count $count_label"
             . (
               ( $master_voc->folders_complete($id) )
-            ? ( $lang eq 'en' ? ' (complete)' : ' (komplett)' )
+            ? ( $lang eq 'en' ? ' - complete' : ' - komplett' )
             : ''
             );
         }
 
         # add note for film_only entries
         if ( $id_from_film{$category_type}{$category_id} ) {
+          my $film_note =
+              "$id_from_film{$category_type}{$category_id}{total_number_of_images} "
+              .  $film_only_note{$lang};
           if ($entry_body) {
-            $entry_body .= " + $film_only_note{$lang}";
+            $entry_body .= " + $film_note";
           } else {
-            $entry_body = $film_only_note{$lang};
+            $entry_body = $film_note;
+          }
+          # only add up in one language pass
+          if ( $lang eq 'en' ) {
+            $total_image_count{$category_type} +=
+                $id_from_film{$category_type}{$category_id}{total_number_of_images};
           }
         }
 
@@ -296,7 +304,7 @@ foreach my $category_type ( sort keys %{$definitions_ref} ) {
             . ( $lang eq 'en' ? ' subject folders' : ' Sach-Mappen' )
             . (
               ( $master_voc->folders_complete($id) )
-            ? ( $lang eq 'en' ? ' (complete)' : ' (komplett)' )
+            ? ( $lang eq 'en' ? ' - complete' : ' - komplett' )
             : ''
             )
             . ', '
@@ -351,6 +359,8 @@ foreach my $category_type ( sort keys %{$definitions_ref} ) {
       foreach my $detail_type ( keys %{ $def_ref->{detail} } ) {
         $tmpl->param( "${detail_type}_total_folder_count" =>
             $total_folder_count{$detail_type}, );
+        $tmpl->param( "${detail_type}_total_image_count" =>
+            $total_image_count{$category_type}, );
       }
       my $out = $WEB_ROOT->child($category_type)->child("about.$lang.md");
       $out->spew_utf8( $tmpl->output );
@@ -581,6 +591,11 @@ foreach my $category_type ( qw/ ware / ) {
         print '      ', $master_voc->label( $lang, $category_id ), "\n" if $lang eq 'de';
 
         my @filmsection_loop;
+        if (not $id_from_film{$category_type}{$category_id}{sections}) {
+          warn Dumper $id_from_film{$category_type}{$category_id};
+          warn "Skipped $category_id\n\n";
+          next;
+        }
         foreach my $section ( sort @{ $id_from_film{$category_type}{$category_id}{sections} } ) {
           my $film_id = substr($section->{location}, 5);
           my $entry = {
@@ -597,6 +612,8 @@ foreach my $category_type ( qw/ ware / ) {
           "is_$detail_type" => 1,
           detail_title      => $detail_title,
           filmsection_loop  => \@filmsection_loop,
+          total_number_of_images =>
+              $id_from_film{$category_type}{$category_id}{total_number_of_images},
         );
 
         # add folder information, if folders exist (in addition to film sections)

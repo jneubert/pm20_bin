@@ -1,7 +1,7 @@
 <tmpl_if is_de>
 Insgesamt <tmpl_var category_count> Systematikstellen, <tmpl_var
 subject_total_folder_count> Sach-Mappen, <tmpl_var ware_total_folder_count>
-Waren-Mappen.
+Waren-Mappen<tmpl_if subject_total_image_count></tmpl_if><tmpl_if ware_total_image_count></tmpl_if>.
 
 
 Nur grob geschätzt ein Fünftel des digitalisierten Bestandes des
