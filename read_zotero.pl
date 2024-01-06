@@ -351,9 +351,14 @@ foreach my $film_name ( sort keys %film ) {
 my $output = path("$FILMDATA_STUB$subset.json");
 $output->spew( encode_json( \%film ) );
 
-# build and save category_by_id date
-build_category_by_id_list(\%film, 'ware');
-
+# build and save category_by_id data
+if ( $collection eq 'wa' ) {
+  build_category_by_id_list(\%film, 'ware');
+}
+# apply also to company data
+if ( $collection eq 'co' ) {
+  build_category_by_id_list(\%film, 'company');
+}
 # overall statistics
 print "# means pm20Id directly from Zotero, * means indirectly via wikidata, otherweise derived from signature\n";
 print Dumper \%type_count;
@@ -766,6 +771,7 @@ EOF
   }
 }
 
+# category is meant to include "company" here
 sub build_category_by_id_list {
   my $film_ref      = shift or die "param missing";
   my $category_type = shift or die "param missing";
@@ -782,15 +788,18 @@ sub build_category_by_id_list {
     foreach my $location (@items) {
       my %data = %{ $film{$film_name}{item}{$location} };
 
-      next unless $data{$category_type};
-      print Dumper \%data;
+      next unless $data{$category_type}
+          or (defined $data{pm20Id} and $data{pm20Id} ne '');
 
-      my $first_img;
-      if ( $location =~ m/\/000[12]$/ ) {
-        $first_img = $data{title};
-      }
+      # title for the marker (not validated, not guaranteed
+      # to cover the whole stretch of images up to the next marker
+      my $first_img = ($category_type eq 'company')
+            ? $data{company_string}
+            : $data{title};
 
-      my $category_id = $data{$category_type}{id};
+      my $category_id = ($category_type eq 'company')
+          ? $data{pm20Id}
+          : $data{$category_type}{id};
       my $entry_ref = {
         location  => $location,
         first_img => $first_img,
