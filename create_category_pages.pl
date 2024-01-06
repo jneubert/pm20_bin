@@ -590,7 +590,7 @@ foreach my $category_type ( qw/ ware / ) {
 
         print '      ', $master_voc->label( $lang, $category_id ), "\n" if $lang eq 'de';
 
-        my @filmsection_loop;
+        my @filmsection1_loop;
         if (not $id_from_film{$category_type}{$category_id}{sections}) {
           warn Dumper $id_from_film{$category_type}{$category_id};
           warn "Skipped $category_id\n\n";
@@ -604,14 +604,14 @@ foreach my $category_type ( qw/ ware / ) {
             film_id         => $film_id,
             first_img       => $section->{first_img},
           };
-          push( @filmsection_loop, $entry );
+          push( @filmsection1_loop, $entry );
         }
 
         my %data = (
           "is_$lang"        => 1,
           "is_$detail_type" => 1,
           detail_title      => $detail_title,
-          filmsection_loop  => \@filmsection_loop,
+          filmsection1_loop => \@filmsection1_loop,
           total_number_of_images =>
               $id_from_film{$category_type}{$category_id}{total_number_of_images},
         );

@@ -30,12 +30,12 @@ Scope Note: <tmpl_var scope_note><tmpl_if is_en></tmpl_if>
 <tmpl_if lines>
 
 <tmpl_if is_de>
-Insgesamt <tmpl_var folder_count1> Mappen, <tmpl_var document_count1> Dokumente - Mappen <tmpl_if complete>komplett<tmpl_else>unvollständig</tmpl_if>. <tmpl_if filmsection_loop>Weitere Mikrofilmabschnitte [siehe unten](#abschnitte-von-digitalisierten-mikrofilmen).</tmpl_if>
+Insgesamt <tmpl_var folder_count1> Mappen, <tmpl_var document_count1> Dokumente - Mappen <tmpl_if complete>komplett<tmpl_else>unvollständig</tmpl_if>. <tmpl_if filmsection1_loop>Weiteres Material auf digitalisiertem Mikrofilm [siehe unten](#filmsections).</tmpl_if>
 
 _Klicken Sie "(xy Dokumente)" für die Dokumentanzeige im Viewer und "(Mappe)" für Mappeninformation._
 </tmpl_if>
 <tmpl_if is_en>
-In total <tmpl_var folder_count1> folders, <tmpl_var document_count1> documents - folders <tmpl_if complete>complete<tmpl_else>incomplete</tmpl_if>.<tmpl_if filmsection_loop>Further microfilm sections [see below](#sections-of-digitized-microfilms).</tmpl_if>
+In total <tmpl_var folder_count1> folders, <tmpl_var document_count1> documents - folders <tmpl_if complete>complete<tmpl_else>incomplete</tmpl_if>.<tmpl_if filmsection1_loop>Further material on digitized microfilm [see below](#filmsections).</tmpl_if>
 
 _For direct access to the documents, click the "(xy documents)" link, for folder information use the "(folder)" link._
 </tmpl_if>
@@ -44,25 +44,42 @@ _For direct access to the documents, click the "(xy documents)" link, for folder
 
 </tmpl_if>
 
-<tmpl_if filmsection_loop>
+<a id="filmsections"><tmpl_if filmsection1_loop>
 
 <tmpl_if is_de>
-## Abschnitte von digitalisierten Mikrofilmen
+## Abschnitte von digitalisierten Mikrofilmen (1. Verfilmung 1908-1949)
 
-Gesamtzahl der Mikrofilmaufnahmen (1908-1949): <tmpl_var total_number_of_images>.
+Aus urheberrechtlichen Gründen nur im ZBW-Lesesaal zugänglich.
 
-Aus urheberrechtlichen Gründen nur im ZBW-Lesesaal zugänglich.</tmpl_if>
+Gesamtzahl der Mikrofilmaufnahmen: <tmpl_var total_number_of_images></tmpl_if>
 
 <tmpl_if is_en>
-## Sections of digitized microfilms
 
-Total number of images (1908-1949): <tmpl_var total_number_of_images>.
+## Sections of digitized microfilms (1st filming 1908-1949)
 
-For intellectual property law reasons accessible only from ZBW reading room.</tmpl_if>
+For intellectual property law reasons accessible only from ZBW reading room.
 
-<tmpl_loop filmsection_loop>
-<p><a class="btn" href="<tmpl_var filmviewer_url>" rel="nofollow"><tmpl_if is_de>Bilder auf Film </tmpl_if><tmpl_if is_en>Images on film </tmpl_if><tmpl_var film_id></a> &#160; <tmpl_if first_img>(<tmpl_var first_img>)</tmpl_if></p>
-</tmpl_loop filmsection_loop>
+Total number of images: <tmpl_var total_number_of_images></tmpl_if>
+
+<tmpl_include name="sectiontable.md.inc">
+
+</tmpl_if>
+
+<tmpl_if filmsection2_loop>
+
+<tmpl_if is_de>
+## Abschnitte von digitalisierten Mikrofilmen (2. Verfilmung 1950-1960)
+
+Aus urheberrechtlichen Gründen nur im ZBW-Lesesaal zugänglich.
+
+Gesamtzahl der Mikrofilmaufnahmen: <tmpl_var total_number_of_images></tmpl_if>
+
+<tmpl_if is_en>
+## Sections of digitized microfilms (2nd filming 1950-1960)
+
+For intellectual property law reasons accessible only from ZBW reading room.
+
+Total number of images: <tmpl_var total_number_of_images></tmpl_if>
 
 </tmpl_if>
 
