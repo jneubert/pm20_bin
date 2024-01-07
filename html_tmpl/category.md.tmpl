@@ -25,7 +25,7 @@ Scope Note: <tmpl_var scope_note><tmpl_if is_en></tmpl_if>
 
 ## <tmpl_var detail_title>
 
-<tmpl_if is_geo>
+<tmpl_if detail_is_geo>
 
 <tmpl_if lines>
 
@@ -48,7 +48,7 @@ _For direct access to the documents, click the "(xy documents)" link, for folder
 
 </tmpl_if>
 
-<tmpl_if is_subject>
+<tmpl_if detail_is_subject>
 
 <tmpl_if is_de>
 Insgesamt <tmpl_var folder_count1> Mappen, <tmpl_var document_count1> Dokumente - Mappen <tmpl_if complete>komplett<tmpl_else>unvollständig.
@@ -67,7 +67,7 @@ _For direct access to the documents, click the "(xy documents)" link, for folder
 
 </tmpl_if>
 
-<tmpl_if is_ware>
+<tmpl_if detail_is_ware>
 
 <tmpl_if is_de>
 Insgesamt <tmpl_var folder_count1> Mappen, <tmpl_var document_count1> Dokumente - Mappen unvollständig.

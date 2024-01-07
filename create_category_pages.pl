@@ -450,12 +450,12 @@ foreach my $category_type ( sort keys %{$definitions_ref} ) {
         # first level control break - new category page
         if ( $master_id_old ne '' and $master_id ne $master_id_old ) {
           my %category_type_detail = (
-            "is_$lang"        => 1,
-            "is_$detail_type" => 1,
-            detail_title      => $detail_title,
-            lines             => join( "\n", @lines ),
-            folder_count1     => $count_ref->{folder_count_first},
-            document_count1   => $count_ref->{document_count_first},
+            "is_$lang"                => 1,
+            "detail_is_$detail_type"  => 1,
+            detail_title              => $detail_title,
+            lines                     => join( "\n", @lines ),
+            folder_count1             => $count_ref->{folder_count_first},
+            document_count1           => $count_ref->{document_count_first},
           );
           if ( $master_voc->folders_complete($master_id_old) ) {
             $category_type_detail{complete} = 1;
@@ -537,12 +537,12 @@ foreach my $category_type ( sort keys %{$definitions_ref} ) {
       # save the last category
       ## q & d: add lines as large variable
       my %category_type_detail = (
-        "is_$lang"        => 1,
-        "is_$detail_type" => 1,
-        detail_title      => $detail_title,
-        lines             => join( "\n", @lines ),
-        folder_count1     => $count_ref->{folder_count_first},
-        document_count1   => $count_ref->{document_count_first},
+        "is_$lang"                => 1,
+        "detail_is_$detail_type"  => 1,
+        detail_title              => $detail_title,
+        lines                     => join( "\n", @lines ),
+        folder_count1             => $count_ref->{folder_count_first},
+        document_count1           => $count_ref->{document_count_first},
       );
       if ( $master_voc->folders_complete($master_id_old) ) {
         $category_type_detail{complete} = 1;
@@ -567,7 +567,7 @@ foreach my $category_type ( sort keys %{$definitions_ref} ) {
   }
 }
 
-# individual category pages (without folders, only film sections)
+# individual category pages (without complete folders, with film sections)
 foreach my $category_type ( qw/ ware / ) {
   print "\nfilm sections category_type: $category_type\n";
 
@@ -608,11 +608,11 @@ foreach my $category_type ( qw/ ware / ) {
         }
 
         my %data = (
-          "is_$lang"        => 1,
-          "is_$detail_type" => 1,
-          detail_title      => $detail_title,
-          filmsection1_loop => \@filmsection1_loop,
-          total_number_of_images =>
+          "is_$lang"                => 1,
+          "detail_is_$detail_type"  => 1,
+          detail_title              => $detail_title,
+          filmsection1_loop         => \@filmsection1_loop,
+          total_number_of_images    =>
               $id_from_film{$category_type}{$category_id}{total_number_of_images},
         );
 
