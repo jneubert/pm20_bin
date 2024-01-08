@@ -1,39 +1,27 @@
-<a id="filmsections"><tmpl_if filmsection1_loop>
+<a id="filmsections">
+<tmpl_loop filming_loop>
+## <tmpl_var filming_title>
+
+<tmpl_var legal>
 
 <tmpl_if is_de>
-## Abschnitte von digitalisierten Mikrofilmen (1. Verfilmung 1908-1949)
-
-Aus urheberrechtlichen Gründen nur im ZBW-Lesesaal zugänglich.
+Gesamtzahl der Mikrofilmaufnahmen: <tmpl_if total_number_of_images><tmpl_var total_number_of_images><tmpl_else>
+unbekannt. Weiteres Material ist möglicherweise in der [Filmliste](<tmpl_var filmlist_link>) zu finden.</tmpl_if>
 </tmpl_if is_de>
 <tmpl_if is_en>
-## Sections of digitized microfilms (1st filming 1908-1949)
-
-For intellectual property law reasons accessible only from ZBW reading room.
+Total number of images: <tmpl_if total_number_of_images><tmpl_var total_number_of_images><tmpl_else>
+unknown. Further material can possibly be found in the [film list](<tmpl_var filmlist_link>).</tmpl_if>
 </tmpl_if is_en>
 
-<tmpl_include name="film_image_number.md.inc">
+<tmpl_if filmsection_loop>
+::: {.sectiontable}
 
-<tmpl_include name="sectiontable.md.inc">
+ |
+ ------|-----<tmpl_loop filmsection_loop>
+<a class="btn" href="<tmpl_var filmviewer_url>" rel="nofollow"><tmpl_if is_de>Bilder auf Film </tmpl_if><tmpl_if is_en>Images on film </tmpl_if><tmpl_var film_id></a>|<tmpl_if first_img><tmpl_var first_img></tmpl_if></tmpl_loop filmsection_loop>
 
-</tmpl_if filmsection1_loop>
+:::
 
-<tmpl_if filmsection2_loop>
+</tmpl_if filmsection_loop>
 
-<tmpl_if is_de>
-## Abschnitte von digitalisierten Mikrofilmen (2. Verfilmung 1950-1960)
-
-Aus urheberrechtlichen Gründen nur im ZBW-Lesesaal zugänglich.
-</tmpl_if is_de>
-
-<tmpl_if is_en>
-## Sections of digitized microfilms (2nd filming 1950-1960)
-
-For intellectual property law reasons accessible only from ZBW reading room.
-</tmpl_if is_en>
-
-<tmpl_include name="film_image_number.md.inc">
-
-<tmpl_include name="film_image_number.md.inc">
-
-</tmpl_if filmsection2_loop>
-
+</tmpl_loop filming_loop>

@@ -19,10 +19,16 @@ desc-meta: "<tmpl_var meta_description>"
 &#160; <a class="btn-small" href="<tmpl_var dfgview_url>" rel="nofollow"><tmpl_if is_de>Dokumente anzeigen (DFG-Viewer)</tmpl_if><tmpl_if is_en>View documents (DFG viewer)</tmpl_if></a>
 </tmpl_if>
 
-<tmpl_if filmsection_loop>
+<tmpl_if filmsection2_loop>
 <div class="spacer">&#160;</div>
-<tmpl_if is_de>Abschnitte auf digitalisierten Microfilmen - aus urheberrechtlchen Gründen nur im ZBW Lesesaal zugänglich.</tmpl_if><tmpl_if is_en>Sections on digitized microfim - for intellectual property reasons, only available in ZBW reading room.</tmpl_if>
-<tmpl_loop filmsection_loop>
+<tmpl_if is_de>
+## Abschnitte von digitalisierten Mikrofilmen (1. Verfilmung 1908-1949)
+
+Aus urheberrechtlichen Gründen nur im ZBW-Lesesaal zugänglich.
+
+Gesamtzahl der Mikrofilmaufnahmen: <tmpl_var total_number_of_images></tmpl_if>
+
+<tmpl_loop filmsection2_loop>
 * [<tmpl_var id>](<tmpl_var url>) &#160;<tmpl_if start_date><tmpl_var start_date>&#8211; &#160; </tmpl_if> (<tmpl_var number_of_images> <tmpl_if is_de>Bilder</tmpl_if><tmpl_if is_en>images</tmpl_if>)
 </tmpl_loop>
 <tmpl_else>

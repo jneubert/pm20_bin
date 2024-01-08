@@ -65,14 +65,14 @@ geo:
       result_file: subject_folders
       vocab: subject
       title:
-        en: Subject archives
-        de: Sacharchiv
+        en: Subject archives folders
+        de: Sacharchiv Mappen
     ware:
       result_file: ware_folders
       vocab: ware
       title:
-        en: Commodities/wares archives
-        de: Warenarchiv
+        en: Commodities/wares archives folders
+        de: Warenarchiv Mappen
 subject:
   prov: hwwa
   title:
@@ -86,8 +86,8 @@ subject:
       result_file: subject_folders
       vocab: geo
       title:
-        en: Countries-subject archives
-        de: Länder-Sacharchiv
+        en: Countries-subject archives folders
+        de: Länder-Sacharchiv Mappen
 ware:
   prov: hwwa
   title:
@@ -101,8 +101,28 @@ ware:
       result_file: ware_folders
       vocab: geo
       title:
-        en: Commodities/wares archives
-        de: Warenarchiv
+        en: Commodities/wares archives folders
+        de: Warenarchiv Mappen
+  film_by_id_file:
+    1: zotero.h1_wa.by_ware_id.json
+    2: zotero.h2_wa.by_ware_id.json
+EOF
+
+my $filming_def_ref = YAML::Load(<<'EOF');
+1:
+  title:
+    en: Sections of digitized microfilms (1st filming 1908-1949)
+    de: Abschnitte von digitalisierten Mikrofilmen (1. Verfilmung 1908-1949)
+  legal:
+    en: For intellectual property law reasons accessible only from the European Union legal area and from the ZBW reading room.
+    de: Aus urheberrechtlichen Gründen nur aus dem EU-Rechtsraum und im ZBW-Lesesaal zugänglich.
+2:
+  title:
+    en: Sections of digitized microfilms (2nd filming 1950-1960)
+    de: Abschnitte von digitalisierten Mikrofilmen (2. Verfilmung 1950-1960)
+  legal:
+    en: For intellectual property law reasons accessible only from ZBW reading room.
+    de: Aus urheberrechtlichen Gründen nur im ZBW-Lesesaal zugänglich.
 EOF
 
 my %linktitle = (
@@ -155,12 +175,20 @@ my %film_only_note = (
 
 # load data for additonal categories from films
 # recorded in Zotero
-my $id_file = $FILMDATA_ROOT->child('zotero.h1_wa.by_ware_id.json');
 my %id_from_film;
-$id_from_film{ware} = decode_json( $id_file->slurp );
-$id_from_film{geo} = {};
-$id_from_film{subject} = {};
-
+foreach my $category_type (qw/ ware /) {
+  foreach my $filming (qw/ 1 2 /) {
+    my $category_def = $definitions_ref->{$category_type};
+    my $id_file =
+        $FILMDATA_ROOT->child( $category_def->{film_by_id_file}{$filming} );
+    $id_from_film{$category_type}{$filming} = decode_json( $id_file->slurp );
+  }
+  foreach my $filming (qw/ 1 2 /) {
+    foreach my $category_id ( keys %{ $id_from_film{$category_type}{$filming} } ) {
+      $id_from_film{$category_type}{count}{$category_id}++;
+    }
+  }
+}
 
 # category overview pages
 my ( $master_voc, $detail_voc );
@@ -231,7 +259,7 @@ foreach my $category_type ( sort keys %{$definitions_ref} ) {
           if not( exists $category->{shCountLabel}
           or exists $category->{waCountLabel}
           or exists $category->{countLabel}
-          or $id_from_film{$category_type}{$category_id});
+          or $id_from_film{$category_type}{count}{$category_id});
 
         # control break?
         # (skip German Umlaut)
@@ -281,19 +309,23 @@ foreach my $category_type ( sort keys %{$definitions_ref} ) {
         }
 
         # add note for film_only entries
-        if ( $id_from_film{$category_type}{$category_id} ) {
-          my $film_note =
-              "$id_from_film{$category_type}{$category_id}{total_number_of_images} "
-              .  $film_only_note{$lang};
+        if ( $id_from_film{$category_type}{count}{$category_id} ) {
+          my $grand_total;
+          foreach my $filming (qw/ 1 2 /) {
+            next unless $id_from_film{$category_type}{$filming}{$category_id};
+            $grand_total += $id_from_film{$category_type}{$filming}{$category_id};
+
+            # total per category type, only add up in one language pass
+            if ( $lang eq 'en' ) {
+              $total_image_count{$category_type} +=
+                  $id_from_film{$category_type}{$filming}{$category_id}{total_number_of_images};
+            }
+          }
+          my $film_note = "$grand_total $film_only_note{$lang}";
           if ($entry_body) {
             $entry_body .= " + $film_note";
           } else {
             $entry_body = $film_note;
-          }
-          # only add up in one language pass
-          if ( $lang eq 'en' ) {
-            $total_image_count{$category_type} +=
-                $id_from_film{$category_type}{$category_id}{total_number_of_images};
           }
         }
 
@@ -462,7 +494,7 @@ foreach my $category_type ( sort keys %{$definitions_ref} ) {
           }
           # save incomplete folder data for later processing with film sections
           else {
-            $id_from_film{$category_type}{$master_id_old}{folders} = \%category_type_detail;
+            $id_from_film{$category_type}{folders}{$master_id_old} = \%category_type_detail;
           }
 
           push( @{ $category_data{$master_id_old} }, \%category_type_detail );
@@ -549,7 +581,7 @@ foreach my $category_type ( sort keys %{$definitions_ref} ) {
       }
       # save incomplete folder data for later processing with film sections
       else {
-        $id_from_film{$category_type}{$master_id_old}{folders} = \%category_type_detail;
+        $id_from_film{$category_type}{folders}{$master_id_old} = \%category_type_detail;
       }
 
       push( @{ $category_data{$master_id_old} }, \%category_type_detail );
@@ -585,39 +617,70 @@ foreach my $category_type ( qw/ ware / ) {
       my $def_ref = $definitions_ref->{$category_type}->{detail}{$detail_type};
       my $detail_title = $def_ref->{title}{$lang};
 
-      foreach my $category_id ( sort keys %{ $id_from_film{$category_type} } ) {
-        ##next unless $category_id eq '143119';
+      foreach my $category_id ( sort keys %{ $id_from_film{$category_type}{count} } ) {
 
         print '      ', $master_voc->label( $lang, $category_id ), "\n" if $lang eq 'de';
-
-        my @filmsection1_loop;
-        if (not $id_from_film{$category_type}{$category_id}{sections}) {
-          warn Dumper $id_from_film{$category_type}{$category_id};
-          warn "Skipped $category_id\n\n";
-          next;
-        }
-        foreach my $section ( sort @{ $id_from_film{$category_type}{$category_id}{sections} } ) {
-          my $film_id = substr($section->{location}, 5);
-          my $entry = {
-            "is_$lang"      => 1,
-            filmviewer_url  => "https://pm20.zbw.eu/film/$film_id",
-            film_id         => $film_id,
-            first_img       => $section->{first_img},
-          };
-          push( @filmsection1_loop, $entry );
-        }
 
         my %data = (
           "is_$lang"                => 1,
           "detail_is_$detail_type"  => 1,
           detail_title              => $detail_title,
-          filmsection1_loop         => \@filmsection1_loop,
-          total_number_of_images    =>
-              $id_from_film{$category_type}{$category_id}{total_number_of_images},
+          filming_loop              => [],
         );
 
+        foreach my $filming (qw/ 1 2 /) {
+          my $filming_ref = $filming_def_ref->{$filming};
+
+          my $category_film_data =
+              $id_from_film{$category_type}{$filming}{$category_id};
+
+          # how to deal deal wth mission information depends ...
+          if ( not $category_film_data ) {
+            if ( $category_type eq 'ware' and $filming eq '2' ) {
+              my %entry = (
+                "is_$lang"    => 1,
+                filming_title => $filming_ref->{title}{$lang},
+                legal         => $filming_ref->{legal}{$lang},
+                filmlist_link => get_filmlist_link( $category_type, $filming ),
+              );
+              push ( @{ $data{filming_loop} }, \%entry );
+              next;
+            } else {
+              next;
+            }
+          }
+
+          my @filmsection_loop;
+          if ( not $category_film_data->{sections} ) {
+            warn Dumper $category_film_data;
+            warn "Skipped $category_id\n\n";
+            next;
+          }
+          foreach my $section ( sort @{ $category_film_data->{sections} } ) {
+            my $film_id = substr($section->{location}, 5);
+            my $entry = {
+              "is_$lang"      => 1,
+              filmviewer_url  => "https://pm20.zbw.eu/film/$film_id",
+              film_id         => $film_id,
+              first_img       => $section->{first_img},
+            };
+            push( @filmsection_loop, $entry );
+          }
+
+          my %filming_data = (
+            "is_$lang"              => 1,
+            filming_title           => $filming_ref->{title}{$lang},
+            legal                   => $filming_ref->{legal}{$lang},
+            filmsection_loop        => \@filmsection_loop,
+            total_number_of_images  =>
+                $category_film_data->{total_number_of_images},
+          );
+
+          push( @{ $data{filming_loop} }, \%filming_data );
+        }
+
         # add folder information, if folders exist (in addition to film sections)
-        if ( my $folder_info = $id_from_film{$category_type}{$category_id}{folders} ) {
+        if ( my $folder_info = $id_from_film{$category_type}{folders}{$category_id} ) {
           $data{lines}            = $folder_info->{lines};
           $data{document_count1}  = $folder_info->{document_count1};
           $data{folder_count1}    = $folder_info->{folder_count1};
@@ -768,3 +831,16 @@ sub get_canonical {
   return $x_canonical;
 }
 
+sub get_filmlist_link {
+  my $category_type = shift or croak('param missing');
+  my $filming       = shift or croak('param missing');
+
+  # TODO does only work in certain settings
+  my $filmlist_link;
+
+  if ( $category_type eq 'ware' ) {
+    $filmlist_link = "/film/h${filming}_wa.de.html";
+  }
+
+  return $filmlist_link;
+}
