@@ -180,11 +180,13 @@ foreach my $category_type (qw/ ware /) {
   foreach my $filming (qw/ 1 2 /) {
     my $category_def = $definitions_ref->{$category_type};
     my $id_file =
-        $FILMDATA_ROOT->child( $category_def->{film_by_id_file}{$filming} );
+      $FILMDATA_ROOT->child( $category_def->{film_by_id_file}{$filming} );
     $id_from_film{$category_type}{$filming} = decode_json( $id_file->slurp );
   }
   foreach my $filming (qw/ 1 2 /) {
-    foreach my $category_id ( keys %{ $id_from_film{$category_type}{$filming} } ) {
+    foreach
+      my $category_id ( keys %{ $id_from_film{$category_type}{$filming} } )
+    {
       $id_from_film{$category_type}{count}{$category_id}++;
     }
   }
@@ -242,9 +244,10 @@ foreach my $category_type ( sort keys %{$definitions_ref} ) {
       # sort ware by unicode label
       if ( $category_type eq 'ware' ) {
         my $uc = Unicode::Collate->new();
-        @categories = sort
-          { $uc->cmp( $a->{'categoryLabel'}{value}, $b->{'categoryLabel'}{value} ) }
-          @categories;
+        @categories = sort {
+          $uc->cmp( $a->{'categoryLabel'}{value},
+            $b->{'categoryLabel'}{value} )
+        } @categories;
       }
 
       # main loop
@@ -257,9 +260,9 @@ foreach my $category_type ( sort keys %{$definitions_ref} ) {
         # skip result if no folders or film sections exist
         next
           if not( exists $category->{shCountLabel}
-          or exists $category->{waCountLabel}
-          or exists $category->{countLabel}
-          or $id_from_film{$category_type}{count}{$category_id});
+            or exists $category->{waCountLabel}
+            or exists $category->{countLabel}
+            or $id_from_film{$category_type}{count}{$category_id} );
 
         # control break?
         # (skip German Umlaut)
@@ -267,10 +270,11 @@ foreach my $category_type ( sort keys %{$definitions_ref} ) {
           $category_type eq 'ware'
           ? substr( $category->{categoryLabel}->{value}, 0, 1 )
           : substr( $category->{signature}->{value},     0, 1 );
-        if ( $firstletter ne $firstletter_old
-            and $firstletter ne 'Ä'
-            and $firstletter ne 'Ö'
-            and $firstletter ne 'Ü' ) {
+        if (  $firstletter ne $firstletter_old
+          and $firstletter ne 'Ä'
+          and $firstletter ne 'Ö'
+          and $firstletter ne 'Ü' )
+        {
           my $subhead =
               $category_type eq 'ware'
             ? $firstletter
@@ -302,9 +306,9 @@ foreach my $category_type ( sort keys %{$definitions_ref} ) {
 
           $entry_body = "$folder_count $count_label"
             . (
-              ( $master_voc->folders_complete($id) )
-            ? ( $lang eq 'en' ? ' - complete' : ' - komplett' )
-            : ''
+                ( $master_voc->folders_complete($id) )
+              ? ( $lang eq 'en' ? ' - complete' : ' - komplett' )
+              : ''
             );
         }
 
@@ -313,12 +317,15 @@ foreach my $category_type ( sort keys %{$definitions_ref} ) {
           my $grand_total;
           foreach my $filming (qw/ 1 2 /) {
             next unless $id_from_film{$category_type}{$filming}{$category_id};
-            $grand_total += $id_from_film{$category_type}{$filming}{$category_id}{total_number_of_images};
+            $grand_total +=
+              $id_from_film{$category_type}{$filming}{$category_id}
+              {total_number_of_images};
 
             # total per category type, only add up in one language pass
             if ( $lang eq 'en' ) {
               $total_image_count{$category_type} +=
-                  $id_from_film{$category_type}{$filming}{$category_id}{total_number_of_images};
+                $id_from_film{$category_type}{$filming}{$category_id}
+                {total_number_of_images};
             }
           }
           my $film_note = "$grand_total $film_only_note{$lang}";
@@ -335,9 +342,9 @@ foreach my $category_type ( sort keys %{$definitions_ref} ) {
             ( $master_voc->folder_count( $category_type, 'subject', $id ) || 0 )
             . ( $lang eq 'en' ? ' subject folders' : ' Sach-Mappen' )
             . (
-              ( $master_voc->folders_complete($id) )
-            ? ( $lang eq 'en' ? ' - complete' : ' - komplett' )
-            : ''
+                ( $master_voc->folders_complete($id) )
+              ? ( $lang eq 'en' ? ' - complete' : ' - komplett' )
+              : ''
             )
             . ', '
             . ( $master_voc->folder_count( $category_type, 'ware', $id ) || 0 )
@@ -442,7 +449,8 @@ foreach my $category_type ( sort keys %{$definitions_ref} ) {
       my @entries;
       if ( $category_type eq 'ware' ) {
         @entries =
-          sort { $uc->cmp( $a->{'wareLabel'}{value}, $b->{'wareLabel'}{value} )
+          sort {
+               $uc->cmp( $a->{'wareLabel'}{value},  $b->{'wareLabel'}{value} )
             or $uc->cmp( $a->{'geoNtaLong'}{value}, $b->{'geoNtaLong'}{value} )
           } @unsorted_entries;
       } else {
@@ -482,19 +490,21 @@ foreach my $category_type ( sort keys %{$definitions_ref} ) {
         # first level control break - new category page
         if ( $master_id_old ne '' and $master_id ne $master_id_old ) {
           my %category_type_detail = (
-            "is_$lang"                => 1,
-            "detail_is_$detail_type"  => 1,
-            detail_title              => $detail_title,
-            lines                     => join( "\n", @lines ),
-            folder_count1             => $count_ref->{folder_count_first},
-            document_count1           => $count_ref->{document_count_first},
+            "is_$lang"               => 1,
+            "detail_is_$detail_type" => 1,
+            detail_title             => $detail_title,
+            lines                    => join( "\n", @lines ),
+            folder_count1            => $count_ref->{folder_count_first},
+            document_count1          => $count_ref->{document_count_first},
           );
           if ( $master_voc->folders_complete($master_id_old) ) {
             $category_type_detail{complete} = 1;
           }
+
           # save incomplete folder data for later processing with film sections
           else {
-            $id_from_film{$category_type}{folders}{$master_id_old} = \%category_type_detail;
+            $id_from_film{$category_type}{folders}{$master_id_old} =
+              \%category_type_detail;
           }
 
           push( @{ $category_data{$master_id_old} }, \%category_type_detail );
@@ -569,19 +579,21 @@ foreach my $category_type ( sort keys %{$definitions_ref} ) {
       # save the last category
       ## q & d: add lines as large variable
       my %category_type_detail = (
-        "is_$lang"                => 1,
-        "detail_is_$detail_type"  => 1,
-        detail_title              => $detail_title,
-        lines                     => join( "\n", @lines ),
-        folder_count1             => $count_ref->{folder_count_first},
-        document_count1           => $count_ref->{document_count_first},
+        "is_$lang"               => 1,
+        "detail_is_$detail_type" => 1,
+        detail_title             => $detail_title,
+        lines                    => join( "\n", @lines ),
+        folder_count1            => $count_ref->{folder_count_first},
+        document_count1          => $count_ref->{document_count_first},
       );
       if ( $master_voc->folders_complete($master_id_old) ) {
         $category_type_detail{complete} = 1;
       }
+
       # save incomplete folder data for later processing with film sections
       else {
-        $id_from_film{$category_type}{folders}{$master_id_old} = \%category_type_detail;
+        $id_from_film{$category_type}{folders}{$master_id_old} =
+          \%category_type_detail;
       }
 
       push( @{ $category_data{$master_id_old} }, \%category_type_detail );
@@ -600,7 +612,7 @@ foreach my $category_type ( sort keys %{$definitions_ref} ) {
 }
 
 # individual category pages (without complete folders, with film sections)
-foreach my $category_type ( qw/ ware / ) {
+foreach my $category_type (qw/ ware /) {
   print "\nfilm sections category_type: $category_type\n";
 
   # master vocabulary reference
@@ -617,22 +629,25 @@ foreach my $category_type ( qw/ ware / ) {
       my $def_ref = $definitions_ref->{$category_type}->{detail}{$detail_type};
       my $detail_title = $def_ref->{title}{$lang};
 
-      foreach my $category_id ( sort keys %{ $id_from_film{$category_type}{count} } ) {
+      foreach
+        my $category_id ( sort keys %{ $id_from_film{$category_type}{count} } )
+      {
 
-        print '      ', $master_voc->label( $lang, $category_id ), "\n" if $lang eq 'de';
+        print '      ', $master_voc->label( $lang, $category_id ), "\n"
+          if $lang eq 'de';
 
         my %data = (
-          "is_$lang"                => 1,
-          "detail_is_$detail_type"  => 1,
-          detail_title              => $detail_title,
-          filming_loop              => [],
+          "is_$lang"               => 1,
+          "detail_is_$detail_type" => 1,
+          detail_title             => $detail_title,
+          filming_loop             => [],
         );
 
         foreach my $filming (qw/ 1 2 /) {
           my $filming_ref = $filming_def_ref->{$filming};
 
           my $category_film_data =
-              $id_from_film{$category_type}{$filming}{$category_id};
+            $id_from_film{$category_type}{$filming}{$category_id};
 
           # how to deal deal wth mission information depends ...
           if ( not $category_film_data ) {
@@ -641,9 +656,10 @@ foreach my $category_type ( qw/ ware / ) {
                 "is_$lang"    => 1,
                 filming_title => $filming_ref->{title}{$lang},
                 legal         => $filming_ref->{legal}{$lang},
-                filmlist_link => get_filmlist_link( $category_type, $filming ),
+                filmlist_link =>
+                  get_filmlist_link( $category_type, $filming ),
               );
-              push ( @{ $data{filming_loop} }, \%entry );
+              push( @{ $data{filming_loop} }, \%entry );
               next;
             } else {
               next;
@@ -657,33 +673,35 @@ foreach my $category_type ( qw/ ware / ) {
             next;
           }
           foreach my $section ( sort @{ $category_film_data->{sections} } ) {
-            my $film_id = substr($section->{location}, 5);
-            my $entry = {
-              "is_$lang"      => 1,
-              filmviewer_url  => "https://pm20.zbw.eu/film/$film_id",
-              film_id         => $film_id,
-              first_img       => $section->{first_img},
+            my $film_id = substr( $section->{location}, 5 );
+            my $entry   = {
+              "is_$lang"     => 1,
+              filmviewer_url => "https://pm20.zbw.eu/film/$film_id",
+              film_id        => $film_id,
+              first_img      => $section->{first_img},
             };
             push( @filmsection_loop, $entry );
           }
 
           my %filming_data = (
-            "is_$lang"              => 1,
-            filming_title           => $filming_ref->{title}{$lang},
-            legal                   => $filming_ref->{legal}{$lang},
-            filmsection_loop        => \@filmsection_loop,
-            total_number_of_images  =>
-                $category_film_data->{total_number_of_images},
+            "is_$lang"             => 1,
+            filming_title          => $filming_ref->{title}{$lang},
+            legal                  => $filming_ref->{legal}{$lang},
+            filmsection_loop       => \@filmsection_loop,
+            total_number_of_images =>
+              $category_film_data->{total_number_of_images},
           );
 
           push( @{ $data{filming_loop} }, \%filming_data );
         }
 
-        # add folder information, if folders exist (in addition to film sections)
-        if ( my $folder_info = $id_from_film{$category_type}{folders}{$category_id} ) {
-          $data{lines}            = $folder_info->{lines};
-          $data{document_count1}  = $folder_info->{document_count1};
-          $data{folder_count1}    = $folder_info->{folder_count1};
+       # add folder information, if folders exist (in addition to film sections)
+        if ( my $folder_info =
+          $id_from_film{$category_type}{folders}{$category_id} )
+        {
+          $data{lines}           = $folder_info->{lines};
+          $data{document_count1} = $folder_info->{document_count1};
+          $data{folder_count1}   = $folder_info->{folder_count1};
         }
 
         output_category_page( $lang, $category_type, $category_id, [ \%data ] );
