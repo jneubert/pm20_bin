@@ -313,7 +313,7 @@ foreach my $category_type ( sort keys %{$definitions_ref} ) {
           my $grand_total;
           foreach my $filming (qw/ 1 2 /) {
             next unless $id_from_film{$category_type}{$filming}{$category_id};
-            $grand_total += $id_from_film{$category_type}{$filming}{$category_id};
+            $grand_total += $id_from_film{$category_type}{$filming}{$category_id}{total_number_of_images};
 
             # total per category type, only add up in one language pass
             if ( $lang eq 'en' ) {
