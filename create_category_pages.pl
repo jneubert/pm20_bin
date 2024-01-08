@@ -49,81 +49,9 @@ my %PROV = (
   },
 );
 
-# TODO create and load external yaml
 # TODO use prov as the first level?
-my $definitions_ref = YAML::Load(<<'EOF');
-geo:
-  prov: hwwa
-  title:
-    en: Folders by Country Category System
-    de: Mappen nach Ländersystematik
-  result_file: geo_by_signature
-  vocab: geo
-  uri_field: country
-  detail:
-    subject:
-      result_file: subject_folders
-      vocab: subject
-      title:
-        en: Subject archives folders
-        de: Sacharchiv Mappen
-    ware:
-      result_file: ware_folders
-      vocab: ware
-      title:
-        en: Commodities/wares archives folders
-        de: Warenarchiv Mappen
-subject:
-  prov: hwwa
-  title:
-    en: Folders by Subject Category System
-    de: Mappen nach Sachsystematik
-  result_file: subject_by_signature
-  vocab: subject
-  uri_field: category
-  detail:
-    geo:
-      result_file: subject_folders
-      vocab: geo
-      title:
-        en: Countries-subject archives folders
-        de: Länder-Sacharchiv Mappen
-ware:
-  prov: hwwa
-  title:
-    en: Folders by Commodity/ware Category System
-    de: Mappen nach Warensystematik
-  result_file: ware_by_signature
-  vocab: ware
-  uri_field: category
-  detail:
-    geo:
-      result_file: ware_folders
-      vocab: geo
-      title:
-        en: Commodities/wares archives folders
-        de: Warenarchiv Mappen
-  film_by_id_file:
-    1: zotero.h1_wa.by_ware_id.json
-    2: zotero.h2_wa.by_ware_id.json
-EOF
-
-my $filming_def_ref = YAML::Load(<<'EOF');
-1:
-  title:
-    en: Sections of digitized microfilms (1st filming 1908-1949)
-    de: Abschnitte von digitalisierten Mikrofilmen (1. Verfilmung 1908-1949)
-  legal:
-    en: For intellectual property law reasons accessible only from the European Union legal area and from the ZBW reading room.
-    de: Aus urheberrechtlichen Gründen nur aus dem EU-Rechtsraum und im ZBW-Lesesaal zugänglich.
-2:
-  title:
-    en: Sections of digitized microfilms (2nd filming 1950-1960)
-    de: Abschnitte von digitalisierten Mikrofilmen (2. Verfilmung 1950-1960)
-  legal:
-    en: For intellectual property law reasons accessible only from ZBW reading room.
-    de: Aus urheberrechtlichen Gründen nur im ZBW-Lesesaal zugänglich.
-EOF
+my $definitions_ref = YAML::LoadFile('category_def.yaml');
+my $filming_def_ref = YAML::LoadFile('filming_def.yaml');
 
 my %linktitle = (
   about_hint => {
@@ -652,6 +580,7 @@ foreach my $category_type (qw/ ware /) {
           # how to deal deal wth mission information depends ...
           if ( not $category_film_data ) {
             if ( $category_type eq 'ware' and $filming eq '2' ) {
+              ## create an "empty" entry with link to filmlist
               my %entry = (
                 "is_$lang"    => 1,
                 filming_title => $filming_ref->{title}{$lang},
@@ -661,7 +590,9 @@ foreach my $category_type (qw/ ware /) {
               );
               push( @{ $data{filming_loop} }, \%entry );
               next;
-            } else {
+            } 
+            # for now, skip everything else
+            else {
               next;
             }
           }

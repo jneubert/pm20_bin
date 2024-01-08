@@ -1,0 +1,54 @@
+geo:
+  prov: hwwa
+  title:
+    en: Folders by Country Category System
+    de: Mappen nach Ländersystematik
+  result_file: geo_by_signature
+  vocab: geo
+  uri_field: country
+  detail:
+    subject:
+      result_file: subject_folders
+      vocab: subject
+      title:
+        en: Subject archives folders
+        de: Sacharchiv Mappen
+    ware:
+      result_file: ware_folders
+      vocab: ware
+      title:
+        en: Commodities/wares archives folders
+        de: Warenarchiv Mappen
+subject:
+  prov: hwwa
+  title:
+    en: Folders by Subject Category System
+    de: Mappen nach Sachsystematik
+  result_file: subject_by_signature
+  vocab: subject
+  uri_field: category
+  detail:
+    geo:
+      result_file: subject_folders
+      vocab: geo
+      title:
+        en: Countries-subject archives folders
+        de: Länder-Sacharchiv Mappen
+ware:
+  prov: hwwa
+  title:
+    en: Folders by Commodity/ware Category System
+    de: Mappen nach Warensystematik
+  result_file: ware_by_signature
+  vocab: ware
+  uri_field: category
+  detail:
+    geo:
+      result_file: ware_folders
+      vocab: geo
+      title:
+        en: Commodities/wares archives folders
+        de: Warenarchiv Mappen
+  film_by_id_file:
+    1: zotero.h1_wa.by_ware_id.json
+    2: zotero.h2_wa.by_ware_id.json
