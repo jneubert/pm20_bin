@@ -32,15 +32,11 @@ my $json = JSON->new;
 Readonly my $FOLDER_DATA    => path('/pm20/data/rdf/pm20.extended.jsonld');
 Readonly my $FOLDER_ROOT    => $ZBW::PM20x::Folder::FOLDER_ROOT;
 Readonly my $URL_DATA_ROOT  => path('/pm20/data/folderdata');
+Readonly my $FILMDATA_ROOT  => path('../data/filmdata');
 Readonly my $FOLDER_WEBROOT => path('/pm20/web/folder');
 Readonly my %TITLE          => %{ YAML::LoadFile('archive_titles.yaml') };
 Readonly my @COLLECTIONS    => qw/ co pe sh wa /;
 Readonly my @LANGUAGES      => qw/ en de /;
-
-my $tmpl = HTML::Template->new(
-  filename => 'html_tmpl/folder.md.tmpl',
-  utf8     => 1
-);
 
 our @company_relations = (
   {
@@ -80,11 +76,26 @@ our @company_relations = (
   },
 );
 
+my $tmpl = HTML::Template->new(
+  filename => 'html_tmpl/folder.md.tmpl',
+  utf8     => 1,
+);
+
+my $filming_def_ref = YAML::LoadFile('filming_def.yaml');
+
 # lists of ids per collection
 my %collection_ids;
 
 # lookup table for all ids
 my %folder_id;
+
+# folder ids read from film (only for company)
+my %company_id_from_film;
+foreach my $filming (qw/1 2/) {
+  my $id_file =
+    $FILMDATA_ROOT->child("zotero.h${filming}_co.by_company_id.json");
+  $company_id_from_film{$filming} = decode_json( $id_file->slurp );
+}
 
 load_ids( \%collection_ids, \%folder_id );
 my $subject_voc = ZBW::PM20x::Vocab->new('subject');
@@ -383,23 +394,66 @@ sub mk_folder {
       }
     }
 
-    # film sections
-    my @filmsections;
-    foreach my $filmsection ( @{ $folder->get_filmsectionlist() } ) {
-      my $id = $filmsection->{id};
-      if ( $filmsection->{lr} ) {
-        $id .= "/$filmsection->{lr}";
+    # film sections, do not exist for persons
+    if ( $collection eq 'co' ) {
+      my $company_id = "co/$folder_nk";
+
+      foreach my $filming (qw/ 1 2 /) {
+
+        # skip 1. filming when folder exists
+        next if ( $filming == 1 and $folder->get_doc_counts );
+
+        my $filming_ref = $filming_def_ref->{$filming};
+
+        my $company_film_data = $company_id_from_film{$filming}{$company_id};
+
+        if ( not $company_film_data ) {
+          ## create an "empty" entry with link to filmlist
+          my %entry = (
+            "is_$lang"    => 1,
+            filming_title => $filming_ref->{title}{$lang},
+            legal         => $filming_ref->{legal}{$lang},
+            filmlist_link => "/film/h${filming}_co.de.html",
+          );
+          push( @{ $tmpl_var{filming_loop} }, \%entry );
+          next;
+        }
+
+        my @filmsection_loop;
+        if ( not $company_film_data->{sections} ) {
+          warn Dumper $company_film_data;
+          warn "Skipped $company_id\n\n";
+          next;
+        }
+        foreach my $section ( sort @{ $company_film_data->{sections} } ) {
+          my $film_id = substr( $section->{location}, 5 );
+          my $entry   = {
+            "is_$lang"     => 1,
+            filmviewer_url => "https://pm20.zbw.eu/film/$film_id",
+            film_id        => $film_id,
+            first_img      => $section->{first_img},
+          };
+          push( @filmsection_loop, $entry );
+        }
+
+        my %filming_data = (
+          "is_$lang"             => 1,
+          filming_title          => $filming_ref->{title}{$lang},
+          legal                  => $filming_ref->{legal}{$lang},
+          filmsection_loop       => \@filmsection_loop,
+          total_number_of_images =>
+            $company_film_data->{total_number_of_images},
+        );
+
+        push( @{ $tmpl_var{filming_loop} }, \%filming_data );
       }
-      my $entry = {
-        "is_$lang"       => 1,
-        id               => $id,
-        url              => "/film/$id",
-        number_of_images => $filmsection->{number_of_images},
-        start_date       => $filmsection->{start_date} || '',
-      };
-      push( @filmsections, $entry );
+
     }
-    $tmpl_var{filmsection_loop} = \@filmsections;
+
+    # mark folders for which only metadata exists
+    if ( not $tmpl_var{doc_counts} and not $tmpl_var{filming_loop} ) {
+      $tmpl_var{metadata_only} = 1;
+    }
 
     $tmpl->clear_params;
     $tmpl->param( \%tmpl_var );

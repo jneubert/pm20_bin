@@ -17,24 +17,14 @@ desc-meta: "<tmpl_var meta_description>"
 <tmpl_if doc_counts>
 <a class="btn" href="<tmpl_var iiifview_url>" rel="nofollow"><tmpl_if is_de>Dokumente anzeigen (IIIF-Viewer)</tmpl_if><tmpl_if is_en>View documents (IIIF viewer)</tmpl_if></a> &#160; (<tmpl_var doc_counts>)
 &#160; <a class="btn-small" href="<tmpl_var dfgview_url>" rel="nofollow"><tmpl_if is_de>Dokumente anzeigen (DFG-Viewer)</tmpl_if><tmpl_if is_en>View documents (DFG viewer)</tmpl_if></a>
-</tmpl_if>
 
-<tmpl_if filmsection2_loop>
 <div class="spacer">&#160;</div>
-<tmpl_if is_de>
-## Abschnitte von digitalisierten Mikrofilmen (1. Verfilmung 1908-1949)
+</tmpl_if doc_counts>
 
-Aus urheberrechtlichen Gründen nur im ZBW-Lesesaal zugänglich.
+<tmpl_include name="filmsections.md.inc">
 
-Gesamtzahl der Mikrofilmaufnahmen: <tmpl_var total_number_of_images></tmpl_if>
-
-<tmpl_loop filmsection2_loop>
-* [<tmpl_var id>](<tmpl_var url>) &#160;<tmpl_if start_date><tmpl_var start_date>&#8211; &#160; </tmpl_if> (<tmpl_var number_of_images> <tmpl_if is_de>Bilder</tmpl_if><tmpl_if is_en>images</tmpl_if>)
-</tmpl_loop>
-<tmpl_else>
-<tmpl_unless doc_count>
+<tmpl_if metadata_only>
 _<tmpl_if is_de>Für diese Mappe gibt es nur Metadaten, keine digitalisierten Dokumente.</tmpl_if><tmpl_if is_en>Only metadata for this folder, no digitized documents.</tmpl_if>_
-</tmpl_unless>
 </tmpl_if>
 
 <div class="spacer">&#160;</div>
@@ -76,7 +66,7 @@ _<tmpl_if is_de>Für diese Mappe gibt es nur Metadaten, keine digitalisierten Do
 <tmpl_if includes_institutions><tmpl_if is_de>schließt ein</tmpl_if><tmpl_if is_en>includes</tmpl_if>|<tmpl_var includes_institutions></tmpl_if>
 <tmpl_if editorial_note><tmpl_if is_de>Notiz|<tmpl_var editorial_note></tmpl_if></tmpl_if>
 URI|<a href="<tmpl_var folder_uri>" rel="nofollow"><tmpl_var folder_uri></a>
-ID| <tmpl_var fid>
+ID|<tmpl_var fid>
 
 :::
 

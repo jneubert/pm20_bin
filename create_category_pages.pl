@@ -96,11 +96,6 @@ my %linktitle = (
   },
 );
 
-my %film_only_note = (
-  de => 'Aufnahmen auf digitalisiertem Mikrofilm',
-  en => 'images on digitized microfilm',
-);
-
 # load data for additonal categories from films
 # recorded in Zotero
 my %id_from_film;
@@ -256,7 +251,7 @@ foreach my $category_type ( sort keys %{$definitions_ref} ) {
                 {total_number_of_images};
             }
           }
-          my $film_note = "$grand_total $film_only_note{$lang}";
+          my $film_note = "$grand_total $filming_def_ref->{ALL}{film_note}{$lang}";
           if ($entry_body) {
             $entry_body .= " + $film_note";
           } else {
