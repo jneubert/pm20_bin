@@ -18,15 +18,24 @@ binmode( STDOUT, ":utf8" );
 binmode( STDERR, ":utf8" );
 $Data::Dumper::Sortkeys = 1;
 
-Readonly my $USER           => '224220';
-Readonly my $PM20_GROUP     => '4548009';
+Readonly my $USER => '224220';
+Readonly my %PM20_GROUP => (
+  1 => {
+    name => 'PM20',
+    id   => '4548009',
+  },
+  2 => {
+    name => 'PM20-2',
+    id   => '5342079',
+  },
+);
 Readonly my $FILMDATA_STUB  => '/pm20/data/filmdata/zotero.';
 Readonly my $FILM_IMG_COUNT => path('/pm20/data/filmdata/img_count.json');
 
 # TODO extend to other holdings beyond Hamburg and sh or co
 # (currently set is not restricted to a certain filming (1/2))
 Readonly my @VALID_SUBSETS => qw/ h1_sh h1_co h1_wa h2_co h2_sh /;
-Readonly my %CONF          => (
+Readonly my %CONF => (
   'h' => {
     co => {
       film_qr => qr{[AF]\d{4}H(_[12])?},
@@ -60,7 +69,7 @@ if ( $ARGV[0] and $ARGV[0] =~ m/(h|k)(1|2)_(co|sh|wa)/ ) {
 }
 
 my ( %qid, %type_count, $film_count );
-my $good_count = 0;
+my $good_count  = 0;
 my $error_count = 0;
 
 # get image counts for all films
@@ -68,9 +77,10 @@ my $img_count_ref = decode_json( $FILM_IMG_COUNT->slurp() );
 
 # initialize a lookup table for short notations and a supporting translate
 # table from long to short notations (from web)
-my ( $translate_geo,     $lookup_geo,     $reverse_geo )     = get_lookup_tables('geo');
-my ( $translate_subject, $lookup_subject, $reverse_subject ) = get_lookup_tables('subject');
-my ( $translate_ware,    $lookup_ware,    $reverse_ware )    = get_lookup_tables('ware');
+my ( $translate_geo, $lookup_geo, $reverse_geo ) = get_lookup_tables('geo');
+my ( $translate_subject, $lookup_subject, $reverse_subject ) =
+  get_lookup_tables('subject');
+my ( $translate_ware, $lookup_ware, $reverse_ware ) = get_lookup_tables('ware');
 my ( $translate_company, $lookup_company ) = get_company_lookup_tables();
 my $lookup_qid = get_wikidata_lookup_table();
 
@@ -98,7 +108,7 @@ my $more  = 1;
 while ($more) {
 
   my $data = $zclient->listCollectionsTop(
-    group => $PM20_GROUP,
+    group => $PM20_GROUP{$filming}{id},
     limit => $limit,
     start => $start,
   ) or die "error reading top: $!\n";
@@ -139,7 +149,7 @@ foreach my $key (
     # read film data
     my $film_data = $zclient->listCollectionItemsTop(
       collectionKey => $key,
-      group         => $PM20_GROUP,
+      group         => $PM20_GROUP{$filming}{id},
       limit         => $limit,
       start         => $start2,
     ) or die "error reading $film_name: $!\n";
@@ -172,7 +182,8 @@ foreach my $key (
         $item{lr}               = $3 || 'L';
 
         # get string version of the subject or company name
-        if ( $entry->{data}{title} =~ m/^.+? : (.+)$/ and $collection eq 'sh') {
+        if ( $entry->{data}{title} =~ m/^.+? : (.+)$/ and $collection eq 'sh' )
+        {
           $item{subject_string} = $1;
         }
         if ( $collection eq 'co' ) {
@@ -192,7 +203,7 @@ foreach my $key (
 
         if ( defined $entry->{data}{archive} ) {
           ## TODO parse id
-          $item{direct_pm20id} =  $entry->{data}{archive};
+          $item{direct_pm20id} = $entry->{data}{archive};
         }
 
         $conf{parser}->( $location, \%item );
@@ -315,29 +326,29 @@ foreach my $film_name ( sort keys %film ) {
     # output for wa
     elsif ( $collection eq 'wa' ) {
       print "\t$data{ware_string}";
-      my $title_length = length($data{ware_string});
+      my $title_length = length( $data{ware_string} );
       if ( $data{geo_string} ) {
         print " : $data{geo_string}";
-        $title_length += length($data{geo_string}) + 3;
+        $title_length += length( $data{geo_string} ) + 3;
       }
-      if ($title_length < 8) {
+      if ( $title_length < 8 ) {
         print "\t\t\t\t";
-      } elsif ($title_length < 16) {
+      } elsif ( $title_length < 16 ) {
         print "\t\t\t";
-      } elsif ($title_length < 24) {
+      } elsif ( $title_length < 24 ) {
         print "\t\t";
-      } elsif ($title_length < 32) {
+      } elsif ( $title_length < 32 ) {
         print "\t";
       }
       print "\t\t";
-      if ($data{ware}) {
+      if ( $data{ware} ) {
         print "$data{ware}{id}";
       } else {
         print '?';
       }
-      if ($data{geo}) {
+      if ( $data{geo} ) {
         print ", $data{geo}{id}";
-      } elsif ($data{geo_string}) {
+      } elsif ( $data{geo_string} ) {
         print ', ?';
       }
 
@@ -353,14 +364,17 @@ $output->spew( encode_json( \%film ) );
 
 # build and save category_by_id data
 if ( $collection eq 'wa' ) {
-  build_category_by_id_list(\%film, 'ware');
+  build_category_by_id_list( \%film, 'ware' );
 }
+
 # apply also to company data
 if ( $collection eq 'co' ) {
-  build_category_by_id_list(\%film, 'company');
+  build_category_by_id_list( \%film, 'company' );
 }
+
 # overall statistics
-print "# means pm20Id directly from Zotero, * means indirectly via wikidata, otherweise derived from signature\n";
+print
+"# means pm20Id directly from Zotero, * means indirectly via wikidata, otherweise derived from signature\n";
 print Dumper \%type_count;
 print
 "$good_count good document items, $error_count errors in $film_count films from $subset\n";
@@ -459,7 +473,7 @@ sub parse_wa_signature {
 
   # split into ware and geo part
   # (allow for ware only, too)
-  my ( $ware_string, $geo_string);
+  my ( $ware_string, $geo_string );
   if ( $item_ref->{title} =~ m/^(.+?)( : (.+))?$/ ) {
     $item_ref->{ware_string} = $1;
     $ware_string = $1;
@@ -474,14 +488,14 @@ sub parse_wa_signature {
   supplement_ware_geo();
 
   # map to categories
-  if ( defined $reverse_ware->{ $ware_string } ) {
-    $item_ref->{ware} = $lookup_ware->{ $reverse_ware->{ $ware_string } };
+  if ( defined $reverse_ware->{$ware_string} ) {
+    $item_ref->{ware} = $lookup_ware->{ $reverse_ware->{$ware_string} };
   } else {
     warn "$location: ware  $ware_string  not recognized\n";
   }
   if ($geo_string) {
-    if ( defined $reverse_geo->{ $geo_string } ) {
-      $item_ref->{geo} = $lookup_geo->{ $reverse_geo->{ $geo_string } };
+    if ( defined $reverse_geo->{$geo_string} ) {
+      $item_ref->{geo} = $lookup_geo->{ $reverse_geo->{$geo_string} };
     } else {
       warn "$location: geo  $geo_string  not recognized\n";
     }
@@ -745,7 +759,7 @@ sub get_short_notation {
 
 sub supplement_ware_geo {
 
-  my $list_str =<< 'EOF';
+  my $list_str = << 'EOF';
 E9 Neufundland
 C60 Nigeria
 A43 Osmanisches Reich
@@ -764,7 +778,7 @@ H Welt, Produktionstechnik
 A10k Danzig
 EOF
 
-  my @list = split("\n", $list_str);
+  my @list = split( "\n", $list_str );
   foreach my $line (@list) {
     $line =~ m/^(\S+) (.+)$/;
     $reverse_geo->{$2} = $1;
@@ -788,18 +802,21 @@ sub build_category_by_id_list {
     foreach my $location (@items) {
       my %data = %{ $film{$film_name}{item}{$location} };
 
-      next unless $data{$category_type}
-          or (defined $data{pm20Id} and $data{pm20Id} ne '');
+      next
+        unless $data{$category_type}
+        or ( defined $data{pm20Id} and $data{pm20Id} ne '' );
 
       # title for the marker (not validated, not guaranteed
       # to cover the whole stretch of images up to the next marker
-      my $first_img = ($category_type eq 'company')
-            ? $data{company_string}
-            : $data{title};
+      my $first_img =
+        ( $category_type eq 'company' )
+        ? $data{company_string}
+        : $data{title};
 
-      my $category_id = ($category_type eq 'company')
-          ? $data{pm20Id}
-          : $data{$category_type}{id};
+      my $category_id =
+        ( $category_type eq 'company' )
+        ? $data{pm20Id}
+        : $data{$category_type}{id};
       my $entry_ref = {
         location  => $location,
         first_img => $first_img,
@@ -808,12 +825,13 @@ sub build_category_by_id_list {
       push( @{ $category{$category_id}{sections} }, $entry_ref );
 
       # compute totals
-      $category{$category_id}{total_number_of_images} += $data{number_of_images};
+      $category{$category_id}{total_number_of_images} +=
+        $data{number_of_images};
     }
   }
 
   my $output = path("$FILMDATA_STUB$subset.by_${category_type}_id.json");
   print "$output\n";
-  $output->spew( encode_json( \%category) );
+  $output->spew( encode_json( \%category ) );
 }
 
