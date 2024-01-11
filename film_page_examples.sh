@@ -1,7 +1,18 @@
-#!/bin/sh
+#!/bin/bash
 
-for folder in "co/041780" "co/014709"   "co/048852"  "co/009737" ; do
-  echo folder https://purl.org/pressemappe20/folder/$folder ...
+docs=(
+  # Bergedorfer Eisenwerk - folder + filming 2
+  "co/041780"
+
+  # La Fondiaria Vita - filming 1 + filming 2
+  "co/014709"
+
+  # General Motors - multiple entries filming 1, unkwon filming 2
+  "co/009737"
+)
+
+for folder in "${docs[@]}" ; do 
+  echo https://purl.org/pressemappe20/folder/$folder ...
   perl create_folder_pages.pl $folder ##> /dev/null
   make -C ../web SET=$folder > /dev/null
 done
