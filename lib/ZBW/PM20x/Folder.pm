@@ -630,26 +630,33 @@ sub get_doclist {
   return $doclist_ref;
 }
 
-=item get_filmsectionlist()
+=item get_filmsectionlist( $filming )
 
 Return a sorted list of film sections for a folder (leaves out sections already
-published as folders and not manually indexed).
+published as folders and not manually indexed) for either filming 1 or 2.
 
 =cut
 
 sub get_filmsectionlist {
-  my $self = shift or croak('param missing');
+  my $self    = shift or croak('param missing');
+  my $filming = shift or croak('param missing');
+
+  my @filmsectionlist = ();
 
   my $collection = $self->{collection};
   my $folder_nk  = $self->{folder_nk};
 
   # list has to be created, if not exists
-  if ( not defined $data{$collection}{filmsectiondata} ) {
-    _load_filmsectiondata($collection);
+  if ( not defined $data{$collection}{"filmsection${filming}data"} ) {
+    _load_filmsectiondata( $collection, $filming );
   }
-  my $filmsectiondata_ref = $data{$collection}{filmsectiondata};
+  my $filmsectiondata_ref = $data{$collection}{"filmsection${filming}data"};
 
-  return $filmsectiondata_ref->{$folder_nk};
+  if ( $filmsectiondata_ref->{$folder_nk} ) {
+    @filmsectionlist = @{ $filmsectiondata_ref->{$folder_nk} };
+  }
+
+  return \@filmsectionlist;
 }
 
 =back
@@ -668,38 +675,36 @@ sub _load_docdata {
 
 sub _load_filmsectiondata {
   my $collection = shift or croak('param missing');
+  my $filming    = shift or croak('param missing');
 
   my %filmdata;
 
   # TODO currently reads zotero data -
   # to be replaced by getting more complete data from Wikidata
-  foreach my $filming (qw/ h1 h2 /) {
+  my $provenance       = 'h';                                  # currently fixed
+  my $subset           = "${provenance}${filming}_$collection";
+  my $filmsection_file = $FILMDATA_ROOT->child("zotero.$subset.json");
+  my $filmsection_ref  = decode_json( $filmsection_file->slurp );
 
-    my $subset           = "${filming}_$collection";
-    my $filmsection_file = $FILMDATA_ROOT->child("zotero.$subset.json");
-    my $filmsection_ref  = decode_json( $filmsection_file->slurp );
-
-    foreach my $film ( sort keys %{$filmsection_ref} ) {
-      foreach
-        my $section_name ( sort keys %{ $filmsection_ref->{$film}{item} } )
-      {
-        my $section_ref = $filmsection_ref->{$film}{item}{$section_name};
-        my $folder_nk;
-        if ( $section_ref->{pm20Id} ) {
-          if ( $section_ref->{pm20Id} =~ m;^(co|pe|sh|wa)/(\d{6}(,\d{6})?)$; ) {
-            $folder_nk = $2;
-            push( @{ $filmdata{$folder_nk} }, $section_ref );
-          } else {
-            croak "Illegal $section_ref->{pm20Id} in $section_name\n";
-          }
+  foreach my $film ( sort keys %{$filmsection_ref} ) {
+    foreach my $section_name ( sort keys %{ $filmsection_ref->{$film}{item} } )
+    {
+      my $section_ref = $filmsection_ref->{$film}{item}{$section_name};
+      my $folder_nk;
+      if ( $section_ref->{pm20Id} ) {
+        if ( $section_ref->{pm20Id} =~ m;^(co|pe|sh|wa)/(\d{6}(,\d{6})?)$; ) {
+          $folder_nk = $2;
+          push( @{ $filmdata{$folder_nk} }, $section_ref );
+        } else {
+          croak "Illegal $section_ref->{pm20Id} in $section_name\n";
         }
       }
     }
   }
-  $data{$collection}{filmsectiondata} = \%filmdata;
-  
+  $data{$collection}{"filmsection${filming}data"} = \%filmdata;
+
   # debug?
-  foreach my $folder (keys %filmdata) {
+  foreach my $folder ( keys %filmdata ) {
     ##print "$folder\n" if scalar(@{$filmdata{$folder}}) gt 2;
   }
 }
