@@ -254,9 +254,10 @@ sub get_item_tag {
   my $new_geo = 0;
   if (
     ## not relevant for ware!
-    $item_ref->{ware_string}
-    or ( not defined $olditem_ref->{geo} )
-    or ( $item_ref->{geo}{id} ne $olditem_ref->{geo}{id} and $img_nr ne '9999' )
+    not defined $item_ref->{ware_string}
+    and ( not defined $olditem_ref->{geo}
+      or ( $item_ref->{geo}{id} ne $olditem_ref->{geo}{id}
+        and $img_nr ne '9999' ) )
     )
   {
     $new_geo = 1;
