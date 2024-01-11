@@ -9,6 +9,12 @@ docs=(
 
   # General Motors - multiple entries filming 1, unkwon filming 2
   "co/009737"
+
+  # Abbe - person without film
+  "pe/000012"
+
+  # Putin - metadata only
+  "pe/013927"
 )
 
 for folder in "${docs[@]}" ; do 
