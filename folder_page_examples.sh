@@ -1,5 +1,7 @@
 #!/bin/bash
 
+# examples for folder pages (particulary re. film sections)
+
 docs=(
   # Bergedorfer Eisenwerk - folder + filming 2
   "co/041780"
@@ -15,10 +17,16 @@ docs=(
 
   # Putin - metadata only
   "pe/013927"
+
+  # Einzelne Krankheiten : Deutschland
+  "sh/126128,144265"
+
+  # Kohle : Chile
+  "wa/143120,141691"
 )
 
 for folder in "${docs[@]}" ; do 
-  echo https://purl.org/pressemappe20/folder/$folder ...
+  echo https://purl.org/pressemappe20/folder/$folder
   perl create_folder_pages.pl $folder ##> /dev/null
   make -C ../web SET=$folder > /dev/null
 done
