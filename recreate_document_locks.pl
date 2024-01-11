@@ -9,7 +9,7 @@ use strict;
 use warnings;
 use utf8;
 
-use lib '../lib';
+use lib './lib';
 
 use Data::Dumper;
 use Log::Log4perl::Level;
