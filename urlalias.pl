@@ -22,7 +22,7 @@ Readonly my $KLASSDATA_ROOT => path('../data/klassdata');
 Readonly my $URLALIAS_FILE  => path("../var/awstats/urlalias.pm20.txt");
 
 # open alias file
-open( my $alias_fh, '>:encoding(cp1252)', $URLALIAS_FILE );
+open( my $alias_fh, '>:encoding(utf8)', $URLALIAS_FILE );
 
 # static aliases
 print $alias_fh <<"EOF";
@@ -32,6 +32,7 @@ print $alias_fh <<"EOF";
 /doc/holding/\tBestandsübersicht
 /category/geo/\tMappen nach Ländersystematik
 /category/subject/\tMappen nach Sachsystematik
+/category/ware/\tMappen nach Warensystematik
 /awstats/awstats.pl\tStatistics
 /folder/pe/\tPersonen-Archiv
 /folder/co/\tFirmen/Institutionen-Archiv
@@ -47,6 +48,7 @@ print $alias_fh <<"EOF";
 /about-pm20/\tÜber PM20
 /report/\tReports
 /doc/\tDokumentation
+/mirador/\tMirador IIIF Viewer
 EOF
 
 # collections
