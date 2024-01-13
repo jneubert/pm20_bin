@@ -188,6 +188,9 @@ foreach my $key (
         }
         if ( $collection eq 'co' ) {
           $item{company_string} = $entry->{data}{title};
+          if ( $item{signature_string} ) {
+            $item{company_string} .= " ($item{signature_string})";
+          }
         }
         if ( $collection eq 'wa' ) {
           $item{title} = $entry->{data}{title};
