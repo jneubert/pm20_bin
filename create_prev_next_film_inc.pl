@@ -26,7 +26,7 @@ foreach my $dir ( sort @filmlist ) {
 
   $film_string .= "','" . $dir->basename;
 }
-$film_string = substr( $film_string, 2, -1 ) . "'";
+$film_string = substr( $film_string, 2 ) . "'";
 
 my $output = <<'EOF';
 <?php function prev_next_film ($film_id) {
