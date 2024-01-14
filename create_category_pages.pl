@@ -99,7 +99,7 @@ my %linktitle = (
 # load data for additonal categories from films
 # recorded in Zotero
 my %id_from_film;
-foreach my $category_type (qw/ ware /) {
+foreach my $category_type (qw/ ware geo /) {
   foreach my $filming (qw/ 1 2 /) {
     my $category_def = $definitions_ref->{$category_type};
     my $id_file =
@@ -251,7 +251,8 @@ foreach my $category_type ( sort keys %{$definitions_ref} ) {
                 {total_number_of_images};
             }
           }
-          my $film_note = "$grand_total $filming_def_ref->{ALL}{film_note}{$lang}";
+          my $film_note =
+            "$grand_total $filming_def_ref->{ALL}{film_note}{$lang}";
           if ($entry_body) {
             $entry_body .= " + $film_note";
           } else {
@@ -512,8 +513,7 @@ foreach my $category_type ( sort keys %{$definitions_ref} ) {
       if ( $master_voc->folders_complete($master_id_old) ) {
         $category_type_detail{complete} = 1;
       }
-
-      # save incomplete folder data for later processing with film sections
+      ## save incomplete folder data for later processing with film sections
       else {
         $id_from_film{$category_type}{folders}{$master_id_old} =
           \%category_type_detail;
@@ -535,7 +535,7 @@ foreach my $category_type ( sort keys %{$definitions_ref} ) {
 }
 
 # individual category pages (without complete folders, with film sections)
-foreach my $category_type (qw/ ware /) {
+foreach my $category_type (qw/ ware geo /) {
   print "\nfilm sections category_type: $category_type\n";
 
   # master vocabulary reference
@@ -543,11 +543,14 @@ foreach my $category_type (qw/ ware /) {
   $master_voc = ZBW::PM20x::Vocab->new($master_vocab_name);
 
   foreach my $lang (@LANGUAGES) {
+    print "  lang: $lang\n";
 
     # loop over detail types
     my @detail_types =
       sort keys %{ $definitions_ref->{$category_type}{detail} };
     foreach my $detail_type (@detail_types) {
+      next if $category_type eq 'geo' and $detail_type eq 'ware';
+
       print "    detail_type $detail_type\n";
       my $def_ref = $definitions_ref->{$category_type}->{detail}{$detail_type};
       my $detail_title = $def_ref->{title}{$lang};
@@ -585,7 +588,8 @@ foreach my $category_type (qw/ ware /) {
               );
               push( @{ $data{filming_loop} }, \%entry );
               next;
-            } 
+            }
+
             # for now, skip everything else
             else {
               next;
