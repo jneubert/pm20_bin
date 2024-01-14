@@ -115,7 +115,12 @@ foreach my $category_type (qw/ ware geo /) {
   }
 }
 
+##########################
+#
 # category overview pages
+#
+##########################
+
 my ( $master_voc, $detail_voc );
 
 # loop over category types
@@ -334,9 +339,17 @@ foreach my $category_type ( sort keys %{$definitions_ref} ) {
   }
 }
 
-# individual category pages (with folders)
+###########################
+#
+# individual category pages
+#
+###########################
+
+my %category_data;
+
+print "\ncollect data for folders\n\n";
+
 foreach my $category_type ( sort keys %{$definitions_ref} ) {
-  ##next unless $category_type eq 'ware';
   print "\ncategory_type: $category_type\n";
 
   # master vocabulary reference
@@ -346,7 +359,6 @@ foreach my $category_type ( sort keys %{$definitions_ref} ) {
   foreach my $lang (@LANGUAGES) {
     print "  lang: $lang\n";
 
-    my %category_data;
     my @lines;
     my $count_ref;
 
@@ -409,29 +421,24 @@ foreach my $category_type ( sort keys %{$definitions_ref} ) {
           print '      ',    ## $master_voc->signature($master_id), ' ',
             $master_voc->label( $lang, $master_id ), "\n";
         }
-        ##print '        ', $folder->get_folderlabel($lang), "\n";
 
         # first level control break - new category page
+        # (add language-independent metadata only once)
         if ( $master_id_old ne '' and $master_id ne $master_id_old ) {
-          my %category_type_detail = (
-            "is_$lang"               => 1,
-            "detail_is_$detail_type" => 1,
-            detail_title             => $detail_title,
-            lines                    => join( "\n", @lines ),
-            folder_count1            => $count_ref->{folder_count_first},
-            document_count1          => $count_ref->{document_count_first},
-          );
-          if ( $master_voc->folders_complete($master_id_old) ) {
-            $category_type_detail{complete} = 1;
+          if ( $lang eq 'en' ) {
+            my %folder_data = (
+              folder_count1   => $count_ref->{folder_count_first},
+              document_count1 => $count_ref->{document_count_first},
+            );
+            if ( $master_voc->folders_complete($master_id_old) ) {
+              $folder_data{complete} = 1;
+            }
+            $category_data{$category_type}{$master_id_old}{$detail_type}{folder}
+              = \%folder_data;
           }
+          $category_data{$category_type}{$master_id_old}{$detail_type}{folder}
+            {lines}{$lang} = join( "\n", @lines );
 
-          # save incomplete folder data for later processing with film sections
-          else {
-            $id_from_film{$category_type}{folders}{$master_id_old} =
-              \%category_type_detail;
-          }
-
-          push( @{ $category_data{$master_id_old} }, \%category_type_detail );
           @lines     = ();
           $count_ref = {};
         }
@@ -502,39 +509,28 @@ foreach my $category_type ( sort keys %{$definitions_ref} ) {
 
       # save the last category
       ## q & d: add lines as large variable
-      my %category_type_detail = (
-        "is_$lang"               => 1,
-        "detail_is_$detail_type" => 1,
-        detail_title             => $detail_title,
-        lines                    => join( "\n", @lines ),
-        folder_count1            => $count_ref->{folder_count_first},
-        document_count1          => $count_ref->{document_count_first},
-      );
-      if ( $master_voc->folders_complete($master_id_old) ) {
-        $category_type_detail{complete} = 1;
+      if ( $lang eq 'en' ) {
+        my %folder_data = (
+          folder_count1   => $count_ref->{folder_count_first},
+          document_count1 => $count_ref->{document_count_first},
+        );
+        if ( $master_voc->folders_complete($master_id_old) ) {
+          $folder_data{complete} = 1;
+        }
+        $category_data{$category_type}{$master_id_old}{$detail_type}{folder} =
+          \%folder_data;
       }
-      ## save incomplete folder data for later processing with film sections
-      else {
-        $id_from_film{$category_type}{folders}{$master_id_old} =
-          \%category_type_detail;
-      }
-
-      push( @{ $category_data{$master_id_old} }, \%category_type_detail );
+      $category_data{$category_type}{$master_id_old}{$detail_type}{folder}
+        {lines}{$lang} = join( "\n", @lines );
       @lines     = ();
       $count_ref = {};
-    }
+    }    # $detail_type
+  }    # $lang
+}    # $category_type
 
-    # actual output of all collected data for a category
-    # (for incomplete categories, the output is overwritten with the
-    # film section data)
-    foreach my $category_id ( sort keys %category_data ) {
-      my $data_ref = $category_data{$category_id};
-      output_category_page( $lang, $category_type, $category_id, $data_ref );
-    }
-  }
-}
+print "\nCollect data for film sections\n\n";
 
-# individual category pages (without complete folders, with film sections)
+#
 foreach my $category_type (qw/ ware geo /) {
   print "\nfilm sections category_type: $category_type\n";
 
@@ -544,6 +540,8 @@ foreach my $category_type (qw/ ware geo /) {
 
   foreach my $lang (@LANGUAGES) {
     print "  lang: $lang\n";
+
+    my %category_data;
 
     # loop over detail types
     my @detail_types =
@@ -627,18 +625,53 @@ foreach my $category_type (qw/ ware geo /) {
 
        # add folder information, if folders exist (in addition to film sections)
         if ( my $folder_info =
-          $id_from_film{$category_type}{folders}{$category_id} )
+          $id_from_film{$category_type}{folders}{$category_id}{$detail_type} )
         {
           $data{lines}           = $folder_info->{lines};
           $data{document_count1} = $folder_info->{document_count1};
           $data{folder_count1}   = $folder_info->{folder_count1};
         }
 
-        output_category_page( $lang, $category_type, $category_id, [ \%data ] );
-      }
-    }
-  }
+        push( @{ $category_data{$category_id} }, \%data );
+      }    # $category_id
+    }    # $detail_type
+  }    # $lang
 }
+
+print "\nOutput of individual category pages\n\n";
+
+foreach my $lang (@LANGUAGES) {
+
+  foreach my $category_type ( sort keys %category_data ) {
+
+    foreach my $category_id ( sort keys %{ $category_data{$category_type} } ) {
+
+      my $category_ref = $category_data{$category_type}{$category_id};
+      my @detail_data;
+
+      foreach my $detail_type ( sort keys %{$category_ref} ) {
+        my $def_ref =
+          $definitions_ref->{$category_type}->{detail}{$detail_type};
+        my $folder_ref = $category_ref->{$detail_type}{folder};
+        my %data       = (
+          "is_$lang"               => 1,
+          "detail_is_$detail_type" => 1,
+          detail_title             => $def_ref->{title}{$lang},
+          folder_count1            => $folder_ref->{folder_count1},
+          document_count1          => $folder_ref->{document_count1},
+          complete                 => $folder_ref->{complete},
+          lines                    => $folder_ref->{lines}{$lang},
+        );
+        push( @detail_data, \%data );
+
+      }    # $detail_type
+
+      # actual output
+      output_category_page( $lang, $category_type, $category_id,
+        \@detail_data );
+    }    # $category_id
+  }    # $category_type
+}    # $lang
 
 ############
 
