@@ -50,18 +50,21 @@ _For direct access to the documents, click the "(xy documents)" link, for folder
 
 <tmpl_include name="filmsections.md.inc">
 
-</tmpl_if>
+</tmpl_if detail_is_geo>
+
 
 <tmpl_if detail_is_subject>
 
+<tmpl_if lines>
+
 <tmpl_if is_de>
-Insgesamt <tmpl_var folder_count1> Mappen, <tmpl_var document_count1> Dokumente - Mappen <tmpl_if complete>komplett<tmpl_else>unvollständig.
+Insgesamt <tmpl_var folder_count1> Mappen, <tmpl_var document_count1> Dokumente - Mappen <tmpl_if complete>bis 1949 komplett<tmpl_else>unvollständig.
 Nicht als Mappe aufbereitetes Material finden Sie unter [digitalisierte Microfilme](/film/h1_sh.de.html)</tmpl_if>.
 
 _Klicken Sie "(xy Dokumente)" für die Dokumentanzeige im Viewer und "(Mappe)" für Mappeninformation._
 </tmpl_if>
 <tmpl_if is_en>
-In total <tmpl_var folder_count1> folders, <tmpl_var document_count1> documents - folders <tmpl_if complete>complete<tmpl_else>incomplete.
+In total <tmpl_var folder_count1> folders, <tmpl_var document_count1> documents - folders <tmpl_if complete>complete until 1949<tmpl_else>incomplete.
 For material not published as folders, please check the [digitized micro-films](/film/h1_sh.de.html) (in German)</tmpl_if>.
 
 _For direct access to the documents, click the "(xy documents)" link, for folder information use the "(folder)" link._
@@ -69,7 +72,16 @@ _For direct access to the documents, click the "(xy documents)" link, for folder
 
 <tmpl_var lines>
 
-</tmpl_if>
+<tmpl_else>
+
+<tmpl_if is_de>Kein als Mappe erschlossenes Material.</tmpl_if><tmpl_if is_en>No material prepared as folder.</tmpl_if>
+
+</tmpl_if lines>
+
+<tmpl_include name="filmsections.md.inc">
+
+</tmpl_if detail_is_subject>
+
 
 <tmpl_if detail_is_ware>
 
@@ -88,6 +100,6 @@ _For direct access to the documents, click the "(xy documents)" link, for folder
 
 <tmpl_var lines>
 
-</tmpl_if>
+</tmpl_if detail_is_subject>
 
 </tmpl_loop detail_type_loop>

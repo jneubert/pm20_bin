@@ -530,8 +530,9 @@ foreach my $category_type ( sort keys %{$definitions_ref} ) {
 
 print "\nCollect data for film sections\n\n";
 
-#
-foreach my $category_type (qw/ ware geo /) {
+# only top level for the country-subject and ware archives
+##foreach my $category_type (qw/ geo ware /) {
+foreach my $category_type (qw/ ware /) {
   print "\nfilm sections category_type: $category_type\n";
 
   # master vocabulary reference
@@ -540,8 +541,6 @@ foreach my $category_type (qw/ ware geo /) {
 
   foreach my $lang (@LANGUAGES) {
     print "  lang: $lang\n";
-
-    my %category_data;
 
     # loop over detail types
     my @detail_types =
@@ -556,17 +555,10 @@ foreach my $category_type (qw/ ware geo /) {
       foreach
         my $category_id ( sort keys %{ $id_from_film{$category_type}{count} } )
       {
-
         print '      ', $master_voc->label( $lang, $category_id ), "\n"
           if $lang eq 'de';
 
-        my %data = (
-          "is_$lang"               => 1,
-          "detail_is_$detail_type" => 1,
-          detail_title             => $detail_title,
-          filming_loop             => [],
-        );
-
+        my @filmings;
         foreach my $filming (qw/ 1 2 /) {
           my $filming_ref = $filming_def_ref->{$filming};
 
@@ -574,24 +566,16 @@ foreach my $category_type (qw/ ware geo /) {
             $id_from_film{$category_type}{$filming}{$category_id};
 
           # how to deal deal wth mission information depends ...
-          if ( not $category_film_data ) {
-            if ( $category_type eq 'ware' and $filming eq '2' ) {
-              ## create an "empty" entry with link to filmlist
-              my %entry = (
-                "is_$lang"    => 1,
-                filming_title => $filming_ref->{title}{$lang},
-                legal         => $filming_ref->{legal}{$lang},
-                filmlist_link =>
-                  get_filmlist_link( $category_type, $filming ),
-              );
-              push( @{ $data{filming_loop} }, \%entry );
-              next;
+          if ( not defined $category_film_data ) {
+            if (  $filming eq '1'
+              and $category_data{$category_type}{$category_id}{$detail_type}
+              {folder}{complete} )
+            {
+              ## is ok
+            } else {
+              ## warn "no film data for $category_id in filming $filming\n";
             }
-
-            # for now, skip everything else
-            else {
-              next;
-            }
+            next;
           }
 
           my @filmsection_loop;
@@ -620,19 +604,13 @@ foreach my $category_type (qw/ ware geo /) {
               $category_film_data->{total_number_of_images},
           );
 
-          push( @{ $data{filming_loop} }, \%filming_data );
-        }
+          push( @filmings, \%filming_data );
+        }    # $filming
 
-       # add folder information, if folders exist (in addition to film sections)
-        if ( my $folder_info =
-          $id_from_film{$category_type}{folders}{$category_id}{$detail_type} )
-        {
-          $data{lines}           = $folder_info->{lines};
-          $data{document_count1} = $folder_info->{document_count1};
-          $data{folder_count1}   = $folder_info->{folder_count1};
+        if ( scalar(@filmings) ) {
+          $category_data{$category_type}{$category_id}{$detail_type}
+            {filming_loop}{$lang} = \@filmings;
         }
-
-        push( @{ $category_data{$category_id} }, \%data );
       }    # $category_id
     }    # $detail_type
   }    # $lang
@@ -643,25 +621,29 @@ print "\nOutput of individual category pages\n\n";
 foreach my $lang (@LANGUAGES) {
 
   foreach my $category_type ( sort keys %category_data ) {
-
     foreach my $category_id ( sort keys %{ $category_data{$category_type} } ) {
 
       my $category_ref = $category_data{$category_type}{$category_id};
-      my @detail_data;
 
+      my @detail_data;
       foreach my $detail_type ( sort keys %{$category_ref} ) {
         my $def_ref =
           $definitions_ref->{$category_type}->{detail}{$detail_type};
         my $folder_ref = $category_ref->{$detail_type}{folder};
-        my %data       = (
+        my $filming_loop_ref =
+          $category_ref->{$detail_type}{filming_loop}{$lang};
+        my %data = (
           "is_$lang"               => 1,
           "detail_is_$detail_type" => 1,
           detail_title             => $def_ref->{title}{$lang},
           folder_count1            => $folder_ref->{folder_count1},
           document_count1          => $folder_ref->{document_count1},
-          complete                 => $folder_ref->{complete},
           lines                    => $folder_ref->{lines}{$lang},
+          complete                 => $folder_ref->{complete},
         );
+        if ( defined $filming_loop_ref ) {
+          $data{filming_loop} = $filming_loop_ref;
+        }
         push( @detail_data, \%data );
 
       }    # $detail_type
@@ -669,6 +651,7 @@ foreach my $lang (@LANGUAGES) {
       # actual output
       output_category_page( $lang, $category_type, $category_id,
         \@detail_data );
+
     }    # $category_id
   }    # $category_type
 }    # $lang
