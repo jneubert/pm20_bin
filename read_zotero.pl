@@ -34,7 +34,7 @@ Readonly my $FILM_IMG_COUNT => path('/pm20/data/filmdata/img_count.json');
 
 # TODO extend to other holdings beyond Hamburg and sh or co
 # (currently set is not restricted to a certain filming (1/2))
-Readonly my @VALID_SUBSETS => qw/ h1_sh h1_co h1_wa h2_co h2_sh /;
+Readonly my @VALID_SUBSETS => qw/ h1_sh h1_co h1_wa h2_co h2_sh h2_wa /;
 Readonly my %CONF => (
   'h' => {
     co => {
@@ -192,7 +192,7 @@ foreach my $key (
             $item{company_string} .= " ($item{signature_string})";
           }
         }
-        if ( $collection eq 'wa' ) {
+        if ( $collection eq 'wa' or $collection eq 'sh' ) {
           $item{title} = $entry->{data}{title};
         }
 
@@ -360,24 +360,22 @@ foreach my $film_name ( sort keys %film ) {
   }
   add_number_of_images( 'last', $old_location );
 }
+if ( $collection eq 'co' ) {
+  print
+"# means pm20Id directly from Zotero, * means indirectly via wikidata, otherweise derived from signature\n";
+}
 
 # save film data
 my $output = path("$FILMDATA_STUB$subset.json");
 $output->spew( encode_json( \%film ) );
 
-# build and save category_by_id data
-if ( $collection eq 'wa' ) {
-  build_category_by_id_list( \%film, 'ware' );
-}
-
-# apply also to company data
+# build and save category_by_id data for company (!)
+# (applies now only to co, wa and sh are now covered by merge_film_ids.pl)G
 if ( $collection eq 'co' ) {
   build_category_by_id_list( \%film, 'company' );
 }
 
 # overall statistics
-print
-"# means pm20Id directly from Zotero, * means indirectly via wikidata, otherweise derived from signature\n";
 print Dumper \%type_count;
 print
 "$good_count good document items, $error_count errors in $film_count films from $subset\n";
@@ -597,7 +595,8 @@ EOF
   );
 
   if ( $client->responseCode ne '200' ) {
-    warn "Could not execute query for $graph: ", $client->responseCode, "\n";
+    warn "Could not execute query for $graph: ", $client->responseCode, "\n",
+      $client->responseContent, "\n";
     return;
   }
   my $result_data = decode_json( $client->responseContent() );
@@ -788,10 +787,10 @@ EOF
   }
 }
 
-# category is meant to include "company" here
+# category is meant to be "company" here!
 sub build_category_by_id_list {
-  my $film_ref      = shift or die "param missing";
-  my $category_type = shift or die "param missing";
+  my $film_ref         = shift or die "param missing";
+  my $by_category_type = shift or die "param missing";
 
   my %film = %{$film_ref};
   my %category;
@@ -806,20 +805,14 @@ sub build_category_by_id_list {
       my %data = %{ $film{$film_name}{item}{$location} };
 
       next
-        unless $data{$category_type}
+        unless $data{$by_category_type}
         or ( defined $data{pm20Id} and $data{pm20Id} ne '' );
 
       # title for the marker (not validated, not guaranteed
       # to cover the whole stretch of images up to the next marker
-      my $first_img =
-        ( $category_type eq 'company' )
-        ? $data{company_string}
-        : $data{title};
+      my $first_img = $data{company_string};
+      my $category_id = $data{pm20Id};
 
-      my $category_id =
-        ( $category_type eq 'company' )
-        ? $data{pm20Id}
-        : $data{$category_type}{id};
       my $entry_ref = {
         location  => $location,
         first_img => $first_img,
@@ -833,8 +826,8 @@ sub build_category_by_id_list {
     }
   }
 
-  my $output = path("$FILMDATA_STUB$subset.by_${category_type}_id.json");
-  print "$output\n";
+  my $output = path("$FILMDATA_STUB$subset.by_${by_category_type}_id.json");
+  print "\n$output\n";
   $output->spew( encode_json( \%category ) );
 }
 
