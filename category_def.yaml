@@ -20,8 +20,8 @@ geo:
         en: Commodities/wares archives folders
         de: Warenarchiv Mappen
   film_by_id_file:
-    1: zotero.h1_sh.by_geo_id.json
-    2: zotero.h2_sh.by_geo_id.json
+    1: h1_sh.by_geo_id.merged.json
+    2: h2_sh.by_geo_id.merged.json
 subject:
   prov: hwwa
   title:
@@ -53,6 +53,6 @@ ware:
         en: Commodities/wares archives folders
         de: Warenarchiv Mappen
   film_by_id_file:
-    1: zotero.h1_wa.by_ware_id.json
-    2: zotero.h2_wa.by_ware_id.json
+    1: h1_wa.by_ware_id.merged.json
+    2: h2_wa.by_ware_id.merged.json
 
