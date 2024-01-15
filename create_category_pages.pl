@@ -531,8 +531,7 @@ foreach my $category_type ( sort keys %{$definitions_ref} ) {
 print "\nCollect data for film sections\n\n";
 
 # only top level for the country-subject and ware archives
-##foreach my $category_type (qw/ geo ware /) {
-foreach my $category_type (qw/ ware /) {
+foreach my $category_type (qw/ geo ware /) {
   print "\nfilm sections category_type: $category_type\n";
 
   # master vocabulary reference
@@ -623,6 +622,10 @@ foreach my $lang (@LANGUAGES) {
   foreach my $category_type ( sort keys %category_data ) {
     foreach my $category_id ( sort keys %{ $category_data{$category_type} } ) {
 
+      # master vocabulary reference
+      my $master_vocab_name = $definitions_ref->{$category_type}{vocab};
+      $master_voc = ZBW::PM20x::Vocab->new($master_vocab_name);
+
       my $category_ref = $category_data{$category_type}{$category_id};
 
       my @detail_data;
@@ -692,9 +695,8 @@ sub output_category_page {
   }
 
   # navigation tabs for overview page?
-  if (  $category_type eq 'geo'
-    and $master_voc->folder_count( 'geo', 'subject', $id )
-    and $master_voc->folder_count( 'geo', 'ware',    $id ) )
+  if ( $category_type eq 'geo'
+    and scalar( @{$data_ref} ) gt 1 )
   {
     $tmpl_var{show_tabs} = 1;
   }
