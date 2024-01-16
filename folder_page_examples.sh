@@ -26,7 +26,7 @@ docs=(
 )
 
 for folder in "${docs[@]}" ; do 
-  echo https://purl.org/pressemappe20/folder/$folder
+  echo https://pm20.zbw.eu/folder/$folder
   perl create_folder_pages.pl $folder ##> /dev/null
   make -C ../web SET=$folder > /dev/null
 done

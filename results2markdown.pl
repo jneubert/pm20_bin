@@ -25,8 +25,7 @@ binmode( STDOUT, ":utf8" );
 Readonly my $DEFINITIONS_FILE   => 'sparql_results.yaml';
 Readonly my $CONFIGURATION_FILE => 'reports.yaml';
 Readonly my $REPORT_ROOT        => path('/pm20/web/report');
-Readonly my $URI_STUB           => 'http://purl.org/pressemappe20/folder/';
-Readonly my $FOLDER_URL_ROOT    => 'https://pm20.zbw.eu/folder/';
+Readonly my $FOLDER_URI_ROOT    => 'https://pm20.zbw.eu/folder/';
 
 # read report definitions
 my %definition = %{ YAML::LoadFile($DEFINITIONS_FILE) };
@@ -100,10 +99,10 @@ foreach my $report ( keys %definition ) {
           my $url;
           my $uri = $entry->{$field}{value};
 
-          if ( $uri =~ m;^$URI_STUB; ) {
+          if ( $uri =~ m;^$FOLDER_URI_ROOT; ) {
             my $folder = ZBW::PM20x::Folder->new_from_uri($uri);
             $url =
-                $FOLDER_URL_ROOT
+                $FOLDER_URI_ROOT
               . $folder->get_folder_hashed_path()
               . "/about.$lang.html";
           } else {

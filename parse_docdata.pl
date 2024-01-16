@@ -40,7 +40,7 @@ Readonly my $DOCDATA_ROOT   => path('../data/docdata');
 Readonly my @COLLECTIONS    => qw/ co pe sh wa /;
 Readonly my $BEACON_ROOT    => path('../data/beacon');
 Readonly my $BEACON_HEADER  =>
-  "#FORMAT: BEACON\n#PREFIX: http://purl.org/pressemappe20/folder/\n\n";
+  "#FORMAT: BEACON\n#PREFIX: https://pm20.zbw.eu/folder/\n\n";
 
 $log->info('Start run');
 foreach my $collection (@COLLECTIONS) {

@@ -25,9 +25,7 @@ use ZBW::PM20x::Folder;
 
 $Data::Dumper::Sortkeys = 1;
 
-Readonly my $PM20_ROOT_URI   => 'https://pm20.zbw.eu/folder/';
 Readonly my $IIIF_ROOT_URI   => 'https://pm20.zbw.eu/iiif/folder/';
-Readonly my $FOLDER_ROOT_URI => 'http://purl.org/pressemappe20/folder/';
 Readonly my $PDF_ROOT_URI    => 'https://pm20.zbw.eu/pdf/folder/';
 ## manifest files exist in the web tree
 Readonly my $IIIF_ROOT       => path('/pm20/iiif/folder');

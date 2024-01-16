@@ -17,7 +17,7 @@ use Readonly;
 use Scalar::Util qw(looks_like_number reftype);
 use ZBW::PM20x::Vocab;
 
-Readonly my $FOLDER_URI_ROOT  => 'http://purl.org/pressemappe20/folder/';
+Readonly my $FOLDER_URI_ROOT  => 'https://pm20.zbw.eu/folder/';
 Readonly our $FOLDER_ROOT     => path('/pm20/folder');
 Readonly our $FOLDERDATA_FILE => path('/pm20/data/rdf/pm20.extended.jsonld');
 ##Readonly our $FOLDERDATA_FILE =>
@@ -25,7 +25,7 @@ Readonly our $FOLDERDATA_FILE => path('/pm20/data/rdf/pm20.extended.jsonld');
 Readonly our $DOCDATA_ROOT      => path('/pm20/data/docdata');
 Readonly our $FILMDATA_ROOT     => path('/pm20/data/filmdata');
 Readonly our @ACCESS_TYPES      => qw/ public intern /;
-Readonly our $URI_STUB          => 'http://purl.org/pressemappe20/folder';
+Readonly our $URI_STUB          => 'https://pm20.zbw.eu/folder';
 Readonly our $DFGVIEW_URL_STUB  => 'https://pm20.zbw.eu/dfgview';
 Readonly our $IIIFVIEW_URL_STUB => 'https://pm20.zbw.eu/iiifview/folder';
 

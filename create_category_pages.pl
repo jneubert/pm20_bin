@@ -678,7 +678,7 @@ sub output_category_page {
     $lang eq 'en'
     ? 'Category Overview'
     : 'Systematik-Übersicht';
-  my $uri      = "http://purl.org/pressemappe20/category/$category_type/i/$id";
+  my $uri      = "https://pm20.zbw.eu/category/$category_type/i/$id";
   my %tmpl_var = (
     uri              => $uri,
     "is_$lang"       => 1,

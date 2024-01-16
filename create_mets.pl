@@ -30,7 +30,7 @@ $Data::Dumper::Sortkeys = 1;
 
 # use folder_root for persistent URI, and image_root for internal linking
 # to image files (spares redirect for every file)
-Readonly my $FOLDER_ROOT_URI => 'https://purl.org/pressemappe20/folder/';
+Readonly my $FOLDER_ROOT_URI => 'https://pm20.zbw.eu/folder/';
 Readonly my $IMAGE_ROOT_URI  => 'https://pm20.zbw.eu/folder/';
 Readonly my $PDF_ROOT_URI    => 'https://pm20.zbw.eu/pdf/';
 Readonly my $METS_ROOT       => path('../web/folder');
