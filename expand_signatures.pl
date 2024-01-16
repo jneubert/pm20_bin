@@ -157,6 +157,11 @@ sub clean_sh_signature {
   $signature =~ s/^C85 q m32$/C85 q Sm32/;
   $signature =~ s/^A1 n4 sm40$/A1 n4 Sm40/;
   $signature =~ s/^A24g 4 a/A29 g4a/;
+  # h1_sh2
+  $signature =~ s/^A24g$/A29 g/;
+  $signature =~ s/^B82/B86/;
+  $signature =~ s/^C102b-u2a/C102 b-u2a/;
+  $signature =~ s/^C20/D20/;
 
   # geo
 
@@ -168,7 +173,7 @@ sub clean_sh_signature {
   # geo sig including small letter
   if ( $signature =~ /^([A-G]\d+) ([a-z] [a-q].*)$/ ) {
     ## don't replace buggy signatures
-    if ( not( $signature =~ m/A22 i h/ or $signature =~ m/A30 q n/ ) ) {
+    if ( not( $signature =~ m/A22 i h/ or $signature =~ m/A30 q n/ or $signature =~ m/A15 g a Sm/ ) ) {
       $signature = "$1$2";
     }
   }
