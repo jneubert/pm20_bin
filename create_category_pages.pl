@@ -235,7 +235,7 @@ foreach my $category_type ( sort keys %{$definitions_ref} ) {
           $entry_body = "$folder_count $count_label"
             . (
                 ( $master_voc->folders_complete($id) )
-              ? ( $lang eq 'en' ? ' - complete' : ' - komplett' )
+              ? ( $lang eq 'en' ? ' - complete unti 1949' : ' - bis 1949 komplett' )
               : ''
             );
         }
@@ -272,7 +272,7 @@ foreach my $category_type ( sort keys %{$definitions_ref} ) {
             . ( $lang eq 'en' ? ' subject folders' : ' Sach-Mappen' )
             . (
                 ( $master_voc->folders_complete($id) )
-              ? ( $lang eq 'en' ? ' - complete' : ' - komplett' )
+              ? ( $lang eq 'en' ? ' - complete until 1949' : ' - bis 1949 komplett' )
               : ''
             )
             . ', '
@@ -618,8 +618,11 @@ foreach my $category_type (qw/ geo ware /) {
 print "\nOutput of individual category pages\n\n";
 
 foreach my $lang (@LANGUAGES) {
+  print "  $lang:\n";
 
   foreach my $category_type ( sort keys %category_data ) {
+    print "    $category_type:\n";
+
     foreach my $category_id ( sort keys %{ $category_data{$category_type} } ) {
 
       # master vocabulary reference

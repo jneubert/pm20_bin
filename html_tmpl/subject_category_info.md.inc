@@ -1,6 +1,6 @@
 <tmpl_if is_de>
 Insgesamt <tmpl_var category_count> Systematikstellen, <tmpl_var
-geo_total_folder_count> Mappen.
+geo_total_folder_count> Mappen (bis 1949).
 
 Nur grob geschätzt ein Fünftel des digitalisierten Bestandes des
 Länder-/Sacharchivs bis 1949 ist in Mappen erschlossen und über diese
@@ -18,7 +18,7 @@ ist online verfügbar.
 </tmpl_if>
 <tmpl_if is_en>
 In total <tmpl_var category_count> categories, <tmpl_var
-geo_total_folder_count> folders.
+geo_total_folder_count> folders (bis 1949).
 
 Of the PM20 Länder-/Sacharchiv up to 1949, only a rough estimate of one-fifth
 of the digitized holdings are indexed in folders and accessible via this

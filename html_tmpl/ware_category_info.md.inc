@@ -1,7 +1,7 @@
 <tmpl_if is_de>
 Insgesamt <tmpl_var category_count> Systematikstellen, <tmpl_var
-geo_total_folder_count> Mappen und <tmpl_var geo_total_image_count> Aufnahmen
-auf digitalisierten Mikrofilmen.
+geo_total_folder_count> Mappen (bis 1949) und <tmpl_var geo_total_image_count>
+Aufnahmen auf digitalisierten Mikrofilmen.
 
 Das Warenarchiv war primär nach Warenarten gegliedert, sekundär nach Ländern
 (oder "Welt" für Übergreifendes). Bei umfangreicheren Warenmappen gab es
@@ -23,8 +23,8 @@ ist online verfügbar.
 </tmpl_if>
 <tmpl_if is_en>
 In total <tmpl_var category_count> categories, <tmpl_var
-geo_total_folder_count> folders and <tmpl_var geo_total_image_count> images on
-digitized microfilm.
+geo_total_folder_count> folders (until 1949) and <tmpl_var
+geo_total_image_count> images on digitized microfilm.
 
 The Commodities/Wares archive was organized primarily by type of ware,
 seconadarily by country (or "World" for general aspects). Larger folders were

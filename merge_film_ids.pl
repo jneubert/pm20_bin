@@ -18,13 +18,16 @@ binmode( STDOUT, ":utf8" );
 binmode( STDERR, ":utf8" );
 $Data::Dumper::Sortkeys = 1;
 
+my $img_count_ref =
+  decode_json( $FILMDATA_ROOT->child('img_count.json')->slurp );
+
 foreach my $filming (qw/ 1 2 /) {
   foreach my $category_type (qw/ subject ware /) {
     my $collection =
       ( $category_type eq 'ware' )
       ? 'wa'
       : 'sh';
-    my $set = "h${filming}";
+    my $set    = "h${filming}";
     my $subset = "${set}_$collection";
 
     # file names
@@ -74,6 +77,7 @@ foreach my $filming (qw/ 1 2 /) {
         # all section defined for this film in zotero
         my @items = sort keys %{ $zotero_ref->{$film_id}{item} };
 
+        # TODO is the following ok? _2 films do not start with 0001
         # add the entry of a continuation, if it is missing in zotero
         if ( not $items[0] =~ m;$film_id/000[12](/[RL])?$; ) {
           my $entry_ref = {
@@ -82,7 +86,8 @@ foreach my $filming (qw/ 1 2 /) {
           };
           push( @{ $by_id{$category_id}{sections} }, $entry_ref );
 
-          # TODO add to total_number_of_images
+          # TODO add to total_number_of_images?
+
         }
 
         foreach my $location (@items) {
@@ -97,6 +102,7 @@ foreach my $filming (qw/ 1 2 /) {
           my $first_img = $data{title};
 
           $category_id = $data{$by_category_type}{id};
+          print "  $category_id\n";
 
           my $entry_ref = {
             location  => $location,
@@ -106,7 +112,7 @@ foreach my $filming (qw/ 1 2 /) {
           push( @{ $by_id{$category_id}{sections} }, $entry_ref );
 
           # compute totals
-          if ( $data{number_of_images} ) {
+          if ( exists $data{number_of_images} ) {
             $by_id{$category_id}{total_number_of_images} +=
               $data{number_of_images};
           } else {
@@ -127,8 +133,17 @@ foreach my $filming (qw/ 1 2 /) {
         );
         push( @{ $by_id{$category_id}{sections} }, \%section_entry );
 
-        # TODO update total_number_of_images
-
+        # update total_number_of_images
+        my $key = "/mnt/intares/film/$set/$collection/$film_id";
+        my $number_of_images;
+        if (defined $img_count_ref->{$key}) {
+          $number_of_images = $img_count_ref->{$key};
+        } else {
+          warn "number of images for full film $key not found\n";
+          $number_of_images = 0;
+        }
+        $by_id{$category_id}{total_number_of_images} +=
+          $number_of_images;
       }
     }
     my $out_file = $FILMDATA_ROOT->child($out_name);
