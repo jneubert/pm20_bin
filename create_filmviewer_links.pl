@@ -21,7 +21,7 @@ Readonly my $FILM_ROOT     => path('/pm20/web/film');
 Readonly my $FILMDATA_ROOT => path('/pm20/data/filmdata');
 Readonly my @COLLECTIONS   => qw/ co sh wa /;
 Readonly my @LANGUAGES     => qw/ en de /;
-Readonly my @VALID_SUBSETS => qw/ h1_sh h1_co h1_wa h2_co /;
+Readonly my @VALID_SUBSETS => qw/ h1_sh h1_co h1_wa h2_co h2_sh h2_wa /;
 ## films in film lists, but not on disk
 Readonly my @MISSING_FILMS =>
   qw/ S0005H S0010H S0371H S0843H S1009H S1010H S9393 S9398 /;
@@ -153,7 +153,7 @@ sub parse_filmlist {
   my $subset = shift or die "param mssing";
 
   my @filmlist =
-    @{ decode_json( $FILMDATA_ROOT->child("$subset.json")->slurp ) };
+    @{ decode_json( $FILMDATA_ROOT->child("$subset.expanded.json")->slurp ) };
 
   foreach my $entry (@filmlist) {
     my $film = $entry->{film_id};
