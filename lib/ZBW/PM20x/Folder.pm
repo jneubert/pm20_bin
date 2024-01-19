@@ -264,45 +264,18 @@ sub get_relpath_to_folder {
   return $rel_path;
 }
 
-=item get_doc_counts ()
+=item format_doc_counts ( $lang, {$total_only} )
 
-Return a string with free and total document counts, undef if none of them defined.
-
-=cut
-
-sub get_doc_counts {
-  my $self = shift or croak('param missing');
-
-  my $fid            = $self->get_folder_id;
-  my $label          = $self->get_folderlabel('en');
-  my $folderdata_raw = $self->get_folderdata_raw;
-
-  my $doc_counts = '';
-  if ( exists $folderdata_raw->{freeDocCount} ) {
-    $doc_counts = $folderdata_raw->{freeDocCount};
-  }
-  $doc_counts .= ' / ';
-  if ( exists $folderdata_raw->{totalDocCount} ) {
-    $doc_counts .= $folderdata_raw->{totalDocCount};
-  }
-  if ( $doc_counts ne ' / ' ) {
-    return $doc_counts;
-  } else {
-    return;
-  }
-}
-
-=item format_doc_counts ()
-
-Return a language-specific string with total and free document counts, undef if none of them defined.
+Return a language-specific string with total and free document counts, undef if
+none of them defined. If $total_only is set, return only first count.
 
 =cut
 
 sub format_doc_counts {
-  my $self = shift or croak('param missing');
-  my $lang = shift or croak('param missing');
+  my $self       = shift or croak('param missing');
+  my $lang       = shift or croak('param missing');
+  my $total_only = shift;
 
-  my $fid            = $self->get_folder_id;
   my $folderdata_raw = $self->get_folderdata_raw;
 
   my $doc_counts = '';
@@ -310,14 +283,55 @@ sub format_doc_counts {
     $doc_counts .= $folderdata_raw->{totalDocCount}{'@value'};
     $doc_counts .= ( $lang eq 'en' ? ' documents' : ' Dokumente' );
   }
-  $doc_counts .= ' / ';
-  if ( exists $folderdata_raw->{freeDocCount} ) {
-    $doc_counts .= $folderdata_raw->{freeDocCount}{'@value'};
-    $doc_counts .=
-      ( $lang eq 'en' ? ' available on the web' : ' im Web zugänglich' );
+  if ( not $total_only ) {
+    $doc_counts .= ' / ';
+    if ( exists $folderdata_raw->{freeDocCount} ) {
+      $doc_counts .= $folderdata_raw->{freeDocCount}{'@value'};
+      $doc_counts .=
+        ( $lang eq 'en' ? ' available on the web' : ' im Web zugänglich' );
+    }
   }
-  if ( $doc_counts ne ' / ' ) {
+  if ( $doc_counts ne '' ) {
     return $doc_counts;
+  } else {
+    return;
+  }
+}
+
+=item get_film_img_counts ()
+
+Return a string with film image counts for the first and second filming, undef
+if none of them defined. (Currently, only for co)
+
+=cut
+
+sub get_film_img_counts {
+  my $self = shift or croak('param missing');
+
+  my $fid = $self->get_folder_id;
+
+  return unless $fid =~ m/^co\//;
+
+  # data has to be loaded, if not exists
+  if ( not defined $data{co}{"film_img_count"} ) {
+    _load_film_img_count_data();
+  }
+
+  my $img_counts = '';
+
+  ##print Dumper $fid, $data{co}{film_img_count}{$fid};
+  my ($cnt1, $cnt2);
+  if ( $cnt1 = $data{co}{film_img_count}{$fid}{1} ) {
+    $img_counts = $cnt1;
+  }
+  if ( $cnt2 = $data{co}{film_img_count}{$fid}{2} ) {
+    if ( $cnt1 ) {
+      $img_counts .= ' / ';
+    }
+    $img_counts .= $cnt2;
+  }
+  if ($img_counts) {
+    return $img_counts;
   } else {
     return;
   }
@@ -730,6 +744,22 @@ sub _load_folderdata {
       $blank_node{$id_value} = $folder_ref;
     } else {
       confess("strange folder \@id value: $id_value");
+    }
+  }
+}
+
+sub _load_film_img_count_data {
+  foreach my $filming (qw/ 1 2 /) {
+    my %filmdata = %{
+      decode_json(
+        $FILMDATA_ROOT->child("zotero.h${filming}_co.by_company_id.json")
+          ->slurp
+      )
+    };
+    foreach my $folder_id ( keys %filmdata ) {
+      if ( my $total = $filmdata{$folder_id}{total_number_of_images} ) {
+        $data{co}{film_img_count}{$folder_id}{$filming} = $total;
+      }
     }
   }
 }

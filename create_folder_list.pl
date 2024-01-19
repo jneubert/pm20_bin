@@ -33,6 +33,8 @@ Readonly my %TITLE          => %{ YAML::LoadFile('archive_titles.yaml') };
 Readonly my @COLLECTIONS    => qw/ co pe /;
 Readonly my @LANGUAGES      => qw/ en de /;
 
+my $filming_def_ref = YAML::LoadFile('filming_def.yaml');
+
 my $tmpl = HTML::Template->new(
   filename => 'html_tmpl/folderlist.md.tmpl',
   utf8     => 1,
@@ -89,7 +91,9 @@ sub mk_collectionlist {
       my %abc;
       foreach my $folder_nk ( sort @{ $collection_ids{$collection} } ) {
         my $folder = ZBW::PM20x::Folder->new( $collection, $folder_nk );
-        if ( $folder->get_doc_counts ) {
+        if ( $folder->format_doc_counts( $lang, 1 )
+          or $folder->get_film_img_counts )
+        {
           if ( $list_type eq 'without_docs' ) {
             next;
           }
@@ -115,7 +119,7 @@ sub mk_collectionlist {
         my @folders;
         my @folder_list =
           sort {
-          $uc->cmp( $a->get_folderlabel($lang), $b->get_folderlabel($lang) )
+            $uc->cmp( $a->get_folderlabel($lang), $b->get_folderlabel($lang) )
           } @{ $abc{$startchar} };
         foreach my $folder (@folder_list) {
           my $label = $folder->get_folderlabel($lang);
@@ -127,10 +131,21 @@ sub mk_collectionlist {
             || ( $folder->get_folderdata_raw )->{dateOfBirthAndDeath};
           my $path = $folder->get_folder_hashed_path->relative($collection)
             ->child("about.$lang.html");
+
+          # note with doc and img counts
+          my $note;
+          if ( my $doc_count = $folder->format_doc_counts( $lang, 1 ) ) {
+            $note = $doc_count;
+          }
+          if ( my $img_counts = $folder->get_film_img_counts ) {
+            $note .= ' + ' if $note;
+            $note .= "$img_counts $filming_def_ref->{ALL}{film_note}{$lang}";
+          }
           my %entry = (
             label   => $label,
             path    => "$path",
             from_to => $from_to,
+            note    => $note,
           );
           push( @folders, \%entry );
         }
@@ -166,7 +181,7 @@ sub mk_collectionlist {
           $tmpl_var{fn_stub}        = 'without_docs';
           $tmpl_var{robots}         = 'noindex,nofollow';
         } else {
-          $tmpl_var{robots}         = 'noindex';
+          $tmpl_var{robots} = 'noindex';
         }
       }
       if ( $collection eq 'wa' ) {

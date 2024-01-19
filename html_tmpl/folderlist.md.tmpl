@@ -24,7 +24,7 @@ fn-stub: <tmpl_var fn_stub>
 
 <tmpl_loop startchar_loop>
 ###  <tmpl_var startchar><a name="id_<tmpl_var startchar>">
-<tmpl_loop folder_loop>* [<tmpl_var label>](<tmpl_var path>) <tmpl_if from_to>(<tmpl_var from_to>)</tmpl_if>
+<tmpl_loop folder_loop>* [<tmpl_var label>](<tmpl_var path>) <tmpl_if from_to>(<tmpl_var from_to>)</tmpl_if> &#160; <tmpl_if note>[(<tmpl_var note>)]{.hint}</tmpl_if>
 </tmpl_loop>
 <div class="hint"><a href="#top"><tmpl_if is_de>nach oben</tmpl_if><tmpl_if is_en>top</tmpl_if></a></div>
 <div class="spacer">&#160;</div>
