@@ -1,8 +1,10 @@
 <tmpl_if is_de>
 Insgesamt <tmpl_var category_count> Systematikstellen, <tmpl_var
 subject_total_folder_count> Sach-Mappen (bis 1949), <tmpl_var
-ware_total_folder_count> Waren-Mappen (bis 1949)<tmpl_if
-subject_total_image_count></tmpl_if><tmpl_if ware_total_image_count></tmpl_if>.
+subject_total_image_count> Aufnahmen zu Länder-Sach-Themen auf digitalisierten
+Mikrofilmen sowie <tmpl_var ware_total_folder_count> Waren-Mappen (bis
+1949)<tmpl_if subject_total_image_count></tmpl_if><tmpl_if
+ware_total_image_count></tmpl_if>.
 
 
 Nur grob geschätzt ein Fünftel des digitalisierten Bestandes des
@@ -29,7 +31,9 @@ ist online verfügbar.
 <tmpl_if is_en>
 In total <tmpl_var category_count> categories, <tmpl_var
 subject_total_folder_count> subject folders (until 1949), <tmpl_var
-ware_total_folder_count> ware folders (until 1949).
+subject_total_image_count> images from digitized microfilms about
+country-subject topics, and <tmpl_var ware_total_folder_count> ware folders
+(until 1949).
 
 
 Of the PM20 Länder-/Sacharchiv up to 1949, only a rough estimate of one-fifth

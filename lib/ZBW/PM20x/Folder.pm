@@ -264,6 +264,20 @@ sub get_relpath_to_folder {
   return $rel_path;
 }
 
+=item get_doc_count ()
+
+Return total number of documents in folder.
+
+=cut
+
+sub get_doc_count {
+  my $self = shift or croak('param missing');
+
+  my $folderdata_raw = $self->get_folderdata_raw;
+
+  return $folderdata_raw->{totalDocCount}{'@value'};
+}
+
 =item format_doc_counts ( $lang, {$total_only} )
 
 Return a language-specific string with total and free document counts, undef if
@@ -272,9 +286,8 @@ none of them defined. If $total_only is set, return only first count.
 =cut
 
 sub format_doc_counts {
-  my $self       = shift or croak('param missing');
-  my $lang       = shift or croak('param missing');
-  my $total_only = shift;
+  my $self = shift or croak('param missing');
+  my $lang = shift or croak('param missing');
 
   my $folderdata_raw = $self->get_folderdata_raw;
 
@@ -283,13 +296,11 @@ sub format_doc_counts {
     $doc_counts .= $folderdata_raw->{totalDocCount}{'@value'};
     $doc_counts .= ( $lang eq 'en' ? ' documents' : ' Dokumente' );
   }
-  if ( not $total_only ) {
-    $doc_counts .= ' / ';
-    if ( exists $folderdata_raw->{freeDocCount} ) {
-      $doc_counts .= $folderdata_raw->{freeDocCount}{'@value'};
-      $doc_counts .=
-        ( $lang eq 'en' ? ' available on the web' : ' im Web zugänglich' );
-    }
+  $doc_counts .= ' / ';
+  if ( exists $folderdata_raw->{freeDocCount} ) {
+    $doc_counts .= $folderdata_raw->{freeDocCount}{'@value'};
+    $doc_counts .=
+      ( $lang eq 'en' ? ' available on the web' : ' im Web zugänglich' );
   }
   if ( $doc_counts ne '' ) {
     return $doc_counts;
@@ -320,12 +331,12 @@ sub get_film_img_counts {
   my $img_counts = '';
 
   ##print Dumper $fid, $data{co}{film_img_count}{$fid};
-  my ($cnt1, $cnt2);
+  my ( $cnt1, $cnt2 );
   if ( $cnt1 = $data{co}{film_img_count}{$fid}{1} ) {
     $img_counts = $cnt1;
   }
   if ( $cnt2 = $data{co}{film_img_count}{$fid}{2} ) {
-    if ( $cnt1 ) {
+    if ($cnt1) {
       $img_counts .= ' / ';
     }
     $img_counts .= $cnt2;

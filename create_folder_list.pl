@@ -91,7 +91,7 @@ sub mk_collectionlist {
       my %abc;
       foreach my $folder_nk ( sort @{ $collection_ids{$collection} } ) {
         my $folder = ZBW::PM20x::Folder->new( $collection, $folder_nk );
-        if ( $folder->format_doc_counts( $lang, 1 )
+        if ( $folder->get_doc_count
           or $folder->get_film_img_counts )
         {
           if ( $list_type eq 'without_docs' ) {
@@ -113,7 +113,7 @@ sub mk_collectionlist {
 
       # iterate through list of start characters
       my $uc = Unicode::Collate->new();
-      my ( @tabs, @startchar_entries );
+      my ( @tabs, @startchar_entries, %total_count );
       foreach my $startchar ( sort { $uc->cmp( $a, $b ) } keys %abc ) {
         push( @tabs, { startchar => $startchar } );
         my @folders;
@@ -133,11 +133,14 @@ sub mk_collectionlist {
             ->child("about.$lang.html");
 
           # note with doc and img counts
-          my $note;
-          if ( my $doc_count = $folder->format_doc_counts( $lang, 1 ) ) {
-            $note = $doc_count;
+          my ( $note, $doc_count, $img_counts );
+          if ( $doc_count = $folder->get_doc_count ) {
+            $note =
+              ( $lang eq 'en' )
+              ? "$doc_count documents"
+              : "$doc_count Dokumente";
           }
-          if ( my $img_counts = $folder->get_film_img_counts ) {
+          if ( $img_counts = $folder->get_film_img_counts ) {
             $note .= ' + ' if $note;
             $note .= "$img_counts $filming_def_ref->{ALL}{film_note}{$lang}";
           }
@@ -148,6 +151,20 @@ sub mk_collectionlist {
             note    => $note,
           );
           push( @folders, \%entry );
+
+          # total counts for head of list
+          if ( $doc_count or $img_counts ) {
+            $total_count{folder}++;
+          }
+          if ($doc_count) {
+            $total_count{document} += $doc_count;
+          }
+          if ($img_counts) {
+            my @counts = split( ' / ', $img_counts );
+            foreach my $cnt (@counts) {
+              $total_count{image} += $cnt;
+            }
+          }
         }
         my %entry = (
           "is_$lang"  => 1,
@@ -181,7 +198,12 @@ sub mk_collectionlist {
           $tmpl_var{fn_stub}        = 'without_docs';
           $tmpl_var{robots}         = 'noindex,nofollow';
         } else {
-          $tmpl_var{robots} = 'noindex';
+          $tmpl_var{robots}         = 'noindex';
+          $tmpl_var{folder_count}   = $total_count{folder};
+          $tmpl_var{document_count} = $total_count{document};
+          if ( $total_count{image} ) {
+            $tmpl_var{image_count} = $total_count{image};
+          }
         }
       }
       if ( $collection eq 'wa' ) {
