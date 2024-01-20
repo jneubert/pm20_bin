@@ -68,7 +68,7 @@ if ( $ARGV[0] and $ARGV[0] =~ m/(h|k)(1|2)_(co|sh|wa)/ ) {
   exit 1;
 }
 
-my ( %qid, %type_count, $film_count );
+my ( %qid, %type_count, $film_count, %qid_without_pm20id );
 my $good_count  = 0;
 my $error_count = 0;
 
@@ -317,6 +317,7 @@ foreach my $film_name ( sort keys %film ) {
           print "\t$pm20Id *";
           $type_count{identified_by_qid_to_pm20id}++;
         } else {
+          $qid_without_pm20id{ $data{qid} }++;
           print "\t\t";
         }
       }
@@ -373,6 +374,13 @@ $output->spew( encode_json( \%film ) );
 # (applies now only to co, wa and sh are now covered by merge_film_ids.pl)G
 if ( $collection eq 'co' ) {
   build_category_by_id_list( \%film, 'company' );
+}
+
+# save qids without pm20ids as input for wikidata query
+if ( $collection eq 'co' ) {
+  my @qidlist = keys %qid_without_pm20id;
+  my $txt     = "'" . join( "' '", @qidlist ) . "'";
+  path("/tmp/qid_without_pm20id.$subset.txt")->spew($txt);
 }
 
 # overall statistics
@@ -810,7 +818,7 @@ sub build_category_by_id_list {
 
       # title for the marker (not validated, not guaranteed
       # to cover the whole stretch of images up to the next marker
-      my $first_img = $data{company_string};
+      my $first_img   = $data{company_string};
       my $category_id = $data{pm20Id};
 
       my $entry_ref = {
