@@ -281,7 +281,7 @@ sub get_doc_count {
 =item format_doc_counts ( $lang, {$total_only} )
 
 Return a language-specific string with total and free document counts, undef if
-none of them defined. If $total_only is set, return only first count.
+none of them defined.
 
 =cut
 
@@ -292,17 +292,18 @@ sub format_doc_counts {
   my $folderdata_raw = $self->get_folderdata_raw;
 
   my $doc_counts = '';
-  if ( exists $folderdata_raw->{totalDocCount} ) {
+  if ( exists $folderdata_raw->{totalDocCount}{'@value'}) {
     $doc_counts .= $folderdata_raw->{totalDocCount}{'@value'};
     $doc_counts .= ( $lang eq 'en' ? ' documents' : ' Dokumente' );
   }
   $doc_counts .= ' / ';
-  if ( exists $folderdata_raw->{freeDocCount} ) {
+  if ( exists $folderdata_raw->{freeDocCount}{'@value'} ) {
     $doc_counts .= $folderdata_raw->{freeDocCount}{'@value'};
     $doc_counts .=
       ( $lang eq 'en' ? ' available on the web' : ' im Web zugänglich' );
   }
-  if ( $doc_counts ne '' ) {
+  if ( $doc_counts ne ' / ' ) {
+    print Dumper $doc_counts;
     return $doc_counts;
   } else {
     return;

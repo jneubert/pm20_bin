@@ -167,7 +167,7 @@ sub mk_folder {
   # check if folder dir exists in the source tree
   my $rel_path  = $folder->get_folder_hashed_path();
   my $full_path = $FOLDER_ROOT->child($rel_path);
-  if ( $folder->get_doc_counts and not -d $full_path ) {
+  if ( $folder->get_doc_count and not -d $full_path ) {
     die "$full_path does not exist\n";
   }
 
@@ -401,21 +401,24 @@ sub mk_folder {
       foreach my $filming (qw/ 1 2 /) {
 
         # skip 1. filming when folder exists
-        next if ( $filming == 1 and $folder->get_doc_counts );
+        next if ( $filming == 1 and $folder->get_doc_count );
 
         my $filming_ref = $filming_def_ref->{$filming};
 
         my $company_film_data = $company_id_from_film{$filming}{$company_id};
 
         if ( not $company_film_data ) {
-          ## create an "empty" entry with link to filmlist
-          my %entry = (
-            "is_$lang"    => 1,
-            filming_title => $filming_ref->{title}{$lang},
-            legal         => $filming_ref->{legal}{$lang},
-            filmlist_link => "/film/h${filming}_co.de.html",
-          );
-          push( @{ $tmpl_var{filming_loop} }, \%entry );
+
+          ## TODO create some explanatory text with links filmlist 1 and 2 plus
+          ## a hint to microfiches for the lifetime of the company # create an
+          #"empty" entry with link to filmlist
+          #my %entry = (
+          #  "is_$lang"    => 1,
+          #  filming_title => $filming_ref->{title}{$lang},
+          #  legal         => $filming_ref->{legal}{$lang},
+          #  filmlist_link => "/film/h${filming}_co.de.html",
+          #);
+          #push( @{ $tmpl_var{filming_loop} }, \%entry );
           next;
         }
 
@@ -447,7 +450,6 @@ sub mk_folder {
 
         push( @{ $tmpl_var{filming_loop} }, \%filming_data );
       }
-
     }
 
     # mark folders for which only metadata exists
