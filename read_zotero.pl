@@ -416,8 +416,12 @@ sub add_number_of_images {
 
   my $number_of_images = int($pos) - int($old_pos);
 
+  # zotero uses film names w/o _1, _2
+  ( my $zotero_film_name = $film_name ) =~ s/(.+)?_[12]$/$1/;
+
   # number of images per film
-  $film{$film_name}{item}{$old_location}{number_of_images} = $number_of_images;
+  $film{$zotero_film_name}{item}{$old_location}{number_of_images} =
+    $number_of_images;
 }
 
 sub parse_sh_signature {

@@ -36,6 +36,14 @@ my %sh =
 my %co =
   %{ decode_json( $filmdata_root->child('co_lookup.json')->slurp ) };
 
+# lookup table for geo signatures
+my %geo_id;
+my $klassdata_file = $klassdata_root->child("geo_by_signature.de.json");
+my $klassdata_ref  = decode_json( $klassdata_file->slurp );
+foreach my $entry ( @{ $klassdata_ref->{results}{bindings} } ) {
+  $geo_id{ $entry->{signature}{value} } = $entry->{id}{value};
+}
+
 my %page = (
   h => {
     name => 'Hamburgisches Welt-Wirtschafts-Archiv (HWWA)',
@@ -115,9 +123,9 @@ foreach my $prov (qw/ h /) {
 
       # replace expanded signatures
       if ( $coll eq 'sh' ) {
-        $film_section->{start_sig} =
+        ( $film_section->{start_sig}, $film_section->{start_geo_id} ) =
           expand_sh_signature( $start_sig, $film_id );
-        $film_section->{end_sig} = expand_sh_signature( $end_sig, $film_id );
+        ( $film_section->{end_sig}, $film_section->{end_geo_id} )  = expand_sh_signature( $end_sig, $film_id );
       }
       if ( $coll eq 'co' ) {
         next unless ( $film_section->{start_sig} and $film_section->{end_sig} );
@@ -290,6 +298,9 @@ sub expand_sh_signature {
     $expanded_signature = '???';
   }
 
+  # get geo category id
+  my $geo_id = $geo_id{$geo};
+
   # expand topic
   if ($topic) {
 
@@ -329,7 +340,7 @@ sub expand_sh_signature {
   # squeeze multiple blanks
   $expanded_signature =~ s/\s+/ /g;
 
-  return $expanded_signature;
+  return $expanded_signature, $geo_id;
 }
 
 sub expand_co_signature {

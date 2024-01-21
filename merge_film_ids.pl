@@ -62,6 +62,9 @@ foreach my $filming (qw/ 1 2 /) {
     my $category_id;
     foreach my $film_id ( sort keys %{$filmlist_ref} ) {
 
+      # skip empty films (only notes etc.)
+      next if $filmlist_ref->{$film_id}{start_sig} eq 'x';
+
       # skip films which are online
       if (  $filmlist_ref->{$film_id}{online}
         and $filmlist_ref->{$film_id}{online} ne '' )
@@ -70,28 +73,41 @@ foreach my $filming (qw/ 1 2 /) {
         next;
       }
 
+      # skip _2 films because in zotero _1 and _2 do not exist
+      next if $film_id =~ m/_2$/;
+
+      # trucate _1 ids
+      ( my $zotero_film_id = $film_id ) =~ s/(.+)?_1$/$1/;
+
       # when information from zotero exists, use preferably that
-      if ( $zotero_ref->{$film_id} ) {
+      if ( $zotero_ref->{$zotero_film_id} ) {
         print "$film_id  \tfrom zotero\n";
 
         # all section defined for this film in zotero
-        my @items = sort keys %{ $zotero_ref->{$film_id}{item} };
+        my @items = sort keys %{ $zotero_ref->{$zotero_film_id}{item} };
 
-        # TODO is the following ok? _2 films do not start with 0001
         # add the entry of a continuation, if it is missing in zotero
-        if ( not $items[0] =~ m;$film_id/000[12](/[RL])?$; ) {
+        if ( not $items[0] =~ m;$zotero_film_id/000[12](/[RL])?$; ) {
           my $entry_ref = {
-            location  => "film/$set/$collection/$film_id/0002",
-            first_img => $filmlist_ref->{$film_id}{start_sig},
+            location  => "film/$set/$collection/$film_id",
+            first_img => "Filmanfang: $filmlist_ref->{$film_id}{start_sig}",
           };
+
+          # contral break may occur
+          if ( $category_type eq 'subject' ) {
+            $category_id = $filmlist_ref->{$film_id}{start_geo_id};
+          }
+
           push( @{ $by_id{$category_id}{sections} }, $entry_ref );
 
-          # TODO add to total_number_of_images?
-
+          # add first stretch to total_number_of_images
+          $items[0] =~ m;$zotero_film_id/(\d{4})(/[RL])?$;;
+          my $number_of_images = $1 - 2;
+          $by_id{$category_id}{total_number_of_images} += $number_of_images;
         }
 
         foreach my $location (@items) {
-          my %data = %{ $zotero_ref->{$film_id}{item}{$location} };
+          my %data = %{ $zotero_ref->{$zotero_film_id}{item}{$location} };
 
           # skip items with un-identified category
           next unless $data{$by_category_type};
@@ -102,7 +118,7 @@ foreach my $filming (qw/ 1 2 /) {
           my $first_img = $data{title};
 
           $category_id = $data{$by_category_type}{id};
-          print "  $category_id\n";
+          ##print "  $category_id\n";
 
           my $entry_ref = {
             location  => $location,
@@ -126,24 +142,29 @@ foreach my $filming (qw/ 1 2 /) {
       else {
         print "$film_id  \tfrom filmlist\n";
 
-        # add first image under the last category used
+        # add data according to first image
         my %section_entry = (
           location  => "film/$set/$collection/$film_id",
-          first_img => $filmlist_ref->{$film_id}{start_sig},
+          first_img => "Filmanfang: $filmlist_ref->{$film_id}{start_sig}",
         );
+
+        # contral break may occur
+        if ( $category_type eq 'subject' ) {
+          $category_id = $filmlist_ref->{$film_id}{start_geo_id};
+        }
+
         push( @{ $by_id{$category_id}{sections} }, \%section_entry );
 
         # update total_number_of_images
         my $key = "/mnt/intares/film/$set/$collection/$film_id";
         my $number_of_images;
-        if (defined $img_count_ref->{$key}) {
+        if ( defined $img_count_ref->{$key} ) {
           $number_of_images = $img_count_ref->{$key};
         } else {
           warn "number of images for full film $key not found\n";
           $number_of_images = 0;
         }
-        $by_id{$category_id}{total_number_of_images} +=
-          $number_of_images;
+        $by_id{$category_id}{total_number_of_images} += $number_of_images;
       }
     }
     my $out_file = $FILMDATA_ROOT->child($out_name);
