@@ -8,7 +8,7 @@ set -e
 
 # overview pages / lists / categories (in markdown)
 # (it is possible that new entries occur,
-# e.g. when new persons are added which had no documents before
+# e.g. when new persons/companies are added which had no documents before
 for set in "pe" "co" ; do
   perl create_folder_list.pl $set
 done
@@ -23,6 +23,6 @@ for set in "pe" "co" "sh" "wa" ; do
   perl create_mets.pl $set
 done
 
-# recrate html pages
+# recrate html from markdown pages
 ./web_make_all.sh
 

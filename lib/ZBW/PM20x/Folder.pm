@@ -303,7 +303,7 @@ sub format_doc_counts {
       ( $lang eq 'en' ? ' available on the web' : ' im Web zugänglich' );
   }
   if ( $doc_counts ne ' / ' ) {
-    print Dumper $doc_counts;
+    ##print Dumper $doc_counts;
     return $doc_counts;
   } else {
     return;
