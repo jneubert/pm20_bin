@@ -2,8 +2,9 @@
 # nbt, 22.2.2018
 
 # Use data from PM20 image files to check .htaccess and parse file names.
-# (.txt files are ignored) Produces docdata json file and beacon files with
-# number of free and total images.
+# (.txt files are ignored) Produces docdata json file and beacon files as well
+# as rdf/doc_count.ttl with number of free and total images, plus reportCount
+# for the latter.
 
 # Run after recreate_document_locks.pl!
 
@@ -11,7 +12,6 @@
 # - extended filename parsing
 # - read meta.yaml files
 # - check authors and publications
-# - create some RDF representation?
 
 use strict;
 use warnings;
@@ -37,10 +37,14 @@ $Data::Dumper::Sortkeys = 1;
 Readonly my $FOLDER_ROOT    => path('../folder');
 Readonly my $IMAGEDATA_ROOT => path('../data/imagedata');
 Readonly my $DOCDATA_ROOT   => path('../data/docdata');
+Readonly my $DOC_COUNT_FILE => path('../data/rdf/doc_count.ttl');
 Readonly my @COLLECTIONS    => qw/ co pe sh wa /;
 Readonly my $BEACON_ROOT    => path('../data/beacon');
-Readonly my $BEACON_HEADER  =>
+Readonly my $BEACON_HEADER =>
   "#FORMAT: BEACON\n#PREFIX: https://pm20.zbw.eu/folder/\n\n";
+
+# counter for total, free and report documents per folder
+my %count;
 
 $log->info('Start run');
 foreach my $collection (@COLLECTIONS) {
@@ -98,12 +102,32 @@ foreach my $collection (@COLLECTIONS) {
       # consolidated document information
       my $field_ref =
         consolidate_info( $folder, $doc, $docdata{$folder}{info}{$doc},
-        $docs{$doc} );
+          $docs{$doc} );
       $docdata{$folder}{info}{$doc}{con} = $field_ref;
 
       ##if ($docdata{$folder}{info}{$doc}{_txt}{TIT}) {
       ##  print Dumper $docdata{$folder}{info}{$doc};
       ##}
+    }
+
+    # collect counter data
+    $count{"$collection/$folder"} = {
+      freeDoc  => scalar( keys %{ $docdata{$folder}{free} } ),
+      totalDoc => scalar( keys %{ $docdata{$folder}{info} } ),
+    };
+
+    if ( $collection eq 'co' ) {
+      my $report_count = 0;
+      foreach my $doc ( keys %{ $docdata{$folder}{info} } ) {
+        if (  $docdata{$folder}{info}{$doc}{con}{type}
+          and $docdata{$folder}{info}{$doc}{con}{type} eq 'G' )
+        {
+          $report_count++;
+        }
+      }
+      if ($report_count) {
+        $count{"$collection/$folder"}{report} = $report_count;
+      }
     }
   }
 
@@ -134,6 +158,7 @@ foreach my $collection (@COLLECTIONS) {
   $DOCDATA_ROOT->child("${collection}_stats.json")
     ->spew( encode_json( \%coll ) );
 }
+write_doc_count( \%count );
 $log->info('End run');
 
 ################
@@ -169,9 +194,9 @@ sub parse_txt_file {
   my @lines;
   my @txt_files = $doc_dir->children(qr/[AFPSW].*?\.txt$/);
   if ( scalar(@txt_files) lt 1 ) {
-    $log->warn("  .txt file missing in $doc_dir");
+    ##$log->warn("  .txt file missing in $doc_dir");
   } elsif ( scalar(@txt_files) > 1 ) {
-    $log->warn("  multiple .txt files in $doc_dir");
+    ##$log->warn("  multiple .txt files in $doc_dir");
   } else {
 
     # parse the file
@@ -245,4 +270,19 @@ sub consolidate_info {
   $field{pages} = scalar( @{ $docs_ref->{pg} } );
 
   return \%field;
+}
+
+sub write_doc_count {
+  my $count_ref = shift or die "param missing";
+
+  my @lines;
+  foreach my $folder ( keys %{$count_ref} ) {
+    my $uri = "<https://pm20.zbw.eu/folder/$folder>";
+    foreach my $type (qw/ freeDoc totalDoc report /) {
+      next unless $count_ref->{$folder}{$type};
+      my $property = "<http://zbw.eu/namespaces/zbw-extensions/${type}Count>";
+      push( @lines, "$uri $property $count_ref->{$folder}{$type} ." );
+    }
+  }
+  $DOC_COUNT_FILE->spew( join( "\n", sort @lines ) );
 }
