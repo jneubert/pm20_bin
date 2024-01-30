@@ -105,7 +105,7 @@ foreach my $prov ( keys %page ) {
     push( @lines, "### $page{$prov}{name}",                  '' );
     push( @lines, "# $page{$prov}{list}{$page_name}{title}", '' );
     push( @lines,
-'Aus urheberrechtlichen Gründen sind die digitalisierten Filme nur im ZBW-Lesesaal zugänglich. *Bitte überprüfen Sie eigenverantwortlich vor einer Vervielfältigung oder Veröffentlichung einzelner Artikel deren urheberrechtlichen Status* ([Hinweise](#urheberrecht)) und holen Sie ggf. die Rechte bei den Rechteinhabern ein.',
+'Aus urheberrechtlichen Gründen sind die digitalisierten Filme nur im ZBW-Lesesaal (und für das HWWA-Material bis 1949 auch aus dem EU-Raum) zugänglich. *Bitte überprüfen Sie eigenverantwortlich vor einer Vervielfältigung oder Veröffentlichung einzelner Artikel deren urheberrechtlichen Status* ([Hinweise](#urheberrecht)) und holen Sie ggf. die Rechte bei den Rechteinhabern ein.',
       '' );
     if ( $page{$prov}{info} ) {
       push( @lines, $page{$prov}{info}, '' );
