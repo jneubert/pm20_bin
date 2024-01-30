@@ -16,6 +16,14 @@ REMOTE_USER=nbt
 REMOTE_DIR=/opt/pm20_ep
 ENDPOINT=https://zbw.eu/beta/sparql/pm20
 
+
+echo "CAUTION: should not run currently, because the process creates slightly
+different results (.extended.jsonld) from the former process on ite-srv24. 
+This caused later steps (e.g., create_category_pages.pl) to break"
+exit 1
+
+
+
 cd /pm20/bin
 ##echo "`date "+%F %T"` start"
 
@@ -94,38 +102,29 @@ done
 ##echo "`date "+%F %T"` done dump rdf"
 
 
-# SKIP jsonld processing
-if false; then
-
 # convert to jsonld
 
-for vocab in geo subject ware ; do
-  input=../data/rdf/${vocab}.skos.extended.ttl
-  # prepend with defined prefixes for control of jsonld conversion
-  sed -i '1s;^;@prefix zbwext: <http://zbw.eu/namespaces/zbw-extensions/> \.\n;' $input
-  sed -i '1s;^;@prefix skos: <http://www.w3.org/2004/02/skos/core#> \.\n;' $input
-  /opt/jena/bin/riot --output=jsonld $input > ../data/rdf/${vocab}.skos.extended.jsonld
-done
+# prior version, using Jena riot for conversion of vocab files
+# abandoned, because that would require a java / jena installation on pm20
+##for vocab in geo subject ware ; do
+##  input=../data/rdf/${vocab}.skos.extended.ttl
+##  # prepend with defined prefixes for control of jsonld conversion
+##  sed -i '1s;^;@prefix zbwext: <http://zbw.eu/namespaces/zbw-extensions/> \.\n;' $input
+##  sed -i '1s;^;@prefix skos: <http://www.w3.org/2004/02/skos/core#> \.\n;' $input
+##  /opt/jena/bin/riot --output=jsonld $input > ../data/rdf/${vocab}.skos.extended.jsonld
+##done
 ##echo "`date "+%F %T"` done riot convert skos.extended.ttl to .jsonld"
 
-# GET as jsonld is much faster than transformation with riot
-##JVM_ARGS="-Xms4g" /opt/jena/bin/riot --output=jsonld ../data/rdf/pm20.extended.ttl > ../data/rdf/pm20.interim.jsonld
-ssh $REMOTE_HOST 'curl --silent -X GET -H "Accept: application/ld+json" http://localhost:3030/pm20/get?graph=default' > ../data/rdf/pm20.interim.jsonld
-##echo "`date "+%F %T"` done get pm20.interim.jsonld"
-
-# transformation via PyLD (instead of php jsonld) extends subordinated nodes
-##/usr/bin/php -d memory_limit=6G -f transform_jsonld.php > ../data/rdf/pm20.extended.jsonld
-# PyLD needs at least Python 3.6. rh scl environment has to be started
-scl enable rh-python36 - << \EOF
-source /home/nbt/pydev/py36-venv/bin/activate
-cd /opt/pm20x/bin
+# dump in interim jsonld format and transform
+curl --silent -X GET -H "Accept: application/ld+json" $ENDPOINT/get?graph=default > ../data/rdf/pm20.interim.jsonld
 python3 transform_jsonld.py frame_folder > ../data/rdf/pm20.extended.jsonld
-##python3 transform_jsonld.py frame_category > ../data/rdf/category.extended.jsonld
-EOF
-##echo "`date "+%F %T"` transform_jsonld.py done "
 
-# end SKIP
-fi
+for vocab in geo subject ware ; do
+  vocab_graph=http://zbw.eu/beta/$vocab/ng
+  curl --silent -X GET -H "Accept: application/ld+json" $ENDPOINT/get?graph=$vocab_graph > ../data/rdf/${vocab}.skos.interim.ttl
+  python3 transform_jsonld.py frame_category > ../data/rdf/pm20.extended.jsonld
+done
+##echo "`date "+%F %T"` done dump rdf + transform to jsonld"
 
 
 # dump all RDF from endpoint (with all extensions) for publication
