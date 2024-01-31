@@ -122,7 +122,7 @@ python3 transform_jsonld.py frame_folder > ../data/rdf/pm20.extended.jsonld
 for vocab in geo subject ware ; do
   vocab_graph=http://zbw.eu/beta/$vocab/ng
   curl --silent -X GET -H "Accept: application/ld+json" $ENDPOINT/get?graph=$vocab_graph > ../data/rdf/${vocab}.skos.interim.ttl
-  python3 transform_jsonld.py frame_category > ../data/rdf/pm20.extended.jsonld
+  python3 transform_jsonld.py frame_category > ../data/rdf/${vocab}.skos.extended.jsonld
 done
 ##echo "`date "+%F %T"` done dump rdf + transform to jsonld"
 
@@ -135,12 +135,16 @@ done
 # SKIP temporarily, until fixed
 if false; then
 
-# create and copy sparql results to pm20 server
+# create sparql results ánd provde them on´pm20 server
 # (both scripts based on sparql_results.yaml)
+# +# TODO procedures have been copied over from ite-srv24; they have to be adapted
+# cp_reports.pl should finally not be necessary, but may provide hints re. the target locations
+
+# on ite-srv24, a symlink ../sparql -> /opt/sparql-queries/pm20 was in place
+# on pm20, the location is /pm20/var/sparql-queries
+
 /usr/bin/perl mk_sparql_results.pl
 /usr/bin/perl cp_reports.pl
-# copy configuration to pm20 server
-scp -pq sparql_results.yaml nbt@213.183.195.106:/pm20/bin
 ##echo "`date "+%F %T"` done make+copy sparql results"
 
 fi
