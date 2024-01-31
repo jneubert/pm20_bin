@@ -292,7 +292,7 @@ sub format_doc_counts {
   my $folderdata_raw = $self->get_folderdata_raw;
 
   my $doc_counts = '';
-  if ( exists $folderdata_raw->{totalDocCount}{'@value'}) {
+  if ( exists $folderdata_raw->{totalDocCount}{'@value'} ) {
     $doc_counts .= $folderdata_raw->{totalDocCount}{'@value'};
     $doc_counts .= ( $lang eq 'en' ? ' documents' : ' Dokumente' );
   }
@@ -683,6 +683,126 @@ sub get_filmsectionlist {
   }
 
   return \@filmsectionlist;
+}
+
+=item company_may_have_filming2()
+
+Returns true, if a company existed already before the end of the second filming
+period (1949-1960), and the folder, according to the known metadata, has
+clippings or report before the end date.
+
+(The first filming period is already completely evaluated.)
+
+=cut
+
+sub company_may_have_filming2 {
+  my $self = shift or croak('param missing');
+
+  croak("Wrong collection in $self->{folder_id}")
+    if $self->{collection} ne 'co';
+
+  my $filming2_until = 1960;
+
+  my $folderdata_raw = $self->get_folderdata_raw;
+
+  # check the founding date
+  if ( my $founding_date = $self->{foundingDate}{'@value'} ) {
+    if ( substr( $founding_date, 0, 4 ) > $filming2_until ) {
+      return 0;
+    }
+  }
+
+  # we do not guess when there is no holdings information
+  return 0 if not $folderdata_raw->{temporal};
+
+  # check start date of clippings or reports
+  my $material_start = 9999;
+  foreach my $line ( @{ $folderdata_raw->{temporal} } ) {
+    if ( $line =~ m/^(\d{4})\D/ ) {
+      if ( $1 < $material_start ) {
+        $material_start = $1;
+      }
+    }
+    if ( $line =~ m/^GB:\S?(\d{4})\D/ ) {
+      if ( $1 < $material_start ) {
+        $material_start = $1;
+      }
+    }
+  }
+  ##print Dumper $self, $folderdata_raw->{foundingDate}, $folderdata_raw->{temporal}, $material_start;exit;
+  if ( $material_start <= $filming2_until ) {
+    return 1;
+  } else {
+    return 0;
+  }
+}
+
+=item company_may_have_fiche()
+
+Returns true, if a company existed already before the end of the microfiche
+period (1960-1980), and the folder, according to the known metadata, has
+clippings or report before the end date.
+
+=cut
+
+sub company_may_have_fiche {
+  my $self = shift or croak('param missing');
+
+  croak("Wrong collection in $self->{folder_id}")
+    if $self->{collection} ne 'co';
+
+  my $fiches_from  = 1960;
+  my $fiches_until = 1980;
+
+  my $folderdata_raw = $self->get_folderdata_raw;
+
+  # check the founding date
+  if ( my $founding_date = $self->{foundingDate}{'@value'} ) {
+    if ( substr( $founding_date, 0, 4 ) > $fiches_until ) {
+      return 0;
+    }
+  }
+
+  # we do not guess when there is no holdings information
+  return 0 if not $folderdata_raw->{temporal};
+
+  # check start date of clippings or reports
+  my $material_start = 9999;
+  foreach my $line ( @{ $folderdata_raw->{temporal} } ) {
+    if ( $line =~ m/^(\d{4})\D/ ) {
+      if ( $1 < $material_start ) {
+        $material_start = $1;
+      }
+    }
+    if ( $line =~ m/^GB:\S?(\d{4})\D/ ) {
+      if ( $1 < $material_start ) {
+        $material_start = $1;
+      }
+    }
+  }
+
+  # check end date of clippings or reports
+  # TODO: does not work when there no plain year at the end of the line
+  my $material_end = $material_start;
+  foreach my $line ( @{ $folderdata_raw->{temporal} } ) {
+    if ( $line =~ m/.*?(\d{4})$/ ) {
+      if ( $1 > $material_end ) {
+        $material_end = $1;
+      }
+    }
+    if ( $line =~ m/^GB:\S?.*?(\d{4})$/ ) {
+      if ( $1 > $material_end ) {
+        $material_end = $1;
+      }
+    }
+  }
+
+  # return only true when material exists in the microfiche period
+  if ( $material_end >= $fiches_from and $material_start <= $fiches_until ) {
+    return 1;
+  } else {
+    return 0;
+  }
 }
 
 =back

@@ -79,6 +79,9 @@ sub mk_all {
 sub mk_collectionlist {
   my $collection = shift or die "param missing";
 
+  # number of companies with claimed holdings, but without known location
+  my %additional_entry_count;
+
   # two types of lists are created for co and pe collection
   my @list_types = ('with_docs');
   if ( $collection eq 'co' or $collection eq 'pe' ) {
@@ -91,9 +94,40 @@ sub mk_collectionlist {
       my %abc;
       foreach my $folder_nk ( sort @{ $collection_ids{$collection} } ) {
         my $folder = ZBW::PM20x::Folder->new( $collection, $folder_nk );
-        if ( $folder->get_doc_count
-          or $folder->get_film_img_counts )
+
+        if (
+             $folder->get_doc_count
+          or $folder->get_film_img_counts
+          or (
+            $collection eq 'co'
+            and ($folder->company_may_have_filming2
+              or $folder->company_may_have_fiche )
+          )
+          )
         {
+          if ( $collection eq 'co' ) {
+            if ( not( $folder->get_doc_count or $folder->get_film_img_counts ) )
+            {
+              $additional_entry_count{$folder_nk}++;
+            }
+          }
+
+          # debugging code
+          ##if ( $lang eq 'en' and $list_type eq 'with_docs' ) {
+          ##  if (
+          ##        $collection eq 'co'
+          ##    and $folder->company_may_have_fiche
+          ##    and not( $folder->get_doc_count
+          ##      or $folder->get_film_img_counts
+          ##      or $folder->company_may_have_filming2 )
+          ##    )
+          ##  {
+          ##    print $folder->get_folderlabel($lang), "\n";
+          ##    my $folderdata = $folder->get_folderdata_raw;
+          ##    ##print Dumper $folderdata->{temporal};
+          ##  }
+          ##}
+
           if ( $list_type eq 'without_docs' ) {
             next;
           }
@@ -133,16 +167,29 @@ sub mk_collectionlist {
             ->child("about.$lang.html");
 
           # note with doc and img counts
-          my ( $note, $doc_count, $img_counts );
-          if ( $doc_count = $folder->get_doc_count ) {
-            $note =
-              ( $lang eq 'en' )
-              ? "$doc_count documents"
-              : "$doc_count Dokumente";
-          }
-          if ( $img_counts = $folder->get_film_img_counts ) {
-            $note .= ' + ' if $note;
-            $note .= "$img_counts $filming_def_ref->{ALL}{film_note}{$lang}";
+          my $note;
+          my $doc_count  = $folder->get_doc_count;
+          my $img_counts = $folder->get_film_img_counts;
+
+          if ( $list_type eq 'with_docs' and ( $doc_count or $img_counts ) ) {
+            if ($doc_count) {
+              $note =
+                ( $lang eq 'en' )
+                ? "$doc_count documents"
+                : "$doc_count Dokumente";
+            }
+            if ($img_counts) {
+              $note .= ' + ' if $note;
+              $note .= "$img_counts $filming_def_ref->{ALL}{film_note}{$lang}";
+            }
+          } else {
+            if ( $list_type eq 'with_docs' ) {
+              $note =
+                ( $lang eq 'en' )
+                ? 'probably in unexplored holdings'
+                : 'wahrscheinlich im unerschlossenen Bestand';
+              $note = "[($note)]{.gray}";
+            }
           }
           my %entry = (
             label   => $label,
@@ -176,6 +223,7 @@ sub mk_collectionlist {
       my $label = $TITLE{collection}{$collection}{$lang};
       $label .= $lang eq 'de' ? ' Mappen' : ' folders';
       my %tmpl_var = (
+        lang           => $lang,
         "is_$lang"     => 1,
         provenance     => $TITLE{provenance}{hh}{$lang},
         collection     => $collection,
@@ -209,6 +257,11 @@ sub mk_collectionlist {
       if ( $collection eq 'wa' ) {
         $tmpl_var{collection_wa} = 1;
       }
+      if ( $list_type eq 'with_docs' ) {
+        if ( my $additional_count = scalar( keys %additional_entry_count ) ) {
+          $tmpl_var{additional_entry_count} = $additional_count;
+        }
+      }
       $tmpl->clear_params;
       $tmpl->param( \%tmpl_var );
 
@@ -221,7 +274,7 @@ sub mk_collectionlist {
 }
 
 sub load_ids {
-  my $coll_id_ref = shift;
+  my $coll_id_ref = shift or die "param missing";
 
   # create a list of numerical keys for each collection
   my $data = decode_json( $FOLDER_DATA->slurp );

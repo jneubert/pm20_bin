@@ -10,12 +10,15 @@ fn-stub: <tmpl_var fn_stub>
 ### <tmpl_var provenance>
 # <tmpl_var label>
 
-<tmpl_if is_de>Insgesamt <tmpl_var folder_count> Mappen mit <tmpl_var document_count> Dokumenten<tmpl_if image_count> sowie <tmpl_var image_count> Aufnahmen von digitalisierten Mikrofilmen</tmpl_if>.</tmpl_if><tmpl_if is_en>In total <tmpl_var folder_count> folders with <tmpl_var document_count> documents<tmpl_if image_count> and <tmpl_var image_count> images from digitized microfilms</tmpl_if>.</tmpl_if>
+<tmpl_if is_with_docs><tmpl_if is_de>Insgesamt <tmpl_var folder_count> Mappen mit <tmpl_var document_count> Dokumenten<tmpl_if image_count> sowie <tmpl_var image_count> Aufnahmen von digitalisierten Mikrofilmen</tmpl_if><tmpl_if additional_entry_count>. Für <tmpl_var additional_entry_count> Firmen gibt es möglicherweise Aufnahmen auf unerschlossenen digitalisierten Mikrofilmen (1950-1960) und/oder auf Mikrofiches (1960-1980)</tmpl_if>.</tmpl_if>
 
-<tmpl_if is_with_docs>**[<tmpl_if is_de>Mappen-Suche mit Synonymen</tmpl_if><tmpl_if is_en>Folder search with synonyms</tmpl_if>](https://pm20-search.toolforge.org?lang=<tmpl_var lang>&amp;coll=<tmpl_var collection>)** (via Wikidata)</tmpl_if>
+<tmpl_if is_with_docs><tmpl_if is_en>In total <tmpl_var folder_count> folders with <tmpl_var document_count> documents<tmpl_if image_count> and <tmpl_var image_count> images from digitized microfilms</tmpl_if><tmpl_if additional_entry_count>. For <tmpl_var additional_entry_count> companies possibly exist images on unexplored digitized microfilm (1950-1960) and/or on microfiche (1960-1980)</tmpl_if>.</tmpl_if></tmpl_if>
 
-<tmpl_if is_with_docs>_<tmpl_if is_de>Metadaten für weitere Mappen (ohne digitalisierte Dokumente) [hier](without_docs.de.html).</tmpl_if><tmpl_if is_en>Metadata about additional folders (without digitized documents) are [here](without_docs.en.html)</tmpl_if>_</tmpl_if>
-<tmpl_if is_without_docs>_<tmpl_if is_de>Für alle hier aufgeführten Mappen gibt es nur Metadaten, keine digitalisierten Dokumente.</tmpl_if><tmpl_if is_en>Only metadata for these folders, no digitized documents.</tmpl_if>_</tmpl_if>
+<tmpl_if is_with_docs>**[<tmpl_if is_de>Mappen-Suche mit Synonymen</tmpl_if><tmpl_if is_en>Folder search with synonyms</tmpl_if>](https://pm20-search.toolforge.org?lang=<tmpl_var lang>&amp;coll=<tmpl_var collection>)** (via Wikidata)</tmpl_if></tmpl_if>
+
+<tmpl_if is_with_docs>_<tmpl_if is_de>Metadaten für weitere Mappen (ohne bekannte digitalisierte Dokumente oder Mikrofiches) [hier](without_docs.de.html).</tmpl_if><tmpl_if is_en>Metadata about additional folders (without known digitized documents or microfiches) are [here](without_docs.en.html)</tmpl_if>_</tmpl_if>
+
+<tmpl_if is_without_docs>_<tmpl_if is_de>Für alle hier aufgeführten Mappen gibt es nur Metadaten, keine digitalisierten Dokumente oder Mikrofiches.</tmpl_if><tmpl_if is_en>Only metadata for these folders, no digitized documents or microfiches.</tmpl_if>_</tmpl_if>
 
 <div class="spacer">&#160;</div>
 
@@ -26,7 +29,7 @@ fn-stub: <tmpl_var fn_stub>
 
 <tmpl_loop startchar_loop>
 ###  <tmpl_var startchar><a name="id_<tmpl_var startchar>">
-<tmpl_loop folder_loop>* [<tmpl_var label>](<tmpl_var path>) <tmpl_if from_to>(<tmpl_var from_to>)</tmpl_if> &#160; <tmpl_if note>[(<tmpl_var note>)]{.hint}</tmpl_if>
+<tmpl_loop folder_loop>* [<tmpl_var label>](<tmpl_var path>) <tmpl_if from_to>(<tmpl_var from_to>)</tmpl_if> &#160; <tmpl_if note>[<tmpl_var note>]{.hint}</tmpl_if>
 </tmpl_loop>
 <div class="hint"><a href="#top"><tmpl_if is_de>nach oben</tmpl_if><tmpl_if is_en>top</tmpl_if></a></div>
 <div class="spacer">&#160;</div>
