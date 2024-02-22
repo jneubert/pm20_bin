@@ -94,6 +94,10 @@ foreach my $qid ( sort keys %{$wd_item_ref} ) {
     if ( $entry->{pm20Id} ) {
       print "|P4293|\"$entry->{pm20Id}\"";
     }
+    # for second filming, report access restriction to reading room
+    if ( $section_id =~ m/^h2\// ) {
+      print "|P6954|Q124632004";
+    }
     print "\n";
   }
 }
