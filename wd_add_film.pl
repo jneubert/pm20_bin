@@ -81,10 +81,15 @@ foreach my $qid ( sort keys %{$wd_item_ref} ) {
     }
     print "|P528|\"$entry->{signature}\"";
     ##print "\n",  Dumper $wd_label_ref->{qid}, $entry;
+    my $company_string = $entry->{company_string};
     if ( not $wd_label_ref->{$qid}
-      or ( lc( $entry->{company_string} ) ne lc( $wd_label_ref->{$qid} ) ) )
+      or ( lc( $company_string ) ne lc( $wd_label_ref->{$qid} ) ) )
     {
-      print "|P1810|\"$entry->{company_string}\"";
+      # fix company names with appended signature
+      if ( $company_string =~ m/(.+) \($entry->{signature}\)$/ ) {
+        $company_string = $1;
+      }
+      print "|P1810|\"$company_string\"";
     }
     if ( $entry->{pm20Id} ) {
       print "|P4293|\"$entry->{pm20Id}\"";
