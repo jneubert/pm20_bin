@@ -452,6 +452,8 @@ sub mk_folder {
       }
     }
 
+    $tmpl_var{signature} = $folderdata_raw->{notation};
+
     # mark folders for which only metadata exists
     if ( not $tmpl_var{doc_counts} and not $tmpl_var{filming_loop} ) {
       $tmpl_var{metadata_only} = 1;
