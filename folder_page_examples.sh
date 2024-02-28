@@ -12,6 +12,20 @@ docs=(
   # General Motors - multiple entries filming 1, unkwon filming 2
   "co/009737"
 
+  # 20th Century Fox (material 1944 - 2005) - perhaps filming 1, perhaps
+  # filming 2, perhaps microfiche
+  "co/025488"
+
+  # United States Borax and Chemical (material 1956-1996) - perhaps
+  # filming 2, perhaps microfiche
+  "co/069327"
+
+  # 600 Group Ltd. (material from 1975 on) - perhaps microfiche
+  "co/022329"
+
+  # Google (material from 2001 on) - only metadata
+  "co/010206"
+
   # Abbe - person without film
   "pe/000012"
 
