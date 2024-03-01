@@ -167,7 +167,7 @@ sub mk_folder {
   # check if folder dir exists in the source tree
   my $rel_path  = $folder->get_folder_hashed_path();
   my $full_path = $FOLDER_ROOT->child($rel_path);
-  if ( $folder->get_doc_count and not -d $full_path ) {
+  if ( $folder->get_doc_count and -d $FOLDER_ROOT and not -d $full_path ) {
     die "$full_path does not exist\n";
   }
 
@@ -451,6 +451,8 @@ sub mk_folder {
         push( @{ $tmpl_var{filming_loop} }, \%filming_data );
       }
     }
+
+    $tmpl_var{signature} = $folderdata_raw->{notation};
 
     # mark folders for which only metadata exists
     if ( not $tmpl_var{doc_counts} and not $tmpl_var{filming_loop} ) {
