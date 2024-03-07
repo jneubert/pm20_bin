@@ -10,15 +10,37 @@ fn-stub: <tmpl_var fn_stub>
 ### <tmpl_var provenance>
 # <tmpl_var label>
 
-<tmpl_if is_with_docs><tmpl_if is_de>Insgesamt <tmpl_var folder_count> Mappen mit <tmpl_var document_count> Dokumenten<tmpl_if image_count> sowie <tmpl_var image_count> Aufnahmen von digitalisierten Mikrofilmen</tmpl_if><tmpl_if additional_entry_count>. Für <tmpl_var additional_entry_count> Firmen gibt es möglicherweise Aufnahmen auf unerschlossenen digitalisierten Mikrofilmen (1950-1960) und/oder auf Mikrofiches (1960-1980)</tmpl_if>.</tmpl_if>
+<tmpl_if is_de>
 
-<tmpl_if is_with_docs><tmpl_if is_en>In total <tmpl_var folder_count> folders with <tmpl_var document_count> documents<tmpl_if image_count> and <tmpl_var image_count> images from digitized microfilms</tmpl_if><tmpl_if additional_entry_count>. For <tmpl_var additional_entry_count> companies possibly exist images on unexplored digitized microfilm (1950-1960) and/or on microfiche (1960-1980)</tmpl_if>.</tmpl_if></tmpl_if>
+<tmpl_if is_with_docs>Insgesamt <tmpl_var folder_count> Mappen mit <tmpl_var document_count> Dokumenten<tmpl_if image_count> sowie <tmpl_var image_count> Aufnahmen von digitalisierten Mikrofilmen.</tmpl_if>
 
-<tmpl_if is_with_docs>**[<tmpl_if is_de>Mappen-Suche mit Synonymen</tmpl_if><tmpl_if is_en>Folder search with synonyms</tmpl_if>](https://pm20-search.toolforge.org?lang=<tmpl_var lang>&amp;coll=<tmpl_var collection>)** (via Wikidata)</tmpl_if></tmpl_if>
+<tmpl_if maybe_docs_count>Für weitere <tmpl_var maybe_docs_count> Firmen/Institutionen gibt es den Bestandsangaben zufolge Aufnahmen auf unerschlossenen digitalisierten Mikrofilmen (1950-1960) und/oder auf Mikrofiches (1960-1980) ([separate Liste](maybe_docs.de.html))</tmpl_if maybe_docs_count>.</tmpl_if is_without_docs>
 
-<tmpl_if is_with_docs>_<tmpl_if is_de>Metadaten für weitere Mappen (ohne bekannte digitalisierte Dokumente oder Mikrofiches) [hier](without_docs.de.html).</tmpl_if><tmpl_if is_en>Metadata about additional folders (without known digitized documents or microfiches) are [here](without_docs.en.html)</tmpl_if>_</tmpl_if>
+<tmpl_if is_maybe_docs>Den Bestandsangaben zufolge gibt es zu den folgenden <tmpl_var maybe_docs_count> Firmen und Institutionen Aufnahmen aus der 2. Verfilmung (1949-1960) und/oder auf Mikrofiche (1961-1980).</tmpl_if>
 
-<tmpl_if is_without_docs>_<tmpl_if is_de>Für alle hier aufgeführten Mappen gibt es nur Metadaten, keine digitalisierten Dokumente oder Mikrofiches.</tmpl_if><tmpl_if is_en>Only metadata for these folders, no digitized documents or microfiches.</tmpl_if>_</tmpl_if>
+<tmpl_unless is_without_docs>**[Mappen-Suche mit Synonymen](https://pm20-search.toolforge.org?lang=<tmpl_var lang>&amp;coll=<tmpl_var collection>)** (via Wikidata)</tmpl_unless>
+
+<tmpl_if is_with_docs>_Metadaten für weitere Mappen (ohne bekannte digitalisierte Dokumente oder Mikrofiches) [hier](without_docs.de.html)._</tmpl_if>
+
+<tmpl_if is_without_docs>_Für alle hier aufgeführten <tmpl_var without_docs_count> Mappen gibt es nur Metadaten, keine digitalisierten Dokumente oder Mikrofiches._</tmpl_if>
+
+</tmpl_if>
+
+<tmpl_if is_en>
+
+<tmpl_if is_with_docs>In total <tmpl_var folder_count> folders with <tmpl_var document_count> documents<tmpl_if image_count> and <tmpl_var image_count> images from digitized microfilms.</tmpl_if>
+
+<tmpl_if maybe_docs_count>For another <tmpl_var maybe_docs_count> companies/institutions exist, according to the holdings information, images on unexplored digitized microfilm (1950-1960) and/or on microfiche (1960-1980) ([separate Liste](maybe_docs.de.html)).</tmpl_if></tmpl_if>
+
+<tmpl_if is_maybe_docs>According to holdings information, for the <tmpl_var maybe_docs_count> companies and institutions listed here exist images on unexplored digitized mikrofilms (1950-1960) and/or on microfiche (1960-1980).</tmpl_if>
+
+<tmpl_unless is_without_docs>**[Folder search with synonyms](https://pm20-search.toolforge.org?lang=<tmpl_var lang>&amp;coll=<tmpl_var collection>)** (via Wikidata)</tmpl_unless>
+
+<tmpl_if is_with_docs>_Metadata about additional folders (without known digitized documents or microfiches) are [here](without_docs.en.html)._</tmpl_if>
+
+<tmpl_if is_without_docs>_Only metadata for these <tmpl_var without_docs_count> folders, no digitized documents or microfiches._</tmpl_if>
+
+</tmpl_if>
 
 <div class="spacer">&#160;</div>
 
