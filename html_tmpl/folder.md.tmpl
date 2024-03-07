@@ -23,8 +23,14 @@ desc-meta: "<tmpl_var meta_description>"
 
 <tmpl_include name="filmsections.md.inc">
 
+<tmpl_if microfiche_period>
+## <tmpl_if is_de>Material auf Mikrofiche</tmpl_if><tmpl_if is_en>Material on microfiche</tmpl_if> (<tmpl_var microfiche_period>)
+
+<tmpl_if is_de>Möglicherweise existiert Material auf Mikrofiches. Einsicht nur am Standort Hamburg der ZBW möglich - bitte kontaktieren Sie uns über die Feedback-Adresse am Seitenfuß.</tmpl_if><tmpl_if is_en>Material may exist on microfiche. Access is only possible at the Hamburg site of the ZBW - please contact us via the feedback address at the foot of this page.</tmpl_if>
+</tmpl_if microfiche_period>
+
 <tmpl_if metadata_only>
-_<tmpl_if is_de>Für diese Mappe gibt es nur Metadaten, keine digitalisierten Dokumente.</tmpl_if><tmpl_if is_en>Only metadata for this folder, no digitized documents.</tmpl_if>_
+_<tmpl_if is_de>Für diese Mappe gibt es nur Metadaten, keine digitalisierten Dokumente oder Mikrofiches.</tmpl_if><tmpl_if is_en>Only metadata for this folder, no digitized documents or microfiches.</tmpl_if>_
 </tmpl_if>
 
 <div class="spacer">&#160;</div>

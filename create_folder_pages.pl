@@ -345,6 +345,9 @@ sub mk_folder {
       $tmpl_var{country_name} = $1;
       $tmpl_var{subject_name} = $2;
 
+      # TODO Add general link to film/h2_sh and microfiche hint
+      ##$tmpl_var{microfiche_period} = '1961-1980';
+
       $tmpl_var{signature} = $folderdata_raw->{notation};
 
       foreach my $part (qw/country subject/) {
@@ -370,6 +373,9 @@ sub mk_folder {
       $label =~ m/^(.+?) : (.+)$/;
       $tmpl_var{ware_name}    = $1;
       $tmpl_var{country_name} = $2;
+
+      # TODO Add link to category wa page  and microfiche hint
+      ##$tmpl_var{microfiche_period} = '1961-1998';
 
       foreach my $part (qw/country ware/) {
         $folderdata_raw->{$part}{'@id'} =~ m;/pressemappe20(/.+)$;;
@@ -400,34 +406,31 @@ sub mk_folder {
 
       foreach my $filming (qw/ 1 2 /) {
 
-        # skip 1. filming when folder exists
+        # skip filming 1 when folder exists
         next if ( $filming == 1 and $folder->get_doc_count );
 
-        my $filming_ref = $filming_def_ref->{$filming};
-
+        my $filming_ref       = $filming_def_ref->{$filming};
         my $company_film_data = $company_id_from_film{$filming}{$company_id};
 
-        if ( not $company_film_data ) {
+        # create general entry if material in filming 2 _may_ exist
+        # (filming 1 is already completely evaluated, so skip if nothing was
+        # found)
+        if ( not $company_film_data->{sections} ) {
+          next if $filming == 1;
+          next unless $folder->company_may_have_material('filming2');
 
-          ## TODO create some explanatory text with links filmlist 1 and 2 plus
-          ## a hint to microfiches for the lifetime of the company # create an
-          #"empty" entry with link to filmlist
-          #my %entry = (
-          #  "is_$lang"    => 1,
-          #  filming_title => $filming_ref->{title}{$lang},
-          #  legal         => $filming_ref->{legal}{$lang},
-          #  filmlist_link => "/film/h${filming}_co.de.html",
-          #);
-          #push( @{ $tmpl_var{filming_loop} }, \%entry );
+          # create an "empty" entry with link to filmlist
+          my %entry = (
+            "is_$lang"    => 1,
+            filming_title => $filming_ref->{title}{$lang},
+            legal         => $filming_ref->{legal}{$lang},
+            filmlist_link => "/film/h${filming}_co.de.html",
+          );
+          push( @{ $tmpl_var{filming_loop} }, \%entry );
           next;
         }
 
         my @filmsection_loop;
-        if ( not $company_film_data->{sections} ) {
-          warn Dumper $company_film_data;
-          warn "Skipped $company_id\n\n";
-          next;
-        }
         foreach my $section ( sort @{ $company_film_data->{sections} } ) {
           my $film_id = substr( $section->{location}, 5 );
           my $entry   = {
@@ -450,12 +453,20 @@ sub mk_folder {
 
         push( @{ $tmpl_var{filming_loop} }, \%filming_data );
       }
+
+      # may microfiche data exist?
+      if ( $folder->company_may_have_material('microfiche') ) {
+        $tmpl_var{microfiche_period} = "1961-1980";
+      }
     }
 
     $tmpl_var{signature} = $folderdata_raw->{notation};
 
     # mark folders for which only metadata exists
-    if ( not $tmpl_var{doc_counts} and not $tmpl_var{filming_loop} ) {
+    if (  not $tmpl_var{doc_counts}
+      and not $tmpl_var{filming_loop}
+      and not $tmpl_var{microfiche_period} )
+    {
       $tmpl_var{metadata_only} = 1;
     }
 
