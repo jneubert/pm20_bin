@@ -4,8 +4,8 @@
 # creates the .md files for folder lists
 # (links to all folders of a collection on one page)
 
-# intended for pe and co, temporarily also for wa
-# (for sh, categories work much better)
+# intended for pe and co
+# (for sh and wa, categories work much better)
 
 use strict;
 use warnings;
@@ -79,13 +79,16 @@ sub mk_all {
 sub mk_collectionlist {
   my $collection = shift or die "param missing";
 
-  # number of companies with claimed holdings, but without known location
-  my %additional_entry_count;
+  # number of folders without any documents (only on paper)
+  my %without_docs_count;
 
-  # two types of lists are created for co and pe collection
-  my @list_types = ('with_docs');
-  if ( $collection eq 'co' or $collection eq 'pe' ) {
-    push( @list_types, 'without_docs' );
+  # number of companies with claimed holdings, but without known location
+  my %maybe_docs_count;
+
+  # two types of lists are created for pe collection, three for co
+  my @list_types = ( 'with_docs', 'without_docs' );
+  if ( $collection eq 'co' ) {
+    push( @list_types, 'maybe_docs' );
   }
   foreach my $list_type (@list_types) {
     foreach my $lang (@LANGUAGES) {
@@ -95,47 +98,35 @@ sub mk_collectionlist {
       foreach my $folder_nk ( sort @{ $collection_ids{$collection} } ) {
         my $folder = ZBW::PM20x::Folder->new( $collection, $folder_nk );
 
-        if (
-             $folder->get_doc_count
-          or $folder->get_film_img_counts
-          or (
-            $collection eq 'co'
-            and ($folder->company_may_have_filming2
-              or $folder->company_may_have_fiche )
-          )
-          )
-        {
-          if ( $collection eq 'co' ) {
-            if ( not( $folder->get_doc_count or $folder->get_film_img_counts ) )
-            {
-              $additional_entry_count{$folder_nk}++;
-            }
-          }
+        my $has_docs = (
+               $folder->get_doc_count
+            or $folder->get_film_img_counts
+        );
 
-          # debugging code
-          ##if ( $lang eq 'en' and $list_type eq 'with_docs' ) {
-          ##  if (
-          ##        $collection eq 'co'
-          ##    and $folder->company_may_have_fiche
-          ##    and not( $folder->get_doc_count
-          ##      or $folder->get_film_img_counts
-          ##      or $folder->company_may_have_filming2 )
-          ##    )
-          ##  {
-          ##    print $folder->get_folderlabel($lang), "\n";
-          ##    my $folderdata = $folder->get_folderdata_raw;
-          ##    ##print Dumper $folderdata->{temporal};
-          ##  }
-          ##}
+        my $maybe_has_docs = (
+          $collection eq 'co'
+            and ( $folder->company_may_have_material('filming2')
+            or $folder->company_may_have_material('microfiche') )
+        );
 
-          if ( $list_type eq 'without_docs' ) {
-            next;
-          }
-        } else {
-          if ( $list_type eq 'with_docs' ) {
-            next;
-          }
+        # increment folder counters
+        if ( $maybe_has_docs and not $has_docs ) {
+          $maybe_docs_count{$folder_nk}++;
         }
+        if ( not( $has_docs or $maybe_has_docs ) ) {
+          $without_docs_count{$folder_nk}++;
+        }
+
+        # skip in cases where not fitting for current $list_type
+        next if ( $list_type eq 'with_docs' and not $has_docs );
+        next
+          if ( $list_type eq 'maybe_docs'
+          and ( $has_docs or not $maybe_has_docs ) );
+        next
+          if ( $list_type eq 'without_docs'
+          and ( $has_docs or $maybe_has_docs ) );
+
+        # collect data for folder entry
         my $label = $folder->get_folderlabel($lang);
         ## skip undefined folders (warning in Folder.pm)
         next unless $label;
@@ -153,7 +144,7 @@ sub mk_collectionlist {
         my @folders;
         my @folder_list =
           sort {
-            $uc->cmp( $a->get_folderlabel($lang), $b->get_folderlabel($lang) )
+          $uc->cmp( $a->get_folderlabel($lang), $b->get_folderlabel($lang) )
           } @{ $abc{$startchar} };
         foreach my $folder (@folder_list) {
           my $label = $folder->get_folderlabel($lang);
@@ -181,14 +172,6 @@ sub mk_collectionlist {
             if ($img_counts) {
               $note .= ' + ' if $note;
               $note .= "$img_counts $filming_def_ref->{ALL}{film_note}{$lang}";
-            }
-          } else {
-            if ( $list_type eq 'with_docs' ) {
-              $note =
-                ( $lang eq 'en' )
-                ? 'probably in unexplored holdings'
-                : 'wahrscheinlich im unerschlossenen Bestand';
-              $note = "[($note)]{.gray}";
             }
           }
           my %entry = (
@@ -234,32 +217,40 @@ sub mk_collectionlist {
         startchar_loop => \@startchar_entries,
         fn_stub        => 'about',
       );
-      if ( $collection eq 'pe' or $collection eq 'co' ) {
-        $tmpl_var{"is_$list_type"} = 1;
-        if ( $list_type eq 'without_docs' ) {
-          $tmpl_var{label} .=
-            $lang eq 'de'
-            ? ' ohne digitalisierte Dokumente'
-            : ' without digitized documents';
-          $tmpl_var{backlink}       = "about.$lang.html";
-          $tmpl_var{backlink_title} = $label;
-          $tmpl_var{fn_stub}        = 'without_docs';
-          $tmpl_var{robots}         = 'noindex,nofollow';
-        } else {
-          $tmpl_var{robots}         = 'noindex';
-          $tmpl_var{folder_count}   = $total_count{folder};
-          $tmpl_var{document_count} = $total_count{document};
-          if ( $total_count{image} ) {
-            $tmpl_var{image_count} = $total_count{image};
-          }
+      $tmpl_var{"is_$list_type"} = 1;
+      if ( $list_type eq 'with_docs' ) {
+        $tmpl_var{robots}         = 'noindex';
+        $tmpl_var{folder_count}   = $total_count{folder};
+        $tmpl_var{document_count} = $total_count{document};
+        if ( $total_count{image} ) {
+          $tmpl_var{image_count} = $total_count{image};
         }
       }
-      if ( $collection eq 'wa' ) {
-        $tmpl_var{collection_wa} = 1;
+      if ( $list_type eq 'maybe_docs' ) {
+        $tmpl_var{label} .=
+          $lang eq 'de'
+          ? ' mit nicht erschlossenem Material'
+          : ' with unindexed Material';
+        $tmpl_var{backlink}       = "about.$lang.html";
+        $tmpl_var{backlink_title} = $label;
+        $tmpl_var{fn_stub}        = 'maybe_docs';
+        $tmpl_var{robots}         = 'noindex,nofollow';
       }
-      if ( $list_type eq 'with_docs' ) {
-        if ( my $additional_count = scalar( keys %additional_entry_count ) ) {
-          $tmpl_var{additional_entry_count} = $additional_count;
+      if ( $list_type eq 'without_docs' ) {
+        $tmpl_var{label} .=
+          $lang eq 'de'
+          ? ' nur mit Metadaten'
+          : ' with metadata only';
+        $tmpl_var{backlink}       = "about.$lang.html";
+        $tmpl_var{backlink_title} = $label;
+        $tmpl_var{fn_stub}        = 'without_docs';
+        $tmpl_var{robots}         = 'noindex,nofollow';
+      }
+      if ( $list_type eq 'without_docs' ) {
+        $tmpl_var{without_docs_count} = scalar( keys %without_docs_count );
+      } else {
+        if ( my $additional_count = scalar( keys %maybe_docs_count ) ) {
+          $tmpl_var{maybe_docs_count} = $additional_count;
         }
       }
       $tmpl->clear_params;
