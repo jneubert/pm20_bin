@@ -57,10 +57,15 @@ ZBW::PM20x::Vocab - Functions for PM20 vocabularies
   my $label = $voc->label($lang, $id);
   my $signature = $voc->signature($id);
   my $term_id = $voc->lookup_signature('A10');
+  my $term_id = $voc->lookup_geo_name('Andorra');
+  my $term_id = $voc->lookup_ware_name('Kohle');
   my $subheading = $voc->subheading('A');
   my $folder_count = $voc->folder_count( 'subject', 'geo', $id );
 
 =head1 DESCRIPTION
+
+The instances of this class are vocabularies (geo, ware, subject), not
+individual terms.
 
 Read all vocabularies into a data structure, organized as:
 
@@ -70,6 +75,10 @@ Read all vocabularies into a data structure, organized as:
     modified        last modification of the vocabulary
     nta             by signature
       {$signature}  points to id
+    geo_name        by geo name
+      {$geo_name}   points to id
+    ware_name       by ware name
+      {$ware_name}  points to id
     subhead         subheadings for lists
       {$first}      first letter of signature
 
@@ -84,9 +93,9 @@ Read all vocabularies into a data structure, organized as:
 
 =item new ($vocab_name)
 
-Return a new vocab object from the named vocabulary. (Names were lowercase ifis
-klass_code; now geo|suject|ware).  Read the according SKOS vocabluary in JSONLD
-format into the object.
+Return a new vocab object from the named vocabulary. (Names were previosly
+lowercase ifis klass_code; now geo|suject|ware).  Read the according SKOS
+vocabluary in JSONLD format into the object.
 
 =cut
 
@@ -96,7 +105,6 @@ sub new {
 
   my $self = { vocab_name => $vocab_name };
   bless $self, $class;
-
   # initialize with file
   my ( %cat, %lookup, $modified );
   my $file = path("$RDF_ROOT/$vocab_name.skos.extended.jsonld");
@@ -109,14 +117,19 @@ sub new {
 
       my $type = $category->{'@type'};
       next unless $type;
-      if ( $type eq 'skos:ConceptScheme' ) {
+      if ( $type eq 'ConceptScheme' ) {
         $self->{modified} = $category->{modified};
-      } elsif ( $type eq 'skos:Concept' ) {
-
-        # skip orphan entries
-        next if not exists $category->{broader};
+      } elsif ( $type eq 'Concept' ) {
 
         my $id = $category->{identifier};
+
+        # skip orphan entries for old vocab - do not require broader for new
+        # entries (here only available via klassifikator id)
+        if ( not exists $category->{broader} ) {
+          if ($id < 230701) {
+            next;
+          }
+        }
 
         # map optional simple jsonld fields to hash entries
         my @fields = qw / notation notationLong foldersComplete geoCategoryType
@@ -184,7 +197,7 @@ sub new {
 
     $self->_add_subheadings();
   }
-
+  ##print Dumper $self;
   return $self;
 }
 
@@ -469,6 +482,46 @@ sub lookup_signature {
   return $term_id;
 }
 
+=item lookup_geo_name ( $geo_name )
+
+Look up a term id by German geo name (case insensitive), undef if not defined.
+
+=cut
+
+sub lookup_geo_name {
+  my $self     = shift or confess('param missing');
+  my $geo_name = shift or confess('param missing');
+
+  # lazy load
+  if ( not defined $self->{geo_name} ) {
+    $self->_init_geo_name();
+  }
+
+  my $term_id = $self->{geo_name}{ lc($geo_name) };
+
+  return $term_id;
+}
+
+=item lookup_ware_name ( $ware_name )
+
+Look up a term id by German ware name (case insensitive), undef if not defined.
+
+=cut
+
+sub lookup_ware_name {
+  my $self     = shift or confess('param missing');
+  my $ware_name = shift or confess('param missing');
+
+  # lazy load
+  if ( not defined $self->{ware_name} ) {
+    $self->_init_ware_name();
+  }
+
+  my $term_id = $self->{ware_name}{ lc($ware_name) };
+
+  return $term_id;
+}
+
 =back
 
 =cut
@@ -559,6 +612,36 @@ sub _add_subheadings {
     }
   }
   return;
+}
+
+# init geo_name data
+
+sub _init_geo_name {
+  my $self = shift or croak('param missing');
+
+  foreach my $id ( keys %{ $self->{id} } ) {
+    my %terminfo = %{ $self->{id}{$id} };
+
+    # normalize geo name to lowercase German
+    my $name = lc( $terminfo{prefLabel}{de} );
+
+    $self->{geo_name}{$name} = $id;
+  }
+}
+
+# init ware_name data
+
+sub _init_ware_name {
+  my $self = shift or croak('param missing');
+
+  foreach my $id ( keys %{ $self->{id} } ) {
+    my %terminfo = %{ $self->{id}{$id} };
+
+    # normalize ware name to lowercase German
+    my $name = lc( $terminfo{prefLabel}{de} );
+
+    $self->{ware_name}{$name} = $id;
+  }
 }
 
 1;
