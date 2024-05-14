@@ -15,6 +15,63 @@ use Readonly;
 Readonly my $RDF_ROOT  => path('../data/rdf');
 Readonly my $IMG_COUNT => _init_img_count();
 
+# items in a collection are primarily grouped by $type, identified by zotero
+# or filmlist properties
+Readonly my %GROUPING_PROPERTY => (
+  co => {
+    ## ignore countries for now!
+    primary_group => {
+      type       => 'company',
+      zotero     => 'pm20Id',
+      filmlist   => 'start_company_id',
+      jsonld     => 'about',
+      rdf_pred   => 'schema:about',
+      rdf_prefix => 'pm20co',
+    },
+  },
+  wa => {
+    primary_group => {
+      type       => 'ware',
+      zotero     => 'ware_id',
+      filmlist   => 'start_ware_id',
+      jsonld     => 'ware',
+      rdf_pred   => 'zbwext:ware',
+      rdf_prefix => 'pm20ware',
+    },
+    secondary_group => {
+      type       => 'geo',
+      zotero     => 'geo_id',
+      filmlist   => 'start_company_id',
+      rdf_pred   => 'zbwext:country',
+      rdf_prefix => 'pm20geo',
+    },
+  },
+  sh => {
+    primary_group => {
+      type       => 'geo',
+      zotero     => 'geo_id',
+      filmlist   => 'start_geo_id',
+      jsonld     => 'country',
+      rdf_pred   => 'zbwext:country',
+      rdf_prefix => 'pm20geo',
+    },
+    secondary_group => {
+      type       => 'subject',
+      zotero     => 'subject_id',
+      rdf_pred   => 'zbwext:subject',
+      rdf_prefix => 'pm20subject',
+    },
+  },
+);
+
+# $FILM =     { $film_id => [ $section_uri ] }
+# $SECTION =  { $section_uri => { img_count, ...} }
+# $FOLDER =   { $collection => { $folder_nk => { $filming => [ $section_uri, ... ] } } }
+# $CATEGORY = { $category_type => { $category_id => { $filming => [ $section_uri ... ] } } }
+# DOES NOT WORK WITH Readonly!
+##Readonly my ( $FILM, $SECTION, $FOLDER, $CATEGORY ) => _load_filmdata();
+my ( $FILM, $SECTION, $FOLDER, $CATEGORY ) = _load_filmdata();
+
 =encoding utf8
 
 =head1 NAME
@@ -26,6 +83,8 @@ ZBW::PM20x::Film - Functions for PM20 microfilms
 
   use ZBW::PM20x::Film;
   my $film = ZBW::PM20x::Film->new('h1/sh/S0073H_1');
+  my @films = ZBW::PM20x::Film->films('h1_sh');
+  my @sections = ZBW::PM20x::Film->foldersections('co/004711', 1);
 
   my $film_name = $film->name();              # S0073H_1
   my $logical_name = $film->logigcal_name();  # S0073H
@@ -75,6 +134,19 @@ sub new {
   return $self;
 }
 
+=item get_grouping_properties ($collection)
+
+Return metadata structure about the grouping properties for a collection.
+
+=cut
+
+sub get_grouping_properties {
+  my $class      = shift or croak('param missing');
+  my $collection = shift or croak('param missing');
+
+  return $GROUPING_PROPERTY{$collection};
+}
+
 =item films ($subset)
 
 Return a list of films sorted by film id for a subset (e.g. "h1_sh").
@@ -110,6 +182,28 @@ sub films {
   @films = sort { $a->{film_id} cmp $b->{film_id} } @films;
 
   return @films;
+}
+
+=item foldersections ($folder_id, $filming)
+
+Return a list of film sections for the folder, for a certain filming (1|2).
+Currently, only for collection 'co'.
+
+=cut
+
+sub foldersections {
+  my $class     = shift or croak('param missing');
+  my $folder_id = shift or croak('param missing');
+  my $filming   = shift or croak('param missing');
+
+  my @sectionlist;
+  my ( $collection, $folder_nk ) = $folder_id =~ m;^(co)/(\d{6})$;;
+  foreach my $section_uri ( @{ $FOLDER->{$collection}{$folder_nk}{$filming} } )
+  {
+    my %entry = ( $section_uri => $SECTION->{$section_uri}, );
+    push( @sectionlist, $SECTION->{$section_uri} );
+  }
+  return @sectionlist;
 }
 
 =back
@@ -186,6 +280,65 @@ sub _init_img_count {
   }
 
   return \%img_count;
+}
+
+sub _load_filmdata {
+
+  my ( $FILM, $SECTION, $FOLDER, $CATEGORY );
+
+  my $film_file = path('../data/rdf/film.jsonld');
+  my @filmdata  = @{ decode_json( $film_file->slurp )->{'@graph'} };
+
+  foreach my $filmdata_ref (@filmdata) {
+    my $type = $filmdata_ref->{'@type'};
+    my $uri  = $filmdata_ref->{'@id'};
+    if ( $type eq 'Pm20FilmItem' ) {
+      $SECTION->{$uri} = $filmdata_ref;
+    } elsif ( $type eq 'Pm20Film' ) {
+      $FILM->{$uri} = $filmdata_ref;
+    } else {
+      ## subsets
+      ##print Dumper $filmdata_ref;
+    }
+  }
+
+  # folders and categories
+  foreach my $section_uri ( sort keys %{$SECTION} ) {
+    $section_uri =~ m;/film/h(1|2)/(co|wa|sh)/(.+)?/(\d+)(?:/(R|L))?$;;
+    my $filming    = $1;
+    my $collection = $2;
+    my $film_name  = $3;
+    my $img_nr     = $4;
+    my $rl         = $5;
+
+    my $section_ref = $SECTION->{$section_uri};
+
+    # folders (currently only for co)
+    if ( my $pm20_uri = $section_ref->{about}{'@id'} ) {
+      $pm20_uri =~ m;folder/co/(\d{6});;
+      my $folder_nk = $1;
+      push( @{ $FOLDER->{$collection}{$folder_nk}{$filming} }, $section_uri );
+    }
+
+    # categories
+    else {
+      my $grp_prop_ref = ZBW::PM20x::Film->get_grouping_properties($collection);
+      my $category_type = $grp_prop_ref->{primary_group}{type};
+      my $category_prop = $grp_prop_ref->{primary_group}{jsonld};
+
+      if ( $section_ref->{$category_prop}
+        and my $category_uri = $section_ref->{$category_prop}{'@id'} )
+      {
+        $category_uri =~ m;category/$category_type/i/(\d{6});;
+        my $category_id = $1;
+        push(
+          @{ $CATEGORY->{$category_type}{$category_id}{$filming} },
+          $section_uri
+        );
+      }
+    }
+  }
+  return $FILM, $SECTION, $FOLDER, $CATEGORY;
 }
 
 1;

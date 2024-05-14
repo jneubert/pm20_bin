@@ -16,6 +16,7 @@ use Path::Tiny;
 use Readonly;
 use Scalar::Util qw(looks_like_number reftype);
 use ZBW::PM20x::Vocab;
+use ZBW::PM20x::Film;
 
 Readonly my $FOLDER_URI_ROOT  => 'https://pm20.zbw.eu/folder/';
 Readonly our $FOLDER_ROOT     => path('/pm20/folder');
@@ -684,22 +685,10 @@ sub get_filmsectionlist {
   my $self    = shift or croak('param missing');
   my $filming = shift or croak('param missing');
 
-  my @filmsectionlist = ();
+  my @filmsectionlist =
+    ZBW::PM20x::Film->foldersections( $self->get_folder_id, $filming );
 
-  my $collection = $self->{collection};
-  my $folder_nk  = $self->{folder_nk};
-
-  # list has to be created, if not exists
-  if ( not defined $data{$collection}{"filmsection${filming}data"} ) {
-    _load_filmsectiondata( $collection, $filming );
-  }
-  my $filmsectiondata_ref = $data{$collection}{"filmsection${filming}data"};
-
-  if ( $filmsectiondata_ref->{$folder_nk} ) {
-    @filmsectionlist = @{ $filmsectiondata_ref->{$folder_nk} };
-  }
-
-  return \@filmsectionlist;
+  return @filmsectionlist;
 }
 
 =item company_may_have_material( filming2 | microfiche )
@@ -749,42 +738,6 @@ sub _load_docdata {
   my $docdata_file = $DOCDATA_ROOT->child("${collection}_docdata.json");
   my $docdata_ref  = decode_json( $docdata_file->slurp );
   $data{$collection}{docdata} = $docdata_ref;
-}
-
-sub _load_filmsectiondata {
-  my $collection = shift or croak('param missing');
-  my $filming    = shift or croak('param missing');
-
-  my %filmdata;
-
-  # TODO currently reads zotero data -
-  # to be replaced by getting more complete data from Wikidata
-  my $provenance       = 'h';                                  # currently fixed
-  my $subset           = "${provenance}${filming}_$collection";
-  my $filmsection_file = $FILMDATA_ROOT->child("zotero.$subset.json");
-  my $filmsection_ref  = decode_json( $filmsection_file->slurp );
-
-  foreach my $film ( sort keys %{$filmsection_ref} ) {
-    foreach my $section_name ( sort keys %{ $filmsection_ref->{$film}{item} } )
-    {
-      my $section_ref = $filmsection_ref->{$film}{item}{$section_name};
-      my $folder_nk;
-      if ( $section_ref->{pm20Id} ) {
-        if ( $section_ref->{pm20Id} =~ m;^(co|pe|sh|wa)/(\d{6}(,\d{6})?)$; ) {
-          $folder_nk = $2;
-          push( @{ $filmdata{$folder_nk} }, $section_ref );
-        } else {
-          croak "Illegal $section_ref->{pm20Id} in $section_name\n";
-        }
-      }
-    }
-  }
-  $data{$collection}{"filmsection${filming}data"} = \%filmdata;
-
-  # debug?
-  foreach my $folder ( keys %filmdata ) {
-    ##print "$folder\n" if scalar(@{$filmdata{$folder}}) gt 2;
-  }
 }
 
 # load complete folderdata (from jsonld)
