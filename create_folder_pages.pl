@@ -89,14 +89,6 @@ my %collection_ids;
 # lookup table for all ids
 my %folder_id;
 
-# folder ids read from film (only for company)
-my %company_id_from_film;
-foreach my $filming (qw/1 2/) {
-  my $id_file =
-    $FILMDATA_ROOT->child("zotero.h${filming}_co.by_company_id.json");
-  $company_id_from_film{$filming} = decode_json( $id_file->slurp );
-}
-
 load_ids( \%collection_ids, \%folder_id );
 my $subject_voc = ZBW::PM20x::Vocab->new('subject');
 
@@ -409,13 +401,14 @@ sub mk_folder {
         # skip filming 1 when folder exists
         next if ( $filming == 1 and $folder->get_doc_count );
 
-        my $filming_ref       = $filming_def_ref->{$filming};
-        my $company_film_data = $company_id_from_film{$filming}{$company_id};
+        my $filming_ref     = $filming_def_ref->{$filming};
+        my @filmsectionlist = $folder->get_filmsectionlist($filming);
+        ##print Dumper \@filmsectionlist;
 
         # create general entry if material in filming 2 _may_ exist
         # (filming 1 is already completely evaluated, so skip if nothing was
         # found)
-        if ( not $company_film_data->{sections} ) {
+        if ( not @filmsectionlist ) {
           next if $filming == 1;
           next unless $folder->company_may_have_material('filming2');
 
@@ -431,13 +424,13 @@ sub mk_folder {
         }
 
         my @filmsection_loop;
-        foreach my $section ( sort @{ $company_film_data->{sections} } ) {
-          my $film_id = substr( $section->{location}, 5 );
+        foreach my $section ( sort @filmsectionlist ) {
+          my $film_id = substr( $section->{'@id'}, 25 );
           my $entry   = {
             "is_$lang"     => 1,
             filmviewer_url => "https://pm20.zbw.eu/film/$film_id",
             film_id        => $film_id,
-            first_img      => $section->{first_img},
+            first_img      => $section->{title},
           };
           push( @filmsection_loop, $entry );
         }
@@ -447,8 +440,7 @@ sub mk_folder {
           filming_title          => $filming_ref->{title}{$lang},
           legal                  => $filming_ref->{legal}{$lang},
           filmsection_loop       => \@filmsection_loop,
-          total_number_of_images =>
-            $company_film_data->{total_number_of_images},
+          total_number_of_images => $folder->get_film_img_count($filming),
         );
 
         push( @{ $tmpl_var{filming_loop} }, \%filming_data );
