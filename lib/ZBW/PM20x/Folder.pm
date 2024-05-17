@@ -328,6 +328,28 @@ sub format_doc_counts {
   }
 }
 
+=item get_film_img_count ( $filming )
+
+Return the number of images for the folder from a certain filming. (Currently,
+only for co)
+
+=cut
+
+sub get_film_img_count {
+  my $self    = shift or croak('param missing');
+  my $filming = shift or croak('param missing');
+
+  my $fid = $self->get_folder_id;
+  return unless $fid =~ m/^co\//;
+
+  my $count;
+  my @sections = $self->get_filmsectionlist($filming);
+  foreach my $section_ref (@sections) {
+    $count += $section_ref->{totalImageCount}{'@value'};
+  }
+  return $count;
+}
+
 =item get_film_img_counts ()
 
 Return a string with film image counts for the first and second filming, undef
@@ -342,24 +364,26 @@ sub get_film_img_counts {
 
   return unless $fid =~ m/^co\//;
 
-  # data has to be loaded, if not exists
-  if ( not defined $data{co}{"film_img_count"} ) {
-    _load_film_img_count_data();
+  my %count;
+  foreach my $filming (qw/ 1 2 /) {
+    my @sections = $self->get_filmsectionlist($filming);
+    foreach my $section_ref (@sections) {
+      $count{$filming} += $section_ref->{totalImageCount}{'@value'};
+    }
   }
 
   my $img_counts = '';
 
-  ##print Dumper $fid, $data{co}{film_img_count}{$fid};
-  my ( $cnt1, $cnt2 );
-  if ( $cnt1 = $data{co}{film_img_count}{$fid}{1} ) {
-    $img_counts = $cnt1;
+  if ( $count{1} ) {
+    $img_counts = $count{1};
   }
-  if ( $cnt2 = $data{co}{film_img_count}{$fid}{2} ) {
-    if ($cnt1) {
+  if ( $count{2} ) {
+    if ( $count{1} ) {
       $img_counts .= ' / ';
     }
-    $img_counts .= $cnt2;
+    $img_counts .= $count{2};
   }
+  print "$img_counts\n";
   if ($img_counts) {
     return $img_counts;
   } else {
@@ -761,22 +785,6 @@ sub _load_folderdata {
       $blank_node{$id_value} = $folder_ref;
     } else {
       confess("strange folder \@id value: $id_value");
-    }
-  }
-}
-
-sub _load_film_img_count_data {
-  foreach my $filming (qw/ 1 2 /) {
-    my %filmdata = %{
-      decode_json(
-        $FILMDATA_ROOT->child("zotero.h${filming}_co.by_company_id.json")
-          ->slurp
-      )
-    };
-    foreach my $folder_id ( keys %filmdata ) {
-      if ( my $total = $filmdata{$folder_id}{total_number_of_images} ) {
-        $data{co}{film_img_count}{$folder_id}{$filming} = $total;
-      }
     }
   }
 }
