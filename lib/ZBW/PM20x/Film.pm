@@ -274,8 +274,8 @@ sub _init_img_count {
     next if $raw_id =~ m/S9398$/;
     next if $raw_id =~ m/dummy$/;
 
-    # strip "historical" prefix from film id
-    $raw_id =~ m;^/mnt/intares/film/(.+)$;;
+    # strip filesystem prefix from film id
+    $raw_id =~ m;^/pm20/film/(.+)$;;
     $img_count{$1} = $raw_ref->{$raw_id};
   }
 
