@@ -13,6 +13,7 @@ use JSON;
 use Path::Tiny;
 use Readonly;
 use Scalar::Util qw(looks_like_number reftype);
+use ZBW::PM20x::Film;
 
 # exported package constants
 our @ISA    = qw/ Exporter /;
@@ -105,6 +106,7 @@ sub new {
 
   my $self = { vocab_name => $vocab_name };
   bless $self, $class;
+
   # initialize with file
   my ( %cat, %lookup, $modified );
   my $file = path("$RDF_ROOT/$vocab_name.skos.extended.jsonld");
@@ -126,7 +128,7 @@ sub new {
         # skip orphan entries for old vocab - do not require broader for new
         # entries (here only available via klassifikator id)
         if ( not exists $category->{broader} ) {
-          if ($id < 230701) {
+          if ( $id < 230701 ) {
             next;
           }
         }
@@ -509,7 +511,7 @@ Look up a term id by German ware name (case insensitive), undef if not defined.
 =cut
 
 sub lookup_ware_name {
-  my $self     = shift or confess('param missing');
+  my $self      = shift or confess('param missing');
   my $ware_name = shift or confess('param missing');
 
   # lazy load
@@ -520,6 +522,48 @@ sub lookup_ware_name {
   my $term_id = $self->{ware_name}{ lc($ware_name) };
 
   return $term_id;
+}
+
+=item filmsectionlist( $term_id, $filming )
+
+Return a sorted list of film sections for a category (leaves out sections
+already published as folders and not manually indexed) for either filming 1 or
+2. Currently datastructure works only for primary category. For category geo,
+only sections for sh are returned.
+
+TODO: Extend to secondary categories.
+
+=cut
+
+sub filmsectionlist {
+  my $self    = shift or croak('param missing');
+  my $term_id = shift or croak('param missing');
+  my $filming = shift or croak('param missing');
+
+  my @filmsectionlist =
+    ZBW::PM20x::Film->categorysections( $self->{vocab_name}, $term_id,
+    $filming );
+
+  return @filmsectionlist;
+}
+
+=item film_img_count ( $term_id, $filming )
+
+Return the number of images for a primary category from a certain filming.
+
+=cut
+
+sub film_img_count {
+  my $self    = shift or croak('param missing');
+  my $term_id = shift or croak('param missing');
+  my $filming = shift or croak('param missing');
+
+  my $count;
+  my @sections = $self->filmsectionlist( $term_id, $filming );
+  foreach my $section_ref (@sections) {
+    $count += $section_ref->{totalImageCount}{'@value'};
+  }
+  return $count;
 }
 
 =back
