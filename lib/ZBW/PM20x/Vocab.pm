@@ -207,7 +207,9 @@ sub new {
 
 =head1 Instance methods
 
-=over 2
+=head2 Methods for the vocabulary
+
+=over 4
 
 =item modified ()
 
@@ -228,6 +230,67 @@ sub modified {
 
   return $modified;
 }
+
+=item lookup_signature ( $signature )
+
+Look up a term id by signature, undef if not defined.
+
+=cut
+
+sub lookup_signature {
+  my $self      = shift or croak('param missing');
+  my $signature = shift or croak('param missing');
+
+  my $term_id = $self->{nta}{$signature};
+
+  return $term_id;
+}
+
+=item lookup_geo_name ( $geo_name )
+
+Look up a term id by German geo name (case insensitive), undef if not defined.
+
+=cut
+
+sub lookup_geo_name {
+  my $self     = shift or confess('param missing');
+  my $geo_name = shift or confess('param missing');
+
+  # lazy load
+  if ( not defined $self->{geo_name} ) {
+    $self->_init_geo_name();
+  }
+
+  my $term_id = $self->{geo_name}{ lc($geo_name) };
+
+  return $term_id;
+}
+
+=item lookup_ware_name ( $ware_name )
+
+Look up a term id by German ware name (case insensitive), undef if not defined.
+
+=cut
+
+sub lookup_ware_name {
+  my $self      = shift or confess('param missing');
+  my $ware_name = shift or confess('param missing');
+
+  # lazy load
+  if ( not defined $self->{ware_name} ) {
+    $self->_init_ware_name();
+  }
+
+  my $term_id = $self->{ware_name}{ lc($ware_name) };
+
+  return $term_id;
+}
+
+=back
+
+=head2 Methods for an individual term/category
+
+=over 4
 
 =item label ( $lang, $term_id )
 
@@ -467,61 +530,6 @@ sub start_sig {
       return;
     }
   }
-}
-
-=item lookup_signature ( $signature )
-
-Look up a term id by signature, undef if not defined.
-
-=cut
-
-sub lookup_signature {
-  my $self      = shift or croak('param missing');
-  my $signature = shift or croak('param missing');
-
-  my $term_id = $self->{nta}{$signature};
-
-  return $term_id;
-}
-
-=item lookup_geo_name ( $geo_name )
-
-Look up a term id by German geo name (case insensitive), undef if not defined.
-
-=cut
-
-sub lookup_geo_name {
-  my $self     = shift or confess('param missing');
-  my $geo_name = shift or confess('param missing');
-
-  # lazy load
-  if ( not defined $self->{geo_name} ) {
-    $self->_init_geo_name();
-  }
-
-  my $term_id = $self->{geo_name}{ lc($geo_name) };
-
-  return $term_id;
-}
-
-=item lookup_ware_name ( $ware_name )
-
-Look up a term id by German ware name (case insensitive), undef if not defined.
-
-=cut
-
-sub lookup_ware_name {
-  my $self      = shift or confess('param missing');
-  my $ware_name = shift or confess('param missing');
-
-  # lazy load
-  if ( not defined $self->{ware_name} ) {
-    $self->_init_ware_name();
-  }
-
-  my $term_id = $self->{ware_name}{ lc($ware_name) };
-
-  return $term_id;
 }
 
 =item filmsectionlist( $term_id, $filming )
