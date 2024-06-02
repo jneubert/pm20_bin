@@ -12,8 +12,9 @@ use JSON;
 use Path::Tiny;
 use Readonly;
 
-Readonly my $RDF_ROOT  => path('../data/rdf');
-Readonly my $IMG_COUNT => _init_img_count();
+Readonly my $FILM_ROOT_URI => 'https://pm20.zbw.eu/film/';
+Readonly my $RDF_ROOT      => path('../data/rdf');
+Readonly my $IMG_COUNT     => _init_img_count();
 
 # items in a collection are primarily grouped by $type, identified by zotero
 # or filmlist properties
@@ -64,7 +65,7 @@ Readonly my %GROUPING_PROPERTY => (
   },
 );
 
-# $FILM =     { $film_id => [ $section_uri ] }
+# $FILM =     { $film_id => { total_image_count, ... }, sections => [ $section_uri, ... ] }
 # $SECTION =  { $section_uri => { img_count, ...} }
 # $FOLDER =   { $collection => { $folder_nk => { $filming => [ $section_uri, ... ] } } }
 # $CATEGORY = { $category_type => { $category_id => { $filming => [ $section_uri ... ] } } }
@@ -84,11 +85,12 @@ ZBW::PM20x::Film - Functions for PM20 microfilms
   use ZBW::PM20x::Film;
   my $film = ZBW::PM20x::Film->new('h1/sh/S0073H_1');
   my @films = ZBW::PM20x::Film->films('h1_sh');
-  my @sections = ZBW::PM20x::Film->foldersections('co/004711', 1);
+  my @folder_sections = ZBW::PM20x::Film->foldersections('co/004711', 1);
 
   my $film_name = $film->name();              # S0073H_1
   my $logical_name = $film->logigcal_name();  # S0073H
   my $number_of_images = $film->img_count();
+  my @sections = $film->sections();
 
 =head1 DESCRIPTION
 
@@ -103,7 +105,7 @@ called logical film.
 
 =item new ($film_id)
 
-Return a new film object from the named vocabulary.
+Return a new film object for the film id.
 
 =cut
 
@@ -127,11 +129,31 @@ sub new {
     film_id    => $film_id,
     set        => $set,
     collection => $collection,
-    film_name  => $film_name
+    film_name  => $film_name,
+    uri        => $FILM_ROOT_URI . $film_id,
   };
   bless $self, $class;
 
   return $self;
+}
+
+=item new_from_location ($location)
+
+Return a new film object from a zotero location string.
+
+=cut
+
+sub new_from_location {
+  my $class    = shift or croak('param missing');
+  my $location = shift or croak('param missing');
+
+  my $film_id;
+  if ( $location =~ m/film\/(.+)?\/\d{4}(\/[RL])?$/ ) {
+    $film_id = $1;
+  } else {
+    croak("Invalid location [$location]");
+  }
+  return $class->new($film_id);
 }
 
 =item get_grouping_properties ($collection)
@@ -206,6 +228,31 @@ sub foldersections {
   return @sectionlist;
 }
 
+=item categorysections ($category_type, $category_id, $filming)
+
+Return a list of film sections for the category, for a certain filming (1|2).
+Currently, only works for the primary category. (geo for sh, ware for wa)
+
+=cut
+
+sub categorysections {
+  my $class         = shift or croak('param missing');
+  my $category_type = shift or croak('param missing');
+  my $category_id   = shift or croak('param missing');
+  my $filming       = shift or croak('param missing');
+
+  my @sectionlist;
+
+# $CATEGORY = { $category_type => { $category_id => { $filming => [ $section_uri ... ] } } }
+  foreach
+    my $section_uri ( @{ $CATEGORY->{$category_type}{$category_id}{$filming} } )
+  {
+    my %entry = ( $section_uri => $SECTION->{$section_uri}, );
+    push( @sectionlist, $SECTION->{$section_uri} );
+  }
+  return @sectionlist;
+}
+
 =back
 
 =head1 Instance methods
@@ -239,6 +286,23 @@ sub logical_name {
   $logical_name =~ s/^(.+)?_[12]$/$1/;
 
   return $logical_name;
+}
+
+=item sections ()
+
+Return a list of film sections for a film. 
+
+=cut
+
+sub sections {
+  my $self = shift or croak('param missing');
+
+  my @section_uris = @{ $FILM->{ $self->{uri} }{sections} };
+  my @sectionlist;
+  foreach my $section_uri (@section_uris) {
+    push( @sectionlist, $SECTION->{$section_uri} );
+  }
+  return @sectionlist;
 }
 
 =item img_count ()
@@ -278,7 +342,6 @@ sub _init_img_count {
     $raw_id =~ m;^/pm20/film/(.+)$;;
     $img_count{$1} = $raw_ref->{$raw_id};
   }
-
   return \%img_count;
 }
 
@@ -302,7 +365,7 @@ sub _load_filmdata {
     }
   }
 
-  # folders and categories
+  # films, folders and categories
   foreach my $section_uri ( sort keys %{$SECTION} ) {
     $section_uri =~ m;/film/h(1|2)/(co|wa|sh)/(.+)?/(\d+)(?:/(R|L))?$;;
     my $filming    = $1;
@@ -312,6 +375,10 @@ sub _load_filmdata {
     my $rl         = $5;
 
     my $section_ref = $SECTION->{$section_uri};
+
+    # films
+    ( my $film_uri = $section_uri ) =~ s/^((?:.+)?\/$film_name).+/$1/;
+    push( @{ $FILM->{$film_uri}{sections} }, $section_uri );
 
     # folders (currently only for co)
     if ( my $pm20_uri = $section_ref->{about}{'@id'} ) {
