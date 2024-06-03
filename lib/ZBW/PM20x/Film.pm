@@ -171,7 +171,9 @@ sub get_grouping_properties {
 
 =item films ($subset)
 
-Return a list of films sorted by film id for a subset (e.g. "h1_sh").
+Return a list of films sorted by film id for a subset (e.g. "h1_sh"). (Films
+which were already published as folders of documents are not part of the films
+dataset.)
 
 =cut
 
