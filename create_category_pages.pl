@@ -1,8 +1,7 @@
 #!/bin/env perl
 # nbt, 15.7.2020
 
-# create category overview pages from data/rdf/*.jsonld and
-# data/klassdata/*.json
+# create overview and individual category pages
 
 # TODO clean up mess
 # - use check_missing_level for overview pages (needs tracking old id)
@@ -20,6 +19,7 @@ use lib './lib';
 
 use Carp;
 use Data::Dumper;
+##use Devel::Size qw(size total_size);
 use HTML::Template;
 use JSON;
 use Path::Tiny;
@@ -80,7 +80,7 @@ my %linktitle = (
   },
   ware_cat => {
     de => '(XXX in der ganzen Welt)',
-    en => '(xXX all over the world)',
+    en => '(XXX all over the world)',
   },
   subject_sys => {
     de => 'Sachsystematik',
@@ -96,30 +96,13 @@ my %linktitle = (
   },
 );
 
-# load data for additonal categories from films
-# recorded in Zotero
-my %id_from_film;
-foreach my $category_type (qw/ ware geo /) {
-  foreach my $filming (qw/ 1 2 /) {
-    my $category_def = $definitions_ref->{$category_type};
-    my $id_file =
-      $FILMDATA_ROOT->child( $category_def->{film_by_id_file}{$filming} );
-    $id_from_film{$category_type}{$filming} = decode_json( $id_file->slurp );
-  }
-  foreach my $filming (qw/ 1 2 /) {
-    foreach
-      my $category_id ( keys %{ $id_from_film{$category_type}{$filming} } )
-    {
-      $id_from_film{$category_type}{count}{$category_id}++;
-    }
-  }
-}
-
 ##########################
 #
 # category overview pages
 #
 ##########################
+
+print "\nCreate  overview pages\n\n";
 
 my ( $master_voc, $detail_voc );
 
@@ -128,17 +111,14 @@ foreach my $category_type ( sort keys %{$definitions_ref} ) {
   my $def_ref = $definitions_ref->{$category_type};
 
   # master vocabulary reference
-  my $master_vocab_name = $def_ref->{vocab};
-  $master_voc = ZBW::PM20x::Vocab->new($master_vocab_name);
+  $master_voc = ZBW::PM20x::Vocab->new($category_type);
 
   # loop over detail types
   my ( %total_folder_count, %total_image_count );
   foreach my $detail_type ( keys %{ $def_ref->{detail} } ) {
 
     # detail vocabulary reference
-    my $detail_vocab_name =
-      $def_ref->{detail}{$detail_type}{vocab};
-    $detail_voc = ZBW::PM20x::Vocab->new($detail_vocab_name);
+    $detail_voc = ZBW::PM20x::Vocab->new($detail_type);
 
     foreach my $lang (@LANGUAGES) {
       my @lines;
@@ -163,41 +143,38 @@ foreach my $category_type ( sort keys %{$definitions_ref} ) {
         provenance          => $provenance,
       );
 
-      # read json input
-      my $file =
-        $KLASSDATA_ROOT->child( $def_ref->{result_file} . ".$lang.json" );
-      my @categories =
-        @{ decode_json( $file->slurp )->{results}->{bindings} };
-
-      # sort ware by unicode label
-      if ( $category_type eq 'ware' ) {
-        my $uc = Unicode::Collate->new();
-        @categories = sort {
-          $uc->cmp( $a->{'categoryLabel'}{value},
-            $b->{'categoryLabel'}{value} )
-        } @categories;
-      }
-
-      # main loop
+      # main loop over sorted list of category ids
       my $firstletter     = '';
       my $firstletter_old = '';
       my @tabs;
-      foreach my $category (@categories) {
-        my $category_id = $category->{id}{value};
+      foreach my $category_id ( $master_voc->category_ids($lang) ) {
+
+        # skip if top level "HWWA countries category system"
+        next if $category_id eq '157538';
 
         # skip result if no folders or film sections exist
-        next
-          if not( exists $category->{shCountLabel}
-            or exists $category->{waCountLabel}
-            or exists $category->{countLabel}
-            or $id_from_film{$category_type}{count}{$category_id} );
+        next if ( $master_voc->has_material($category_id) == 0 );
+
+        my $label = $master_voc->label( $lang, $category_id );
+
+        my $signature    = $master_voc->signature($category_id);
+        my $category_uri = $master_voc->category_uri($category_id);
+
+        my %filmsections;
+        foreach my $filming (qw/ 1 2/) {
+          $filmsections{$filming} =
+            [ $master_voc->filmsectionlist( $category_id, $filming ) ];
+        }
+
+        my $folder_count =
+          $master_voc->folder_count( $category_id, $detail_type ) || 0;
 
         # control break?
         # (skip German Umlaut)
         $firstletter =
           $category_type eq 'ware'
-          ? substr( $category->{categoryLabel}->{value}, 0, 1 )
-          : substr( $category->{signature}->{value},     0, 1 );
+          ? substr( $label,     0, 1 )
+          : substr( $signature, 0, 1 );
         if (  $firstletter ne $firstletter_old
           and $firstletter ne 'Ä'
           and $firstletter ne 'Ö'
@@ -212,21 +189,8 @@ foreach my $category_type ( sort keys %{$definitions_ref} ) {
           $firstletter_old = $firstletter;
         }
 
-        ##print Dumper $category; exit;
-        my $category_uri = $category->{ $def_ref->{uri_field} }{value};
-        my $id;
-        if ( $category_uri =~ m/(\d{6})$/ ) {
-          $id = $1;
-        } else {
-          croak "irregular category uri $category_uri";
-        }
-        my $label     = $master_voc->label( $lang, $id );
-        my $signature = $master_voc->signature($id);
-
         my $entry_body = '';
-        my $folder_count =
-          $master_voc->folder_count( $category_type, $detail_type, $id ) || 0;
-        if ( $folder_count gt 0 ) {
+        if ( $folder_count > 0 ) {
           my $count_label =
             $category_type eq 'ware'
             ? ( $lang eq 'en' ? ' ware folders'    : ' Waren-Mappen' )
@@ -234,63 +198,72 @@ foreach my $category_type ( sort keys %{$definitions_ref} ) {
 
           $entry_body = "$folder_count $count_label"
             . (
-                ( $master_voc->folders_complete($id) )
-              ? ( $lang eq 'en' ? ' - complete unti 1949' : ' - bis 1949 komplett' )
-              : ''
+            ( $master_voc->folders_complete($category_id) )
+            ? (
+              $lang eq 'en' ? ' - complete unti 1949' : ' - bis 1949 komplett' )
+            : ''
             );
         }
 
         # add note for film_only entries
-        if ( $id_from_film{$category_type}{count}{$category_id} ) {
-          my $grand_total;
+        if ( $filmsections{1} or $filmsections{2} ) {
+          my $grand_total = 0;
           foreach my $filming (qw/ 1 2 /) {
-            next unless $id_from_film{$category_type}{$filming}{$category_id};
+            next
+              unless my $count =
+              $master_voc->film_img_count( $category_id, $filming );
 
-            $grand_total +=
-              $id_from_film{$category_type}{$filming}{$category_id}{total_number_of_images};
+            $grand_total += $count;
 
             # total per category type, only add up in one language pass
             if ( $lang eq 'en' ) {
-              $total_image_count{$category_type} +=
-                $id_from_film{$category_type}{$filming}{$category_id}{total_number_of_images};
+              $total_image_count{$category_type} += $count;
             }
           }
-          my $film_note =
-            "$grand_total $filming_def_ref->{ALL}{film_note}{$lang}";
-          if ($entry_body) {
-            $entry_body .= " + $film_note";
-          } else {
-            $entry_body = $film_note;
+
+          if ( $grand_total > 0 ) {
+            my $film_note =
+              "$grand_total $filming_def_ref->{ALL}{film_note}{$lang}";
+            if ($entry_body) {
+              $entry_body .= " + $film_note";
+            } else {
+              $entry_body = $film_note;
+            }
           }
         }
 
         # q&d extension for geo categories
         if ( $category_type eq 'geo' ) {
           $entry_body =
-            ( $master_voc->folder_count( $category_type, 'subject', $id ) || 0 )
+              ( $master_voc->folder_count( $category_id, 'subject' ) || 0 )
             . ( $lang eq 'en' ? ' subject folders' : ' Sach-Mappen' )
             . (
-                ( $master_voc->folders_complete($id) )
-              ? ( $lang eq 'en' ? ' - complete until 1949' : ' - bis 1949 komplett' )
-              : ''
+            ( $master_voc->folders_complete($category_id) )
+            ? (
+              $lang eq 'en'
+              ? ' - complete until 1949'
+              : ' - bis 1949 komplett'
+              )
+            : ''
             )
             . ', '
-            . ( $master_voc->folder_count( $category_type, 'ware', $id ) || 0 )
+            . ( $master_voc->folder_count( $category_id, 'ware' ) || 0 )
             . ( $lang eq 'en' ? ' ware folders' : ' Waren-Mappen' );
         }
 
         my $entry_note = (
-          ( $master_voc->geo_category_type($id) )
-          ? $master_voc->geo_category_type($id) . ' '
+          ( $master_voc->geo_category_type($category_id) )
+          ? $master_voc->geo_category_type($category_id) . ' '
           : ''
         ) . "[($entry_body)]{.hint}";
 
         # main entry
-        my $siglink = $master_voc->siglink($id);
+        my $siglink = $master_voc->siglink($category_id)
+          or print Dumper $category_id;
         my $entry_label =
           $category_type eq 'ware' ? $label : "$signature $label";
         my $line =
-            "- [$entry_label](i/$id/about.$lang.html) $entry_note"
+            "- [$entry_label](i/$category_id/about.$lang.html) $entry_note"
           . "<a name='$siglink'></a>";
         ## indent for Sondermappe
         if ( $signature =~ $SM_QR and $firstletter ne 'q' ) {
@@ -346,19 +319,17 @@ foreach my $category_type ( sort keys %{$definitions_ref} ) {
 
 my %category_data;
 
-print "\ncollect data for folders\n\n";
+print "\nCollect data for folders\n";
 
 foreach my $category_type ( sort keys %{$definitions_ref} ) {
   print "\ncategory_type: $category_type\n";
 
   # master vocabulary reference
-  my $master_vocab_name = $definitions_ref->{$category_type}{vocab};
-  $master_voc = ZBW::PM20x::Vocab->new($master_vocab_name);
+  $master_voc = ZBW::PM20x::Vocab->new($category_type);
 
   foreach my $lang (@LANGUAGES) {
     print "  lang: $lang\n";
 
-    my @lines;
     my $count_ref;
 
     # loop over detail types
@@ -370,172 +341,150 @@ foreach my $category_type ( sort keys %{$definitions_ref} ) {
       my $detail_title = $def_ref->{title}{$lang};
 
       # detail vocabulary reference
-      my $detail_vocab_name = $def_ref->{vocab};
-      $detail_voc = ZBW::PM20x::Vocab->new($detail_vocab_name);
+      $detail_voc = ZBW::PM20x::Vocab->new($detail_type);
 
-      # read json input (all folders for all categories)
-      my $file =
-        $FOLDERDATA_ROOT->child( $def_ref->{result_file} . ".$lang.json" );
-      my @unsorted_entries =
-        @{ decode_json( $file->slurp )->{results}->{bindings} };
+      my $detail_id_old = '';
 
-      # sort entries by relevant notation (or label)
-      my $uc = Unicode::Collate->new();
-      my @entries;
-      if ( $category_type eq 'ware' ) {
-        @entries =
-          sort {
-               $uc->cmp( $a->{'wareLabel'}{value},  $b->{'wareLabel'}{value} )
-            or $uc->cmp( $a->{'geoNtaLong'}{value}, $b->{'geoNtaLong'}{value} )
-          } @unsorted_entries;
-      } else {
-        my $key = "${category_type}NtaLong";
-        @entries =
-          sort { $a->{$key}{value} cmp $b->{$key}{value} } @unsorted_entries;
-      }
+      foreach my $category_id ( $master_voc->category_ids($lang) ) {
 
-      # main loop - an entry is a folder
-      my $master_id_old   = '';
-      my $detail_id_old   = '';
-      my $firstletter     = '';
-      my $firstletter_old = '';
-      foreach my $entry (@entries) {
+        # skip if top level "HWWA countries category system"
+        next if $category_id eq '157538';
 
-        # extract ids for master and detail from folder id
-        my ( $folder_nk, $collection );
-        if ( $entry->{pm20}->{value} =~ m/(sh|wa)\/(\d{6},\d{6})$/ ) {
-          $collection = $1;
-          $folder_nk  = $2;
-        }
-        my $folder = ZBW::PM20x::Folder->new( $collection, $folder_nk );
+        # skip result if no folders or film sections exist
+        next if ( $master_voc->has_material($category_id) == 0 );
 
-        my ( $master_id, $detail_id ) =
-          get_master_detail_ids( $category_type, $detail_type, $folder_nk );
+        # collect everything for the category in lists of lines, keyed by
+        # firstletter
+        my $lines_ref;
 
-        my $label     = $detail_voc->label( $lang, $detail_id );
-        my $signature = $detail_voc->signature($detail_id);
+        # loop over the folders for one category (for a certain detail type and
+        # language)
+        my @folderlist =
+          $master_voc->folderlist( $lang, $category_id, $detail_voc );
+        foreach my $folder (@folderlist) {
 
-        # debug
-        if ( $master_id eq '' or $master_id ne $master_id_old ) {
-          print '      ',    ## $master_voc->signature($master_id), ' ',
-            $master_voc->label( $lang, $master_id ), "\n";
-        }
+          my $folder_nk = $folder->{folder_nk};
+          my ( $master_id, $detail_id ) =
+            get_master_detail_ids( $category_type, $detail_type, $folder_nk );
 
-        # first level control break - new category page
-        # (add language-independent metadata only once)
-        if ( $master_id_old ne '' and $master_id ne $master_id_old ) {
-          if ( $lang eq 'en' ) {
-            my %folder_data = (
-              folder_count1   => $count_ref->{folder_count_first},
-              document_count1 => $count_ref->{document_count_first},
-            );
-            if ( $master_voc->folders_complete($master_id_old) ) {
-              $folder_data{complete} = 1;
+          my $label     = $detail_voc->label( $lang, $detail_id );
+          my $signature = $detail_voc->signature($detail_id);
+          my $firstletter =
+            $detail_type eq 'ware'
+            ? substr( $label,     0, 1 )
+            : substr( $signature, 0, 1 );
+
+          ##print "      ", $folder->get_folderlabel($lang), "\n";
+
+          # main entry
+          my $line = '';
+          my $relpath =
+            $TO_ROOT->child('folder')->child( $folder->get_folder_hashed_path )
+            ->child("about.$lang.html");
+          my $syspage_link = "../../../$detail_type/about.$lang.html#"
+            . $detail_voc->siglink($detail_id);
+          my $catpage_link =
+            "../../../$detail_type/i/$detail_id/about.$lang.html";
+          my $entry_note =
+              '(<a href="'
+            . $folder->get_iiifview_url()
+            . '" title="'
+            . "$linktitle{about_hint}{$lang}: "
+            . $folder->get_folderlabel($lang)
+            . '" target="_blank">'
+            . $folder->get_doc_count
+            . " $linktitle{documents}{$lang}</a>) "
+            . "([$linktitle{folder}{$lang}]($relpath))";
+
+          # are additional indents necessary?
+          # (only if there are lines already!)
+          if ( $lines_ref->{$firstletter} ) {
+
+            # additional indent for Sondermappen
+            if ( $signature =~ $SM_QR and $firstletter ne 'q' ) {
+              check_missing_level( $lang, $lines_ref->{$firstletter},
+                $detail_voc, $detail_id, $detail_id_old, 1 );
+              $line .= "  ";
             }
-            $category_data{$category_type}{$master_id_old}{$detail_type}{folder}
-              = \%folder_data;
+
+            # again, additional indent for subdivided Sondermappen
+            if ( $signature =~ $DEEP_SM_QR ) {
+              ## TODO fix with get_smsig and according broader
+              check_missing_level( $lang, $lines_ref->{$firstletter},
+                $detail_voc, $detail_id, $detail_id_old, 2 );
+              $line .= "  ";
+            }
           }
-          $category_data{$category_type}{$master_id_old}{$detail_type}{folder}
-            {lines}{$lang} = join( "\n", @lines );
 
-          @lines     = ();
-          $count_ref = {};
-        }
-        $master_id_old = $master_id;
+          my $syspage_title = $linktitle{"${detail_type}_sys"}{$lang};
+          my $catpage_title =
+            "$label " . $linktitle{"${detail_type}_cat"}{$lang};
+          my $entry_label =
+            $detail_type eq 'ware' ? $label : "$signature $label";
+          $line .=
+              "- $entry_label "
+            . "[**&nearr;**]($catpage_link \"$catpage_title\") "
+            . "[**&uarr;**]($syspage_link \"$syspage_title\") "
+            . $entry_note;
 
-        # second level control break
-        $firstletter =
-          $detail_type eq 'ware'
-          ? substr( $entry->{wareLabel}->{value}, 0, 1 )
-          : substr( $signature,                   0, 1 );
-        if ( $firstletter ne $firstletter_old ) {
-          ## subheading
-          my $subheading = $detail_voc->subheading( $lang, $firstletter );
-          push( @lines, '', "### $subheading", '' );
-          $firstletter_old = $firstletter;
-        }
+          push( @{ $lines_ref->{$firstletter} }, $line );
+          $detail_id_old = $detail_id;
 
-        # main entry
-        my $line = '';
-        my $relpath =
-          $TO_ROOT->child('folder')->child( $folder->get_folder_hashed_path )
-          ->child("about.$lang.html");
-        my $syspage_link = "../../../$detail_type/about.$lang.html#"
-          . $detail_voc->siglink($detail_id);
-        my $catpage_link =
-          "../../../$detail_type/i/$detail_id/about.$lang.html";
-        my $entry_note =
-            '(<a href="'
-          . $folder->get_iiifview_url()
-          . '" title="'
-          . "$linktitle{about_hint}{$lang}: "
-          . $folder->get_folderlabel($lang)
-          . '" target="_blank">'
-          . "$entry->{docs}->{value} $linktitle{documents}{$lang}</a>) "
-          . "([$linktitle{folder}{$lang}]($relpath))";
+          # statistics
+          $count_ref->{folder_count_first}++;
+          $count_ref->{document_count_first} += $folder->get_doc_count;
+        }    # folder
 
-        # additional indent for Sondermappen
-        if ( $signature =~ $SM_QR and $firstletter ne 'q' ) {
-          check_missing_level( $lang, \@lines, $detail_voc, $detail_id,
-            $detail_id_old, 1 );
-          $line .= "  ";
+        # save data for current category
+        ## q & d: add lines as large variable
+        if ( $lang eq 'en' ) {
+          my %folder_data = (
+            folder_count1   => $count_ref->{folder_count_first},
+            document_count1 => $count_ref->{document_count_first},
+          );
+          if ( $master_voc->folders_complete($category_id) ) {
+            $folder_data{complete} = 1;
+          }
+          $category_data{$category_type}{$category_id}{$detail_type}{folder} =
+            \%folder_data;
+
+          $count_ref->{folder_count_first}   = 0;
+          $count_ref->{document_count_first} = 0;
         }
 
-        # again, additional indent for subdivided Sondermappen
-        if ( $signature =~ $DEEP_SM_QR ) {
-          ## TODO fix with get_smsig and according broader
-          check_missing_level( $lang, \@lines, $detail_voc, $detail_id,
-            $detail_id_old, 2 );
-          $line .= "  ";
+        # transform hash of lines by firstletter to flat text for
+        # the complete category
+        my $text;
+        foreach my $firstletter ( sort keys %{$lines_ref} ) {
+
+          # prepend subheading
+          my $subheading =
+            $detail_voc->subheading( $lang, $firstletter ) || $firstletter;
+          $text .= "\n\n### $subheading\n\n";
+
+          # all text line for this subheading
+          $text .= join( "\n", @{ $lines_ref->{$firstletter} } );
         }
 
-        my $syspage_title = $linktitle{"${detail_type}_sys"}{$lang};
-        my $catpage_title = "$label " . $linktitle{"${detail_type}_cat"}{$lang};
-        my $entry_label = $detail_type eq 'ware' ? $label : "$signature $label";
-        $line .=
-            "- $entry_label "
-          . "[**&nearr;**]($catpage_link \"$catpage_title\") "
-          . "[**&uarr;**]($syspage_link \"$syspage_title\") "
-          . $entry_note;
+        $category_data{$category_type}{$category_id}{$detail_type}{folder}
+          {lines}{$lang} = $text;
 
-        push( @lines, $line );
-        $detail_id_old = $detail_id;
+      }    # category
 
-        # statistics
-        $count_ref->{folder_count_first}++;
-        $count_ref->{document_count_first} += $entry->{docs}{value};
-      }
-
-      # save the last category
-      ## q & d: add lines as large variable
-      if ( $lang eq 'en' ) {
-        my %folder_data = (
-          folder_count1   => $count_ref->{folder_count_first},
-          document_count1 => $count_ref->{document_count_first},
-        );
-        if ( $master_voc->folders_complete($master_id_old) ) {
-          $folder_data{complete} = 1;
-        }
-        $category_data{$category_type}{$master_id_old}{$detail_type}{folder} =
-          \%folder_data;
-      }
-      $category_data{$category_type}{$master_id_old}{$detail_type}{folder}
-        {lines}{$lang} = join( "\n", @lines );
-      @lines     = ();
       $count_ref = {};
+      ##print "        ## size: ", total_size(\%category_data) / (1024*1024), "\n";
     }    # $detail_type
   }    # $lang
 }    # $category_type
 
-print "\nCollect data for film sections\n\n";
+print "\n\nCollect data for film sections\n";
 
 # only top level for the country-subject and ware archives
 foreach my $category_type (qw/ geo ware /) {
   print "\nfilm sections category_type: $category_type\n";
 
   # master vocabulary reference
-  my $master_vocab_name = $definitions_ref->{$category_type}{vocab};
-  $master_voc = ZBW::PM20x::Vocab->new($master_vocab_name);
+  $master_voc = ZBW::PM20x::Vocab->new($category_type);
 
   foreach my $lang (@LANGUAGES) {
     print "  lang: $lang\n";
@@ -546,25 +495,23 @@ foreach my $category_type (qw/ geo ware /) {
     foreach my $detail_type (@detail_types) {
       next if $category_type eq 'geo' and $detail_type eq 'ware';
 
-      print "    detail_type $detail_type\n";
+      print "    detail_type: $detail_type\n";
       my $def_ref = $definitions_ref->{$category_type}->{detail}{$detail_type};
       my $detail_title = $def_ref->{title}{$lang};
 
-      foreach
-        my $category_id ( sort keys %{ $id_from_film{$category_type}{count} } )
-      {
-        print '      ', $master_voc->label( $lang, $category_id ), "\n"
-          if $lang eq 'de';
+      foreach my $category_id ( $master_voc->category_ids($lang) ) {
+        ##print '      ', $master_voc->label( $lang, $category_id ), "\n"
+        ##  if $lang eq 'de';
 
         my @filmings;
         foreach my $filming (qw/ 1 2 /) {
           my $filming_ref = $filming_def_ref->{$filming};
 
-          my $category_film_data =
-            $id_from_film{$category_type}{$filming}{$category_id};
+          my @filmsectionlist =
+            $master_voc->filmsectionlist( $category_id, $filming );
 
           # how to deal deal wth mission information depends ...
-          if ( not defined $category_film_data ) {
+          if ( not scalar(@filmsectionlist) > 0 ) {
             if (  $filming eq '1'
               and $category_data{$category_type}{$category_id}{$detail_type}
               {folder}{complete} )
@@ -577,18 +524,14 @@ foreach my $category_type (qw/ geo ware /) {
           }
 
           my @filmsection_loop;
-          if ( not $category_film_data->{sections} ) {
-            warn Dumper $category_film_data;
-            warn "Skipped $category_id\n\n";
-            next;
-          }
-          foreach my $section ( sort @{ $category_film_data->{sections} } ) {
-            my $film_id = substr( $section->{location}, 5 );
+          foreach my $section (@filmsectionlist) {
+            ## TODO is this correct? includes position and R/L!
+            my $film_id = substr( $section->{'@id'}, 25 );
             my $entry   = {
               "is_$lang"     => 1,
-              filmviewer_url => "https://pm20.zbw.eu/film/$film_id",
+              filmviewer_url => $section->{'@id'},
               film_id        => $film_id,
-              first_img      => $section->{first_img},
+              first_img      => $section->{title},
             };
             push( @filmsection_loop, $entry );
           }
@@ -599,7 +542,7 @@ foreach my $category_type (qw/ geo ware /) {
             legal                  => $filming_ref->{legal}{$lang},
             filmsection_loop       => \@filmsection_loop,
             total_number_of_images =>
-              $category_film_data->{total_number_of_images},
+              $master_voc->film_img_count( $category_id, $filming ),
           );
 
           push( @filmings, \%filming_data );
@@ -614,7 +557,9 @@ foreach my $category_type (qw/ geo ware /) {
   }    # $lang
 }
 
-print "\nOutput of individual category pages\n\n";
+###print "\n## size inc. film: ", total_size(\%category_data) / (1024*1024), "\n";
+
+print "\n\nOutput of individual category pages\n\n";
 
 foreach my $lang (@LANGUAGES) {
   print "  $lang:\n";
@@ -622,11 +567,10 @@ foreach my $lang (@LANGUAGES) {
   foreach my $category_type ( sort keys %category_data ) {
     print "    $category_type:\n";
 
-    foreach my $category_id ( sort keys %{ $category_data{$category_type} } ) {
+    # master vocabulary reference
+    $master_voc = ZBW::PM20x::Vocab->new($category_type);
 
-      # master vocabulary reference
-      my $master_vocab_name = $definitions_ref->{$category_type}{vocab};
-      $master_voc = ZBW::PM20x::Vocab->new($master_vocab_name);
+    foreach my $category_id ( sort keys %{ $category_data{$category_type} } ) {
 
       my $category_ref = $category_data{$category_type}{$category_id};
 
@@ -698,7 +642,7 @@ sub output_category_page {
 
   # navigation tabs for overview page?
   if ( $category_type eq 'geo'
-    and scalar( @{$data_ref} ) gt 1 )
+    and scalar( @{$data_ref} ) > 1 )
   {
     $tmpl_var{show_tabs} = 1;
   }
@@ -812,3 +756,4 @@ sub get_filmlist_link {
 
   return $filmlist_link;
 }
+

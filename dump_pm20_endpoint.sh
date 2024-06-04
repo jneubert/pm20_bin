@@ -20,3 +20,7 @@ for vocab in geo ware subject na sk pr wikidata ; do
   curl --silent -X GET -H "Accept: application/ld+json" $ENDPOINT?graph=http://zbw.eu/beta/$vocab/ng -o $DOWNLOAD_DIR/$vocab.dump.jsonld
 done
 
+# film graph
+curl --silent -X GET $ENDPOINT?graph=http://zbw.eu/beta/film/ng -o $DOWNLOAD_DIR/film.dump.ttl
+curl --silent -X GET -H "Accept: application/ld+json" $ENDPOINT?graph=http://zbw.eu/beta/film/ng -o $DOWNLOAD_DIR/film.dump.jsonld
+

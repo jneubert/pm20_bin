@@ -16,6 +16,7 @@ use Path::Tiny;
 use Readonly;
 use Scalar::Util qw(looks_like_number reftype);
 use ZBW::PM20x::Vocab;
+use ZBW::PM20x::Film;
 
 Readonly my $FOLDER_URI_ROOT  => 'https://pm20.zbw.eu/folder/';
 Readonly our $FOLDER_ROOT     => path('/pm20/folder');
@@ -327,6 +328,28 @@ sub format_doc_counts {
   }
 }
 
+=item get_film_img_count ( $filming )
+
+Return the number of images for the folder from a certain filming. (Currently,
+only for co)
+
+=cut
+
+sub get_film_img_count {
+  my $self    = shift or croak('param missing');
+  my $filming = shift or croak('param missing');
+
+  my $fid = $self->get_folder_id;
+  return unless $fid =~ m/^co\//;
+
+  my $count;
+  my @sections = $self->get_filmsectionlist($filming);
+  foreach my $section_ref (@sections) {
+    $count += $section_ref->{totalImageCount}{'@value'};
+  }
+  return $count;
+}
+
 =item get_film_img_counts ()
 
 Return a string with film image counts for the first and second filming, undef
@@ -341,24 +364,26 @@ sub get_film_img_counts {
 
   return unless $fid =~ m/^co\//;
 
-  # data has to be loaded, if not exists
-  if ( not defined $data{co}{"film_img_count"} ) {
-    _load_film_img_count_data();
+  my %count;
+  foreach my $filming (qw/ 1 2 /) {
+    my @sections = $self->get_filmsectionlist($filming);
+    foreach my $section_ref (@sections) {
+      $count{$filming} += $section_ref->{totalImageCount}{'@value'};
+    }
   }
 
   my $img_counts = '';
 
-  ##print Dumper $fid, $data{co}{film_img_count}{$fid};
-  my ( $cnt1, $cnt2 );
-  if ( $cnt1 = $data{co}{film_img_count}{$fid}{1} ) {
-    $img_counts = $cnt1;
+  if ( $count{1} ) {
+    $img_counts = $count{1};
   }
-  if ( $cnt2 = $data{co}{film_img_count}{$fid}{2} ) {
-    if ($cnt1) {
+  if ( $count{2} ) {
+    if ( $count{1} ) {
       $img_counts .= ' / ';
     }
-    $img_counts .= $cnt2;
+    $img_counts .= $count{2};
   }
+  print "$img_counts\n";
   if ($img_counts) {
     return $img_counts;
   } else {
@@ -684,22 +709,10 @@ sub get_filmsectionlist {
   my $self    = shift or croak('param missing');
   my $filming = shift or croak('param missing');
 
-  my @filmsectionlist = ();
+  my @filmsectionlist =
+    ZBW::PM20x::Film->foldersections( $self->get_folder_id, $filming );
 
-  my $collection = $self->{collection};
-  my $folder_nk  = $self->{folder_nk};
-
-  # list has to be created, if not exists
-  if ( not defined $data{$collection}{"filmsection${filming}data"} ) {
-    _load_filmsectiondata( $collection, $filming );
-  }
-  my $filmsectiondata_ref = $data{$collection}{"filmsection${filming}data"};
-
-  if ( $filmsectiondata_ref->{$folder_nk} ) {
-    @filmsectionlist = @{ $filmsectiondata_ref->{$folder_nk} };
-  }
-
-  return \@filmsectionlist;
+  return @filmsectionlist;
 }
 
 =item company_may_have_material( filming2 | microfiche )
@@ -751,42 +764,6 @@ sub _load_docdata {
   $data{$collection}{docdata} = $docdata_ref;
 }
 
-sub _load_filmsectiondata {
-  my $collection = shift or croak('param missing');
-  my $filming    = shift or croak('param missing');
-
-  my %filmdata;
-
-  # TODO currently reads zotero data -
-  # to be replaced by getting more complete data from Wikidata
-  my $provenance       = 'h';                                  # currently fixed
-  my $subset           = "${provenance}${filming}_$collection";
-  my $filmsection_file = $FILMDATA_ROOT->child("zotero.$subset.json");
-  my $filmsection_ref  = decode_json( $filmsection_file->slurp );
-
-  foreach my $film ( sort keys %{$filmsection_ref} ) {
-    foreach my $section_name ( sort keys %{ $filmsection_ref->{$film}{item} } )
-    {
-      my $section_ref = $filmsection_ref->{$film}{item}{$section_name};
-      my $folder_nk;
-      if ( $section_ref->{pm20Id} ) {
-        if ( $section_ref->{pm20Id} =~ m;^(co|pe|sh|wa)/(\d{6}(,\d{6})?)$; ) {
-          $folder_nk = $2;
-          push( @{ $filmdata{$folder_nk} }, $section_ref );
-        } else {
-          croak "Illegal $section_ref->{pm20Id} in $section_name\n";
-        }
-      }
-    }
-  }
-  $data{$collection}{"filmsection${filming}data"} = \%filmdata;
-
-  # debug?
-  foreach my $folder ( keys %filmdata ) {
-    ##print "$folder\n" if scalar(@{$filmdata{$folder}}) gt 2;
-  }
-}
-
 # load complete folderdata (from jsonld)
 
 sub _load_folderdata {
@@ -808,22 +785,6 @@ sub _load_folderdata {
       $blank_node{$id_value} = $folder_ref;
     } else {
       confess("strange folder \@id value: $id_value");
-    }
-  }
-}
-
-sub _load_film_img_count_data {
-  foreach my $filming (qw/ 1 2 /) {
-    my %filmdata = %{
-      decode_json(
-        $FILMDATA_ROOT->child("zotero.h${filming}_co.by_company_id.json")
-          ->slurp
-      )
-    };
-    foreach my $folder_id ( keys %filmdata ) {
-      if ( my $total = $filmdata{$folder_id}{total_number_of_images} ) {
-        $data{co}{film_img_count}{$folder_id}{$filming} = $total;
-      }
     }
   }
 }

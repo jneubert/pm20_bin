@@ -3,6 +3,9 @@
 # examples for folder pages (particulary re. film sections)
 
 docs=(
+  # Abdulla & Company - material up to 1940
+  "co/046897"
+
   # Bergedorfer Eisenwerk - folder + filming 2
   "co/041780"
 

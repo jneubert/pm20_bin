@@ -13,6 +13,8 @@ use JSON;
 use Path::Tiny;
 use Readonly;
 use Scalar::Util qw(looks_like_number reftype);
+use Unicode::Collate;
+use ZBW::PM20x::Film;
 
 # exported package constants
 our @ISA    = qw/ Exporter /;
@@ -27,17 +29,19 @@ Readonly our $DEEP_SM_QR => qr/ Sm\d+\.\d+/;
 
 Readonly my $RDF_ROOT => path('../data/rdf');
 
+Readonly my $URI_STUB => 'https://pm20.zbw.eu/category/';
+
 # detail type -> relevant count property
 Readonly my %COUNT_PROPERTY => (
   subject => {
-    geo => 'zbwext:folderCount',
+    geo => 'folderCount',
   },
   geo => {
-    subject => 'zbwext:shFolderCount',
-    ware    => 'zbwext:waFolderCount',
+    subject => 'shFolderCount',
+    ware    => 'waFolderCount',
   },
   ware => {
-    geo => 'zbwext:folderCount',
+    geo => 'folderCount',
   },
 );
 
@@ -57,10 +61,15 @@ ZBW::PM20x::Vocab - Functions for PM20 vocabularies
   my $label = $voc->label($lang, $id);
   my $signature = $voc->signature($id);
   my $term_id = $voc->lookup_signature('A10');
+  my $term_id = $voc->lookup_geo_name('Andorra');
+  my $term_id = $voc->lookup_ware_name('Kohle');
   my $subheading = $voc->subheading('A');
   my $folder_count = $voc->folder_count( 'subject', 'geo', $id );
 
 =head1 DESCRIPTION
+
+The instances of this class are vocabularies (geo, ware, subject), not
+individual terms.
 
 Read all vocabularies into a data structure, organized as:
 
@@ -70,9 +79,14 @@ Read all vocabularies into a data structure, organized as:
     modified        last modification of the vocabulary
     nta             by signature
       {$signature}  points to id
+    geo_name        by German lc geo name
+      {$geo_name}   points to id
+    ware_name       by German lc ware name
+      {$ware_name}  points to id
     subhead         subheadings for lists
       {$first}      first letter of signature
-
+    sorted_ids      list of ids (by long signature/name)
+      {$lang}
 
   $id   term id (\d{6}, with leading zeros)
 
@@ -84,9 +98,9 @@ Read all vocabularies into a data structure, organized as:
 
 =item new ($vocab_name)
 
-Return a new vocab object from the named vocabulary. (Names were lowercase ifis
-klass_code; now geo|suject|ware).  Read the according SKOS vocabluary in JSONLD
-format into the object.
+Return a new vocab object from the named vocabulary. (Names were previosly
+lowercase ifis klass_code; now geo|suject|ware).  Read the according SKOS
+vocabluary in JSONLD format into the object.
 
 =cut
 
@@ -109,18 +123,23 @@ sub new {
 
       my $type = $category->{'@type'};
       next unless $type;
-      if ( $type eq 'skos:ConceptScheme' ) {
+      if ( $type eq 'ConceptScheme' ) {
         $self->{modified} = $category->{modified};
-      } elsif ( $type eq 'skos:Concept' ) {
-
-        # skip orphan entries
-        next if not exists $category->{broader};
+      } elsif ( $type eq 'Concept' ) {
 
         my $id = $category->{identifier};
 
+        # skip orphan entries for old vocab - do not require broader for new
+        # entries (here only available via klassifikator id)
+        if ( not exists $category->{broader} ) {
+          if ( $id < 230701 ) {
+            next;
+          }
+        }
+
         # map optional simple jsonld fields to hash entries
         my @fields = qw / notation notationLong foldersComplete geoCategoryType
-          zbwext:shFolderCount zbwext:waFolderCount zbwext:folderCount /;
+          shFolderCount waFolderCount folderCount /;
         foreach my $field (@fields) {
           $cat{$id}{$field} = $category->{$field};
         }
@@ -155,8 +174,9 @@ sub new {
     }
 
     # save state
-    $self->{id}  = \%cat;
-    $self->{nta} = \%lookup;
+    $self->{id}         = \%cat;
+    $self->{nta}        = \%lookup;
+    $self->{sorted_ids} = $self->_init_sorted_ids;
 
     # get the broader id for SM entries from first parts of the signature
     # TODO there are more types of hierarchies (below Sm and below ordinary
@@ -184,7 +204,7 @@ sub new {
 
     $self->_add_subheadings();
   }
-
+  ##print Dumper $self;
   return $self;
 }
 
@@ -192,7 +212,9 @@ sub new {
 
 =head1 Instance methods
 
-=over 2
+=head2 Methods for the vocabulary
+
+=over 4
 
 =item modified ()
 
@@ -213,6 +235,80 @@ sub modified {
 
   return $modified;
 }
+
+=item category_ids ( $lang )
+
+Return a list of categories, sorted by signature or, in case of ware, by the language-specific label.
+
+=cut
+
+sub category_ids {
+  my $self = shift or croak('param missing');
+  my $lang = shift or croak('param missing');
+
+  return @{ $self->{sorted_ids}{$lang} };
+}
+
+=item lookup_signature ( $signature )
+
+Look up a term id by signature, undef if not defined.
+
+=cut
+
+sub lookup_signature {
+  my $self      = shift or croak('param missing');
+  my $signature = shift or croak('param missing');
+
+  my $term_id = $self->{nta}{$signature};
+
+  return $term_id;
+}
+
+=item lookup_geo_name ( $geo_name )
+
+Look up a term id by German geo name (case insensitive), undef if not defined.
+
+=cut
+
+sub lookup_geo_name {
+  my $self     = shift or confess('param missing');
+  my $geo_name = shift or confess('param missing');
+
+  # lazy load
+  if ( not defined $self->{geo_name} ) {
+    $self->_init_geo_name();
+  }
+
+  my $term_id = $self->{geo_name}{ lc($geo_name) };
+
+  return $term_id;
+}
+
+=item lookup_ware_name ( $ware_name )
+
+Look up a term id by German ware name (case insensitive), undef if not defined.
+
+=cut
+
+sub lookup_ware_name {
+  my $self      = shift or confess('param missing');
+  my $ware_name = shift or confess('param missing');
+
+  # lazy load
+  if ( not defined $self->{ware_name} ) {
+    $self->_init_ware_name();
+  }
+
+  my $term_id = $self->{ware_name}{ lc($ware_name) };
+
+  return $term_id;
+}
+
+=back
+
+=head2 Methods for an individual term/category
+
+=over 4
 
 =item label ( $lang, $term_id )
 
@@ -248,6 +344,21 @@ sub signature {
   my $signature = $self->{id}{$term_id}{notation};
 
   return $signature;
+}
+
+=item category_uri ( $term_id )
+
+Return the (numerical) URI for a category.
+
+=cut
+
+sub category_uri {
+  my $self    = shift or croak('param missing');
+  my $term_id = shift or croak('param missing');
+
+  my $uri = $URI_STUB . $self->{vocab_name} . "/i/$term_id";
+
+  return $uri;
 }
 
 =item siglink ( $term_id )
@@ -326,8 +437,9 @@ sub wdlink {
   my $wdlink;
   if ( defined $self->{id}{$term_id}{exactMatch} ) {
     my @exact_links = @{ $self->{id}{$term_id}{exactMatch} };
-    foreach my $link (@exact_links) {
+    foreach my $link_ref (@exact_links) {
       ## replace short links
+      my $link = $link_ref->{'@id'};
       $link =~ s|^wd:|http://www\.wikidata\.org/entity/|;
       if ( $link =~ m|^http://www\.wikidata\.org/entity/| ) {
         $wdlink = $link;
@@ -339,7 +451,7 @@ sub wdlink {
   return $wdlink;
 }
 
-=item wplink( $term_id )
+=item wplink( $lang, $term_id )
 
 Return a link to the Wikipedia page for a exactly matching Wikidata item
 
@@ -353,7 +465,8 @@ sub wplink {
   my $wplink;
   if ( defined $self->{id}{$term_id}{wikipediaArticle} ) {
     my @articles = @{ $self->{id}{$term_id}{wikipediaArticle} };
-    foreach my $link (@articles) {
+    foreach my $link_ref (@articles) {
+      my $link = $link_ref->{'@id'};
       if ( $link =~ m|^https://$lang\.wikipedia\.org/wiki/| ) {
         $wplink = $link;
         last;
@@ -400,23 +513,68 @@ sub folders_complete {
   return $folders_complete;
 }
 
-=item folder_count( $category_type, $detail_type, $term_id )
+=item folder_count ( $term_id, $detail_type )
 
 Return the folder_count, or undef, if not defined.
 
 =cut
 
 sub folder_count {
-  my $self          = shift or croak('param missing');
-  my $category_type = shift or croak('param missing');
-  my $detail_type   = shift or croak('param missing');
-  my $term_id       = shift or croak('param missing');
+  my $self        = shift or croak('param missing');
+  my $term_id     = shift or croak('param missing');
+  my $detail_type = shift or croak('param missing');
 
   # get from extended vocab data
-  my $folder_count =
-    $self->{id}{$term_id}{ $COUNT_PROPERTY{$category_type}{$detail_type} }
-    || '';
+  my $category_type = $self->{vocab_name};
+  my $prop          = $COUNT_PROPERTY{$category_type}{$detail_type};
+  my $folder_count  = $self->{id}{$term_id}{$prop}{'@value'};
+
   return $folder_count;
+}
+
+=item folderlist ( $lang, $term_id, $detail_type )
+
+Returns a list of folders, sorted by long signature or ware name of the detail type.
+
+=cut
+
+sub folderlist {
+  my $self       = shift or croak('param missing');
+  my $lang       = shift or croak('param missing');
+  my $term_id    = shift or croak('param missing');
+  my $detail_voc = shift or croak('param missing');
+
+  my @folderlist;
+
+  my $master_type = $self->{vocab_name};
+  my $detail_type = $detail_voc->{vocab_name};
+
+  my @detail_category_ids = $detail_voc->category_ids($lang);
+  foreach my $detail_id (@detail_category_ids) {
+    my ( $collection, $folder_nk );
+    if ( $master_type eq 'ware' and $detail_type eq 'geo' ) {
+      $collection = 'wa';
+      $folder_nk  = "$term_id,$detail_id";
+    } elsif ( $master_type eq 'subject' and $detail_type eq 'geo' ) {
+      $collection = 'sh';
+      $folder_nk  = "$detail_id,$term_id";
+    } elsif ( $master_type eq 'geo' and $detail_type eq 'subject' ) {
+      $collection = 'sh';
+      $folder_nk  = "$term_id,$detail_id";
+    } elsif ( $master_type eq 'geo' and $detail_type eq 'ware' ) {
+      $collection = 'wa';
+      $folder_nk  = "$detail_id,$term_id";
+    } else {
+      croak("Strange combination of master $master_type $term_id "
+          . "and detail $detail_id" );
+    }
+    my $folder = ZBW::PM20x::Folder->new( $collection, $folder_nk );
+    if ( $folder->get_doc_count ) {
+      push( @folderlist, $folder );
+    }
+  }
+
+  return @folderlist;
 }
 
 =item start_sig ( $term_id, $level )
@@ -454,19 +612,72 @@ sub start_sig {
   }
 }
 
-=item lookup_signature ( $signature )
+=item filmsectionlist( $term_id, $filming )
 
-Look up a term id by signature, undef if not defined.
+Return a sorted list of film sections for a category (leaves out sections
+already published as folders and not manually indexed) for either filming 1 or
+2. Currently datastructure works only for primary category. For category geo,
+only sections for sh are returned.
+
+TODO: Extend to secondary categories.
 
 =cut
 
-sub lookup_signature {
-  my $self      = shift or croak('param missing');
-  my $signature = shift or croak('param missing');
+sub filmsectionlist {
+  my $self    = shift or croak('param missing');
+  my $term_id = shift or croak('param missing');
+  my $filming = shift or croak('param missing');
 
-  my $term_id = $self->{nta}{$signature};
+  my @filmsectionlist =
+    ZBW::PM20x::Film->categorysections( $self->{vocab_name}, $term_id,
+    $filming );
 
-  return $term_id;
+  return @filmsectionlist;
+}
+
+=item film_img_count ( $term_id, $filming )
+
+Return the number of images for a primary category from a certain filming.
+
+=cut
+
+sub film_img_count {
+  my $self    = shift or croak('param missing');
+  my $term_id = shift or croak('param missing');
+  my $filming = shift or croak('param missing');
+
+  my $count;
+  my @sections = $self->filmsectionlist( $term_id, $filming );
+  foreach my $section_ref (@sections) {
+    $count += $section_ref->{totalImageCount}{'@value'};
+  }
+  return $count;
+}
+
+=item has_material ( $term_id )
+
+Returns 1, if there are folders or film sections for the term, otherwise 0.
+
+=cut
+
+sub has_material {
+  my $self    = shift or croak('param missing');
+  my $term_id = shift or croak('param missing');
+
+  my $has_material = 0;
+  foreach my $prop (qw/ folderCount waFolderCount shFolderCount /) {
+    if ( defined $self->{id}{$term_id}{$prop} ) {
+      $has_material = 1;
+    }
+  }
+  if ( scalar( $self->filmsectionlist( $term_id, 1 ) ) > 0 ) {
+    $has_material = 1;
+  }
+  if ( scalar( $self->filmsectionlist( $term_id, 2 ) ) > 0 ) {
+    $has_material = 1;
+  }
+
+  return $has_material;
 }
 
 =back
@@ -531,6 +742,10 @@ sub _add_subheadings {
         de => 'Welt',
         en => 'World',
       },
+      J => {
+        de => 'Tropen',
+        en => 'Tropics',
+      },
     };
   } elsif ( $self->{vocab_name} eq 'subject' ) {
     foreach my $id ( keys %{ $self->{id} } ) {
@@ -559,6 +774,61 @@ sub _add_subheadings {
     }
   }
   return;
+}
+
+# init geo_name data
+
+sub _init_geo_name {
+  my $self = shift or croak('param missing');
+
+  foreach my $id ( keys %{ $self->{id} } ) {
+    my %terminfo = %{ $self->{id}{$id} };
+
+    # normalize geo name to lowercase German
+    my $name = lc( $terminfo{prefLabel}{de} );
+
+    $self->{geo_name}{$name} = $id;
+  }
+}
+
+# init ware_name data
+
+sub _init_ware_name {
+  my $self = shift or croak('param missing');
+
+  foreach my $id ( keys %{ $self->{id} } ) {
+    my %terminfo = %{ $self->{id}{$id} };
+
+    # normalize ware name to lowercase German
+    my $name = lc( $terminfo{prefLabel}{de} );
+
+    $self->{ware_name}{$name} = $id;
+  }
+}
+
+# init the sorted id lists
+
+sub _init_sorted_ids {
+  my $self = shift or croak('param missing');
+
+  my %sorted;
+  my %cat_id = %{ $self->{id} };
+  foreach my $lang (@LANGUAGES) {
+    my @category_ids;
+    if ( $self->{vocab_name} eq 'ware' ) {
+      my $uc = Unicode::Collate->new();
+      @category_ids = sort {
+        $uc->cmp( $cat_id{$a}{'prefLabel'}{$lang},
+          $cat_id{$b}{'prefLabel'}{$lang} )
+      } keys %cat_id;
+    } else {
+      @category_ids =
+        sort { $cat_id{$a}{notationLong} cmp $cat_id{$b}{notationLong} }
+        keys %cat_id;
+    }
+    $sorted{$lang} = \@category_ids;
+  }
+  return \%sorted;
 }
 
 1;

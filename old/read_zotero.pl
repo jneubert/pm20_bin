@@ -401,16 +401,17 @@ sub add_number_of_images {
   my $old_pos   = ( split( '/', $old_location ) )[4];
   my $pos       = ( split( '/', $location ) )[4];
 
-  # take care of last section of a film - read last image number from file
+  # take care of last section of a film - assume last image number according
+  # to image count data
   if ( $location eq 'last' ) {
-    my $film_id  = join( '/', ( split( /\//, $old_location ) )[ 0 .. 3 ] );
-    my $film_dir = path('/pm20')->child($film_id);
-    my @files    = sort $film_dir->children(qr/\.jpg\z/);
-    my $fn       = $files[-1]->relative($film_dir);
-    if ( $fn =~ m/^[A-Z]\d{4}(\d{4})/ ) {
-      $pos = $1;
-    } else {
-      die "Could not parse $fn\n";
+    my $key =
+      '/mnt/intares/' . join( '/', ( split( /\//, $old_location ) )[ 0 .. 3 ] );
+    $pos = $img_count_ref->{$key};
+
+    # if this is the second half of a film, add the count for the first half
+    if ( $film_name =~ m/_2$/ ) {
+      $key =~ s/_2$/_1/;
+      $pos += $img_count_ref->{$key};
     }
   }
 
