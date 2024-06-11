@@ -299,8 +299,13 @@ Return a list of film sections for a film.
 sub sections {
   my $self = shift or croak('param missing');
 
-  my @section_uris = @{ $FILM->{ $self->{uri} }{sections} };
-  my @sectionlist;
+  my @section_uris = ();
+  if ( not defined $FILM->{ $self->{uri} }{sections} ) {
+    warn "No sections for ", Dumper $self;
+  } else {
+    @section_uris = @{ $FILM->{ $self->{uri} }{sections} };
+  }
+  my @sectionlist = ();
   foreach my $section_uri (@section_uris) {
     push( @sectionlist, $SECTION->{$section_uri} );
   }
