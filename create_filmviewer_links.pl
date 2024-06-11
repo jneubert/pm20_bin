@@ -1,7 +1,10 @@
 #!/bin/env perl
-# nbt, 2022-01--24
+# nbt, 2022-01-24
 
 # creates html fragments with image links for filmviewer
+
+# TODO extend to proper tags in English
+# perhaps link to primary group or (company) folder
 
 use strict;
 use warnings;
@@ -17,7 +20,9 @@ use ZBW::PM20x::Vocab;
 
 $Data::Dumper::Sortkeys = 1;
 
+# TODO fix dev dir
 Readonly my $FILM_ROOT     => path('/pm20/web/film');
+##Readonly my $FILM_ROOT     => path('/tmp/film');
 Readonly my $FILMDATA_ROOT => path('/pm20/data/filmdata');
 Readonly my @COLLECTIONS   => qw/ co sh wa /;
 Readonly my @LANGUAGES     => qw/ en de /;
@@ -44,34 +49,34 @@ if ( $ARGV[0] and $ARGV[0] =~ m/(h|k)(1|2)_(co|sh|wa)/ ) {
 }
 
 my %vocab;
-$vocab{geo}     = ZBW::PM20x::Vocab->new('ag');
-$vocab{subject} = ZBW::PM20x::Vocab->new('je');
-$vocab{ware}    = ZBW::PM20x::Vocab->new('ip');
+$vocab{geo}     = ZBW::PM20x::Vocab->new('geo');
+$vocab{subject} = ZBW::PM20x::Vocab->new('subject');
+$vocab{ware}    = ZBW::PM20x::Vocab->new('ware');
 
 # all start positions of sections, from zotero and film lists
 my %position;
 
+# TODO remove obsolete methods and variables
 my %has_zotero;
-parse_zotero($subset);
+##parse_zotero($subset);
 my %is_online;
-parse_filmlist($subset);
-
-# debug info
-##path('/tmp/ein.json')->spew( encode_json(\%position) );
+##parse_filmlist($subset);
 
 my $olditem_ref = {};
-foreach my $film ( sort keys %position ) {
-  ##next unless ( $film eq 'S0204H' or $film eq 'S0205H' );
-  next if $film eq '';
+my @films       = ZBW::PM20x::Film->films($subset);
 
-  # catch error
-  if ( $film =~ m/^h1/ ) {
-    print "error in $film ", Dumper $position{$film};
-    next;
-  }
+foreach my $film (@films) {
 
+  # TODO fix dev restriction
+  ##next
+  ##  unless ( $film->name eq 'W2001H'
+  ##  or $film->name eq 'S2806H'
+  ##  or $film->name eq 'F2008H' );
+
+  # read file info from disk
+  my $film_name = $film->name;
   my %image;
-  my $film_dir = $subset_root->child($film);
+  my $film_dir = $subset_root->child($film_name);
   my @files    = $film_dir->children(qr/\.jpg\z/);
   foreach my $file (@files) {
     my $img_nr = $file->basename('.jpg');
@@ -82,21 +87,36 @@ foreach my $film ( sort keys %position ) {
   $image{'0000'} = undef;
   $image{'9999'} = undef;
 
+  my %position;
+  foreach my $section ( $film->sections ) {
+    my $section_uri = $section->{'@id'};
+    ( my $img_nr = $section_uri ) =~ s;^(?:.+)/$film_name/(\d{4})(?:/.+)?;$1;;
+
+    # TODO workaround for first image from filmlist
+    if ( $section_uri =~ m/$film_name\/1$/ ) {
+      $img_nr = '0001';
+    }
+    $position{$img_nr} = $section;
+  }
+
   # merge
   my $current_olditem_ref;
   foreach my $lang (@LANGUAGES) {
     $current_olditem_ref = $olditem_ref;
     my @links;
     foreach my $img_nr ( sort keys %image ) {
-      if ( defined $position{$film}{$img_nr} ) {
+      if ( defined $position{$img_nr} ) {
 
-        my %item = %{ $position{$film}{$img_nr} };
+        my %item = %{ $position{$img_nr} };
         ## skip items without identified geo (should not occur)
         ## often occurs within wa - TODO check
         ## next if not defined $item{geo};
+
+        # TODO replace dumbed-down version of item tags (only based on title,
+        # with optional geo enhancement)
         push( @links,
           '<br />',
-          get_item_tag( $lang, $img_nr, \%item, $current_olditem_ref ) );
+          get_item_tag_dumb( $lang, $img_nr, \%item, $current_olditem_ref ) );
 
         $current_olditem_ref = \%item;
       }
@@ -115,19 +135,23 @@ foreach my $film ( sort keys %position ) {
 
 ##print Dumper \%has_zotero;
 
+# count films which were not processed via Zotero
 my $cnt_open = 0;
-foreach my $film ( sort keys %position ) {
-  next if defined $has_zotero{$film} or $is_online{$film};
-  ##print "Film $film without zotero\n";
-  $cnt_open++;
-}
+
+#foreach my $film ( sort keys %position ) {
+#  next if defined $has_zotero{$film_name} or $is_online{$film};
+#  ##print "Film $film without zotero\n";
+#  $cnt_open++;
+#}
 
 # output statistics
-print "$subset films: ", scalar( keys %is_online ), " online, ",
-  scalar( keys %has_zotero ), " with zotero, $cnt_open open\n";
+# TODO fix counting
+##print "$subset films: ", scalar( keys %is_online ), " online, ",
+##  scalar( keys %has_zotero ), " with zotero, $cnt_open open\n";
 
 ####################
 
+# OBSOLETE
 sub parse_zotero {
   my $subset = shift or die "param mssing";
 
@@ -149,21 +173,16 @@ sub parse_zotero {
   }
 }
 
+# OBSOLETE
 sub parse_filmlist {
   my $subset = shift or die "param mssing";
 
-  my @filmlist =
-    @{ decode_json( $FILMDATA_ROOT->child("$subset.expanded.json")->slurp ) };
+  my @films = ZBW::PM20x::Film->films($subset);
 
-  foreach my $entry (@filmlist) {
+  foreach my $entry (@films) {
     my $film = $entry->{film_id};
-    if ( $entry->{online} ) {
-      $is_online{$film} = 1;
-      next;
-    }
-
-    # skip non-existing film numbers
-    next if grep( /^$film$/, @MISSING_FILMS );
+    print Dumper $entry;
+    exit;
 
     POS:
     foreach my $pos ( 'start', 'end' ) {
@@ -206,6 +225,7 @@ sub parse_filmlist {
           warn "cannot parse signature of ", Dumper $entry;
         }
       } elsif ( $film =~ m/^W/ ) {
+
         # TODO include real translations
       }
 
@@ -241,6 +261,78 @@ sub parse_filmlist {
   }
 }
 
+sub get_item_tag_dumb {
+  my $lang        = shift or die "param missing";
+  my $img_nr      = shift or die "param missing";
+  my $item_ref    = shift or die "param missing";
+  my $olditem_ref = shift or die "param missing";
+
+  my %item = %{$item_ref};
+
+  # TODO extend film dataset to collection
+  my $collection;
+  if ( not $item{collection} ) {
+    ( $collection = $item{'@id'} ) =~ s;^.+?/film/h[12]/(co|sh|wa)/.+$;$1;;
+  }
+
+  # TODO replace q&d signature lookup with proper geo in item
+  my $geo_label;
+  if ( $collection eq 'co' or $collection eq 'sh' ) {
+    if ( $item{notation} ) {
+      ( my $geo_sig ) = split( / /, $item{notation} );
+      my $geo_id = $vocab{geo}->lookup_signature($geo_sig);
+      $geo_label = $vocab{geo}->label( $lang, $geo_id );
+      $item_ref->{geo}{'@id'} = $vocab{geo}->category_uri($geo_id);
+    }
+  }
+
+  my $new_geo = 0;
+  if (
+    ## not relevant for ware!
+    not defined $item_ref->{ware}
+    and (
+      not defined $olditem_ref->{geo}
+      or (  $item_ref->{geo}{'@id'} ne $olditem_ref->{geo}{'@id'}
+        and $img_nr ne '9999' )
+    )
+    )
+  {
+    $new_geo = 1;
+  }
+
+  # title is used to display the notation
+  my ( $label, $linktitle );
+  $label     = $item{title};
+  $linktitle = $label;
+
+  # extend with bold country for sh and co on first occurence
+  if ($new_geo) {
+    if ( $collection eq 'co' ) {
+      if ($geo_label) {
+        $label = "<b>$geo_label</b> $label";
+      }
+
+    } elsif ( $collection eq 'sh' ) {
+
+      # label not necessarily represents a folder!
+      if ( $label =~ m/^(.+)?( : .+)$/ ) {
+        $label = "<b>$1</b>$2";
+      } else {
+        $label = "<b>$label</b>";
+      }
+    }
+  }
+
+  my $tag = "<a id='tag_$img_nr' title='$linktitle'>$label</a> &#160;";
+
+  return $tag;
+}
+
+sub usage {
+  print "usage: $0 { " . join( ' | ', @VALID_SUBSETS ) . " }\n";
+}
+
+## outdated version
 sub get_item_tag {
   my $lang        = shift or die "param missing";
   my $img_nr      = shift or die "param missing";
@@ -255,9 +347,11 @@ sub get_item_tag {
   if (
     ## not relevant for ware!
     not defined $item_ref->{ware_string}
-    and ( not defined $olditem_ref->{geo}
-      or ( $item_ref->{geo}{id} ne $olditem_ref->{geo}{id}
-        and $img_nr ne '9999' ) )
+    and (
+      not defined $olditem_ref->{geo}
+      or (  $item_ref->{geo}{id} ne $olditem_ref->{geo}{id}
+        and $img_nr ne '9999' )
+    )
     )
   {
     $new_geo = 1;
@@ -281,7 +375,7 @@ sub get_item_tag {
     ##if ($geolabel) {
     ##  $label .= " : $geolabel";
     ##}
-    if ($item{geo_string}) {
+    if ( $item{geo_string} ) {
       $label .= " : $item{geo_string}";
     }
     $title = $label;
@@ -291,6 +385,7 @@ sub get_item_tag {
     }
     $label = "$geolabel : $item{subject}{label}{$lang}";
     $title = "$item{geo}{signature} $item{subject}{signature}";
+
     if ( defined $item{keyword} ) {
       $label .= " - $item{keyword}";
       $title .= " - $item{keyword}";
@@ -318,10 +413,8 @@ sub get_item_tag {
 
   my $tag = "<a id='tag_$img_nr' title='$title'>$label</a> &#160;";
 
-  return $tag;
-}
+  $olditem_ref = $item_ref;
 
-sub usage {
-  print "usage: $0 { " . join( ' | ', @VALID_SUBSETS ) . " }\n";
+  return $tag;
 }
 
