@@ -48,6 +48,8 @@ if ( $ARGV[0] and $ARGV[0] =~ m/(h|k)(1|2)_(co|sh|wa)/ ) {
   exit 1;
 }
 
+print "\nsubset $subset\n";
+
 my %vocab;
 $vocab{geo}     = ZBW::PM20x::Vocab->new('geo');
 $vocab{subject} = ZBW::PM20x::Vocab->new('subject');
@@ -73,8 +75,10 @@ foreach my $film (@films) {
   ##  or $film->name eq 'S2806H'
   ##  or $film->name eq 'F2008H' );
 
-  # read file info from disk
   my $film_name = $film->name;
+  print "  $film_name\n";
+
+  # read file info from disk
   my %image;
   my $film_dir = $subset_root->child($film_name);
   my @files    = $film_dir->children(qr/\.jpg\z/);
