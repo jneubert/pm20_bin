@@ -4,68 +4,68 @@ geo_by_signature:
     de: "Vollständige Ländersystematik"
     en: "Complete country category system"
   query_file: ../sparql/geo_by_signature.rq
-  output_dir: ../var/klassdata
+  output_dir: ../data/sparql-results
   report_dir: vocab
 subject_by_signature:
   title:
     de: "Vollständige Sachsystematik"
     en: "Complete subject category system"
   query_file: ../sparql/subject_by_signature.rq
-  output_dir: ../var/klassdata
+  output_dir: ../data/sparql-results
   report_dir: vocab
 ware_by_signature:
   title:
     de: "Vollständige Warensystematik"
     en: "Complete commodities/wares category system"
   query_file: ../sparql/ware_by_signature.rq
-  output_dir: ../var/klassdata
+  output_dir: ../data/sparql-results
   report_dir: vocab
 subject_folders:
   title:
     de: "Alle online verfügbaren Länder/Sach-Mappen"
     en: "All country/subject folders available online"
   query_file: ../sparql/subject_folders.rq
-  output_dir: ../var/folderdata
+  output_dir: ../data/sparql-results
   report_dir: sh
 ware_folders:
   title:
     de: "Alle online verfügbaren Waren-Mappen"
     en: "All ware folders available online"
   query_file: ../sparql/ware_folders.rq
-  output_dir: ../var/folderdata
+  output_dir: ../data/sparql-results
   report_dir: wa
 companies_with_reports:
   title:
     de: "Firmen/Institutionen mit online verfügbaren Geschäftsberichten"
     en: "Companies/institutions with online accessible annual reports"
   query_file: ../sparql/companies_with_reports.rq
-  output_dir: ../var/folderdata
+  output_dir: ../data/sparql-results
   report_dir: co
 companies:
   title:
     de: "Alle Firmen/Institutionen mit online verfügbarem Material"
     en: "All companies/institutions with online accessible documents"
   query_file: ../sparql/companies.rq
-  output_dir: ../var/folderdata
+  output_dir: ../data/sparql-results
   report_dir: co
 companies_with_metadata:
   title:
     de: "Alle Firmen/Institutionen mit Metadaten"
     en: "All companies/institutions with metadata"
   query_file: ../sparql/companies_with_metadata.rq
-  output_dir: ../var/folderdata
+  output_dir: ../data/sparql-results
   report_dir: co
 persons:
   title:
     de: "Alle Personen mit online verfügbarem Material"
     en: "All persons with material available online"
   query_file: ../sparql/persons.rq
-  output_dir: ../var/folderdata
+  output_dir: ../data/sparql-results
   report_dir: pe
 persons_with_metadata:
   title:
     de: "Alle Personen mit Metadaten"
     en: "All persons with metadata"
   query_file: ../sparql/persons_with_metadata.rq
-  output_dir: ../var/folderdata
+  output_dir: ../data/sparql-results
   report_dir: pe
