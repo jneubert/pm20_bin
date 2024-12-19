@@ -70,11 +70,18 @@ foreach my $film (@films) {
   ##  or $film->name eq 'F2008H' );
 
   my $film_name = $film->name;
-  print "  $film_name\n";
+  my $film_dir  = $subset_root->child($film_name);
+
+  # skip directories in test environment
+  if ( -d "$film_dir" ) {
+    print "  $film_name\n";
+  } else {
+    print "  $film_name missing\n";
+    next;
+  }
 
   # read file info from disk
   my %image;
-  my $film_dir = $subset_root->child($film_name);
   my @files    = $film_dir->children(qr/\.jpg\z/);
   foreach my $file (@files) {
     my $img_nr = $file->basename('.jpg');
