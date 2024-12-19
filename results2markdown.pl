@@ -176,7 +176,7 @@ foreach my $lang (qw/de en/) {
         ( my $main_title = $title ) =~ s/ /+/g;
         my $json_file = "$section/$report.$lang.json";
         my $report_link =
-            "https://pm20.zbw.eu/report/pm20_result.$lang.html?"
+            "/report/pm20_result.$lang.html?"
           . "jsonFile=$json_file&main_title=$main_title";
         my $html_file = "$section/$report.$lang.html";
         push( @lines,
