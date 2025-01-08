@@ -383,7 +383,7 @@ sub get_film_img_counts {
     }
     $img_counts .= $count{2};
   }
-  print "$img_counts\n";
+  ##print "$img_counts\n";
   if ($img_counts) {
     return $img_counts;
   } else {
