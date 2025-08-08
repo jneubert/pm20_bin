@@ -1,8 +1,7 @@
 #!/bin/sh
 # nbt, 2020-02-17
 
-# to be invoked from ite-srv24
-# now includes zotero eval and creation of filmviewer links
+# create all link snippets for filmviewer
 
 BASE_DIR=/pm20
 LOG_DIR=$BASE_DIR/web/tmp/film_meta

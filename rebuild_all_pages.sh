@@ -26,3 +26,6 @@ done
 # recrate html from markdown pages
 ./web_make_all.sh
 
+# rebuild filmviewer links
+./recreate_filmviewer_links.sh
+
