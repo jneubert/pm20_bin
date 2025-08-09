@@ -42,6 +42,9 @@ docs=(
   "wa/143120,141691"
 )
 
+# alternative quick single page set
+##docs=( "wa/143120,141691" )
+
 for folder in "${docs[@]}" ; do 
   echo https://pm20.zbw.eu/folder/$folder
   perl create_folder_pages.pl $folder ##> /dev/null
