@@ -343,7 +343,7 @@ sub mk_folder {
       $tmpl_var{signature} = $folderdata_raw->{notation};
 
       foreach my $part (qw/country subject/) {
-        $folderdata_raw->{$part}{'@id'} =~ m;/pressemappe20(/.+)$;;
+        $folderdata_raw->{$part}{'@id'} =~ m;/pm20\.zbw\.eu(/.+)$;;
         my $url = "$1/about.$lang.html";
         $tmpl_var{"${part}_url"} = $url;
         next unless $part eq 'subject';
@@ -370,7 +370,7 @@ sub mk_folder {
       ##$tmpl_var{microfiche_period} = '1961-1998';
 
       foreach my $part (qw/country ware/) {
-        $folderdata_raw->{$part}{'@id'} =~ m;/pressemappe20(/.+)$;;
+        $folderdata_raw->{$part}{'@id'} =~ m;/pm20\.zbw\.eu(/.+)$;;
         my $url = "$1/about.$lang.html";
         $tmpl_var{"${part}_url"} = $url;
       }
@@ -391,7 +391,6 @@ sub mk_folder {
         }
       }
     }
-
     # film sections, do not exist for persons
     if ( $collection eq 'co' ) {
       my $company_id = "co/$folder_nk";
