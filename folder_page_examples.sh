@@ -3,6 +3,9 @@
 # examples for folder pages (particulary re. film sections)
 
 docs=(
+  # some of the company examples do not have wikidata links, for various
+  # reasons (Fondiaria Vita completely messed up in PM20 metadata)
+
   # Abdulla & Company - material up to 1940
   "co/046897"
 
@@ -46,7 +49,7 @@ docs=(
 ##docs=( "wa/143120,141691" )
 
 for folder in "${docs[@]}" ; do 
-  echo https://pm20.zbw.eu/folder/$folder
+  echo http://pm20.local/folder/$folder
   perl create_folder_pages.pl $folder ##> /dev/null
   make -C ../web SET=$folder > /dev/null
 done
