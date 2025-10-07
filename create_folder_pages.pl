@@ -228,6 +228,15 @@ sub mk_folder {
       $tmpl_var{wdlink} = $wdlink;
     }
 
+    # wikipedia link (extract for current language)
+    for my $link_ref ( @{ $folderdata_raw->{wikipediaArticle} } ) {
+      my $link = $link_ref->{'@id'};
+      if ( $link =~ m|^https://$lang\.wikipedia\.org/wiki/| ) {
+        $tmpl_var{wplink} = $link;
+        last;
+      }
+    }
+
     if ( $folderdata_raw->{temporal} ) {
       my @holdings;
       foreach my $hold ( @{ $folderdata_raw->{temporal} } ) {
