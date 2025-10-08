@@ -124,7 +124,7 @@ sub mk_folder {
 
       # feedback mailto
       my $mailto =
-          "&#109;&#97;ilto&#58;p%72essema%70pe&#50;0&#64;&#37;&#55;Ab%77&#46;eu"
+          "ma&#105;l&#116;o&#58;%69&#110;&#102;o%40zbw&#46;eu"
         . "?subject=Feedback%20zu%20PM20%20$label"
         . "&amp;body=%0D%0A%0D%0A%0D%0A---%0D%0A"
         . "https://pm20.zbw.eu/dfgview/$collection/$folder_nk";
