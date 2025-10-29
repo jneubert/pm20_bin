@@ -7,12 +7,12 @@ geo:
   detail:
     subject:
       title:
-        en: Subject archives folders
-        de: Sacharchiv Mappen
+        en: Subject archives
+        de: Sacharchiv
     ware:
       title:
-        en: Commodities/wares archives folders
-        de: Warenarchiv Mappen
+        en: Commodities/wares archives
+        de: Warenarchiv
 subject:
   prov: hwwa
   title:
@@ -22,8 +22,8 @@ subject:
   detail:
     geo:
       title:
-        en: Countries-subject archives folders
-        de: Länder-Sacharchiv Mappen
+        en: Countries-subject archives
+        de: Länder-Sacharchiv
 ware:
   prov: hwwa
   title:
@@ -33,5 +33,5 @@ ware:
   detail:
     geo:
       title:
-        en: Commodities/wares archives folders
-        de: Warenarchiv Mappen
+        en: Commodities/wares archives
+        de: Warenarchiv

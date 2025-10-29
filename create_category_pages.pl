@@ -184,7 +184,7 @@ foreach my $category_type ( sort keys %{$definitions_ref} ) {
               $category_type eq 'ware'
             ? $firstletter
             : $master_voc->subheading( $lang, $firstletter );
-          push( @lines, '', "### $subhead <a name='id_$firstletter'></a>", '' );
+          push( @lines, '', "#### $subhead <a name='id_$firstletter'></a>", '' );
           push( @tabs, { startchar => $firstletter } );
           $firstletter_old = $firstletter;
         }
@@ -460,7 +460,7 @@ foreach my $category_type ( sort keys %{$definitions_ref} ) {
           # prepend subheading
           my $subheading =
             $detail_voc->subheading( $lang, $firstletter ) || $firstletter;
-          $text .= "\n\n### $subheading\n\n";
+          $text .= "\n\n#### $subheading\n\n";
 
           # all text line for this subheading
           $text .= join( "\n", @{ $lines_ref->{$firstletter} } );

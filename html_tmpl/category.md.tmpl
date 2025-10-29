@@ -17,13 +17,15 @@ Scope Note: <tmpl_var scope_note><tmpl_if is_en></tmpl_if>
 </div></tmpl_if></tmpl_if>
 
 <tmpl_if show_tabs>
-<tmpl_if is_de>[Sacharchiv](#sacharchiv-mappen) &#160; [Warenarchiv](#warenarchiv-mappen)</tmpl_if>
-<tmpl_if is_en>[Subject archives](#subject-archives-folders) &#160; [Commodities/wares archives](#commoditieswares-archives-folders)</tmpl_if>
+<tmpl_if is_de>[Sacharchiv](#sacharchiv) &#160; [Warenarchiv](#warenarchiv)</tmpl_if>
+<tmpl_if is_en>[Subject archives](#subject-archives) &#160; [Commodities/wares archives](#commoditieswares-archives)</tmpl_if>
 </tmpl_if>
 
 <tmpl_loop detail_type_loop>
 
 ## <tmpl_var detail_title>
+
+### <tmpl_if is_de>Mappen</tmpl_if><tmpl_if is_en>Folders</tmpl_if>
 
 <tmpl_if detail_is_geo>
 
