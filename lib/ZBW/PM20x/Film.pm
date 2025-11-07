@@ -18,9 +18,10 @@ Readonly my $IMG_COUNT     => _init_img_count();
 
 # items in a collection are primarily grouped by $type, identified by zotero
 # or filmlist properties
+# CAUTION: for geo categories, subject, ware and company categories are related!
 Readonly my %GROUPING_PROPERTY => (
   co => {
-    ## ignore countries for now!
+    ## ignore countries for now! (logically primary category for companies?)
     primary_group => {
       type       => 'company',
       zotero     => 'pm20Id',
@@ -43,6 +44,7 @@ Readonly my %GROUPING_PROPERTY => (
       type       => 'geo',
       zotero     => 'geo_id',
       filmlist   => 'start_company_id',
+      jsonld     => 'country',
       rdf_pred   => 'zbwext:country',
       rdf_prefix => 'pm20geo',
     },
@@ -59,6 +61,7 @@ Readonly my %GROUPING_PROPERTY => (
     secondary_group => {
       type       => 'subject',
       zotero     => 'subject_id',
+      jsonld     => 'subject',
       rdf_pred   => 'zbwext:subject',
       rdf_prefix => 'pm20subject',
     },
@@ -69,9 +72,10 @@ Readonly my %GROUPING_PROPERTY => (
 # $SECTION =  { $section_uri => { img_count, ...} }
 # $FOLDER =   { $collection => { $folder_nk => { $filming => [ $section_uri, ... ] } } }
 # $CATEGORY = { $category_type => { $category_id => { $filming => [ $section_uri ... ] } } }
+# $CATEGORY2 = { $type => { $secondary_category_id => { $filming => [ $section_uri ... ] } } }
 # DOES NOT WORK WITH Readonly!
 ##Readonly my ( $FILM, $SECTION, $FOLDER, $CATEGORY ) => _load_filmdata();
-my ( $FILM, $SECTION, $FOLDER, $CATEGORY ) = _load_filmdata();
+my ( $FILM, $SECTION, $FOLDER, $CATEGORY, $CATEGORY2 ) = _load_filmdata();
 
 =encoding utf8
 
@@ -255,6 +259,34 @@ sub categorysections {
   return @sectionlist;
 }
 
+=item scondary_categorysections ($category_type, $secondary_category_type, $secondary_category_id, $filming)
+
+Return a list of film sections of type $category_type for a certain
+category of type $secondary_category_type, for a certain filming (1|2).
+(E. g., ware sections for a certain geo category - ware_by_geo)
+
+=cut
+
+sub secondary_categorysections {
+  my $class         = shift or croak('param missing');
+  my $category_type = shift or croak('param missing');
+  my $secondary_category_type = shift or croak('param missing');
+  my $secondary_category_id   = shift or croak('param missing');
+  my $filming       = shift or croak('param missing');
+
+  my @sectionlist;
+
+# $CATEGORY2 = { $type => { $secondary_category_id => { $filming => [ $section_uri ... ] } } }
+  my $type = "${category_type}_by_${secondary_category_type}";
+  foreach
+    my $section_uri ( @{ $CATEGORY2->{$type}{$secondary_category_type}{$secondary_category_id}{$filming} } )
+  {
+    my %entry = ( $section_uri => $SECTION->{$section_uri}, );
+    push( @sectionlist, $SECTION->{$section_uri} );
+  }
+  return @sectionlist;
+}
+
 =back
 
 =head1 Instance methods
@@ -292,7 +324,7 @@ sub logical_name {
 
 =item sections ()
 
-Return a list of film sections for a film. 
+Return a list of film sections for a film.
 
 =cut
 
@@ -314,7 +346,7 @@ sub sections {
 
 =item img_count ()
 
-Return the numer of images files under the film directory.
+Return the numer of image files under the film directory.
 
 =cut
 
@@ -396,6 +428,7 @@ sub _load_filmdata {
 
     # categories
     else {
+      # primary group
       my $grp_prop_ref = ZBW::PM20x::Film->get_grouping_properties($collection);
       my $category_type = $grp_prop_ref->{primary_group}{type};
       my $category_prop = $grp_prop_ref->{primary_group}{jsonld};
@@ -410,9 +443,27 @@ sub _load_filmdata {
           $section_uri
         );
       }
+
+      next unless $grp_prop_ref->{secondary_group};
+
+      # secondary group
+      my $secondary_category_type = $grp_prop_ref->{secondary_group}{type};
+      my $secondary_category_prop = $grp_prop_ref->{secondary_group}{jsonld};
+
+      if ( $section_ref->{$secondary_category_prop}
+        and my $category_uri = $section_ref->{$secondary_category_prop}{'@id'} )
+      {
+        $category_uri =~ m;category/$secondary_category_type/i/(\d{6});;
+        my $category_id = $1;
+        my $type = $category_type . '_by_' . $secondary_category_type;
+        push(
+          @{ $CATEGORY2->{$type}{$secondary_category_type}{$category_id}{$filming} },
+          $section_uri
+        );
+      }
     }
   }
-  return $FILM, $SECTION, $FOLDER, $CATEGORY;
+  return $FILM, $SECTION, $FOLDER, $CATEGORY, $CATEGORY2;
 }
 
 1;
