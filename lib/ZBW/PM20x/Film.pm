@@ -72,10 +72,10 @@ Readonly my %GROUPING_PROPERTY => (
 # $SECTION =  { $section_uri => { img_count, ...} }
 # $FOLDER =   { $collection => { $folder_nk => { $filming => [ $section_uri, ... ] } } }
 # $CATEGORY = { $category_type => { $category_id => { $filming => [ $section_uri ... ] } } }
-# $CATEGORY2 = { $type => { $secondary_category_id => { $filming => [ $section_uri ... ] } } }
+# $CATEGORY_INV = { $type => { $secondary_category_id => { $filming => [ $section_uri ... ] } } }
 # DOES NOT WORK WITH Readonly!
 ##Readonly my ( $FILM, $SECTION, $FOLDER, $CATEGORY ) => _load_filmdata();
-my ( $FILM, $SECTION, $FOLDER, $CATEGORY, $CATEGORY2 ) = _load_filmdata();
+my ( $FILM, $SECTION, $FOLDER, $CATEGORY, $CATEGORY_INV ) = _load_filmdata();
 
 =encoding utf8
 
@@ -236,8 +236,22 @@ sub foldersections {
 
 =item categorysections ($category_type, $category_id, $filming)
 
-Return a list of film sections for the category, for a certain filming (1|2).
-Currently, only works for the primary category. (geo for sh, ware for wa)
+Return a list of film sections of type secondary for a certain primary category, for a
+certain filming (1|2).
+
+Valid $category_type are:
+
+=over 2
+
+=item *
+
+geo - retrieves a list of subject entries for this geo
+
+=item *
+
+ware - retrieves a list of geo entries for this ware
+
+=back
 
 =cut
 
@@ -249,6 +263,9 @@ sub categorysections {
 
   my @sectionlist;
 
+  croak("wrong category type $category_type")
+      unless $category_type =~ m/^(geo|ware)$/;
+
 # $CATEGORY = { $category_type => { $category_id => { $filming => [ $section_uri ... ] } } }
   foreach
     my $section_uri ( @{ $CATEGORY->{$category_type}{$category_id}{$filming} } )
@@ -259,27 +276,42 @@ sub categorysections {
   return @sectionlist;
 }
 
-=item scondary_categorysections ($category_type, $secondary_category_type, $secondary_category_id, $filming)
+=item categorysections_inv ($category_type, $category_id, $filming)
 
-Return a list of film sections of type $category_type for a certain
-category of type $secondary_category_type, for a certain filming (1|2).
-(E. g., ware sections for a certain geo category - ware_by_geo)
+Inversely, return a list of film sections of type primary for a certain
+secondary category, for a certain filming (1|2).
+
+Valid $category_type are:
+
+=over 4
+
+=item *
+
+geo - retrieves a list of ware entries for this geo
+
+=item *
+
+subject - retrieves a list of geo entries for this subject
+
+=back
 
 =cut
 
-sub secondary_categorysections {
+sub categorysections_inv {
   my $class         = shift or croak('param missing');
   my $category_type = shift or croak('param missing');
-  my $secondary_category_type = shift or croak('param missing');
-  my $secondary_category_id   = shift or croak('param missing');
+  my $category_id   = shift or croak('param missing');
   my $filming       = shift or croak('param missing');
+
+  croak("wrong category type $category_type")
+      unless $category_type =~ m/^(geo|subject)$/;
 
   my @sectionlist;
 
-# $CATEGORY2 = { $type => { $secondary_category_id => { $filming => [ $section_uri ... ] } } }
-  my $type = "${category_type}_by_${secondary_category_type}";
-  foreach
-    my $section_uri ( @{ $CATEGORY2->{$type}{$secondary_category_type}{$secondary_category_id}{$filming} } )
+# $CATEGORY_INV = { $category_type => { $category_id => { $filming => [ $section_uri ... ] } } }
+  foreach my $section_uri (
+      @{ $CATEGORY_INV->{$category_type}{$category_id}{$filming} }
+  )
   {
     my %entry = ( $section_uri => $SECTION->{$section_uri}, );
     push( @sectionlist, $SECTION->{$section_uri} );
@@ -454,16 +486,15 @@ sub _load_filmdata {
         and my $category_uri = $section_ref->{$secondary_category_prop}{'@id'} )
       {
         $category_uri =~ m;category/$secondary_category_type/i/(\d{6});;
-        my $category_id = $1;
-        my $type = $category_type . '_by_' . $secondary_category_type;
+        my $secondary_category_id = $1;
         push(
-          @{ $CATEGORY2->{$type}{$secondary_category_type}{$category_id}{$filming} },
+          @{ $CATEGORY_INV->{$secondary_category_type}{$secondary_category_id}{$filming} },
           $section_uri
         );
       }
     }
   }
-  return $FILM, $SECTION, $FOLDER, $CATEGORY, $CATEGORY2;
+  return $FILM, $SECTION, $FOLDER, $CATEGORY, $CATEGORY_INV;
 }
 
 1;
