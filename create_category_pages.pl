@@ -635,6 +635,7 @@ sub output_category_page {
     $PROV{ $definitions_ref->{$category_type}{prov} }{name}{$lang};
   my $signature = $master_voc->signature($id);
   my $label     = $master_voc->label( $lang, $id );
+  $label =~ s/"/\\"/g;
   my $backlinktitle =
     $lang eq 'en'
     ? 'Category Overview'
