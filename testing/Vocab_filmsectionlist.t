@@ -62,4 +62,17 @@ ok( @subjectsections,
 my %geo = map { $_->{country}{'@id'} =~ m/\/(\d+)$/ => 1 } @subjectsections;
 ok( $geo{$geo_id}, "section for geo id $geo_id in result" );
 
+
+#test case: Kautschuk : Brasilien
+
+$ware_id = 143085;
+$geo_id  = 141697;
+$filming = 1;
+
+@geosections = $geo_vocab->filmsectionlist( $geo_id, $filming, 'ware' );
+ok( @geosections, "geo $geo_id has ware sections in filming $filming" );
+
+warn Dumper \@geosections;
+
+
 done_testing;

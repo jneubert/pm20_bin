@@ -87,6 +87,8 @@ _For direct access to the documents, click the "(xy documents)" link, for folder
 
 <tmpl_if detail_is_ware>
 
+<tmpl_if lines>
+
 <tmpl_if is_de>
 Insgesamt <tmpl_var folder_count1> Mappen (bis 1949), <tmpl_var document_count1> Dokumente
 - Mappen unvollständig.  Nicht als Mappe aufbereitetes Material finden Sie
@@ -106,6 +108,14 @@ _For direct access to the documents, click the "(xy documents)" link, for folder
 
 <tmpl_var lines>
 
-</tmpl_if detail_is_subject>
+<tmpl_else>
+
+<tmpl_if is_de>Kein als Mappe erschlossenes Material.</tmpl_if><tmpl_if is_en>No material prepared as folder.</tmpl_if>
+
+</tmpl_if lines>
+
+<tmpl_include name="filmsections.md.inc">
+
+</tmpl_if detail_is_ware>
 
 </tmpl_loop detail_type_loop>
