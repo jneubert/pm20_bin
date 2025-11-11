@@ -317,6 +317,19 @@ foreach my $category_type ( sort keys %{$definitions_ref} ) {
 #
 ###########################
 
+# data structure %category_data:
+
+#   category_type
+#     category_id       # defines page
+#       detail_type
+#         folder
+#           lines
+#             de|en
+#         filming_loop
+#           de|en
+#             filming
+#               filmsection_loop
+
 my %category_data;
 
 print "\nCollect data for folders\n";
@@ -479,8 +492,8 @@ foreach my $category_type ( sort keys %{$definitions_ref} ) {
 
 print "\n\nCollect data for film sections\n";
 
-# only top level for the country-subject and ware archives
-foreach my $category_type (qw/ geo ware /) {
+# now for all top level pages
+foreach my $category_type (qw/ geo subject ware /) {
   print "\nfilm sections category_type: $category_type\n";
 
   # master vocabulary reference
@@ -493,7 +506,6 @@ foreach my $category_type (qw/ geo ware /) {
     my @detail_types =
       sort keys %{ $definitions_ref->{$category_type}{detail} };
     foreach my $detail_type (@detail_types) {
-      next if $category_type eq 'geo' and $detail_type eq 'ware';
 
       print "    detail_type: $detail_type\n";
       my $def_ref = $definitions_ref->{$category_type}->{detail}{$detail_type};
@@ -507,10 +519,12 @@ foreach my $category_type (qw/ geo ware /) {
         foreach my $filming (qw/ 1 2 /) {
           my $filming_ref = $filming_def_ref->{$filming};
 
+          # filmsections for the master / detail combination (works in either
+          # normal or inversed hierarchical order)
           my @filmsectionlist =
-            $master_voc->filmsectionlist( $category_id, $filming );
+              $master_voc->filmsectionlist( $category_id, $filming, $detail_type );
 
-          # how to deal deal wth mission information depends ...
+          # how to deal deal with missing information depends ...
           if ( not scalar(@filmsectionlist) > 0 ) {
             if (  $filming eq '1'
               and $category_data{$category_type}{$category_id}{$detail_type}
@@ -518,6 +532,7 @@ foreach my $category_type (qw/ geo ware /) {
             {
               ## is ok
             } else {
+              ## in which cases should a warning be issued?
               ## warn "no film data for $category_id in filming $filming\n";
             }
             next;
@@ -558,6 +573,7 @@ foreach my $category_type (qw/ geo ware /) {
 }
 
 ###print "\n## size inc. film: ", total_size(\%category_data) / (1024*1024), "\n";
+###print Dumper \%category_data; exit;
 
 print "\n\nOutput of individual category pages\n\n";
 

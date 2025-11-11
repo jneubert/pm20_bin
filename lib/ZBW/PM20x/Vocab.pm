@@ -612,14 +612,14 @@ sub start_sig {
   }
 }
 
-=item filmsectionlist( $term_id, $filming )
+=item filmsectionlist( $term_id, $filming, $detail_type )
 
-Return a sorted list of film sections for a category (leaves out sections
-already published as folders and not manually indexed) for either filming 1 or
-2. Currently datastructure works only for primary category. For category geo,
-only sections for sh are returned.
+Return a sorted list of film sections of detail category type $detail_type
+(defaults see below) for a term of the given (main) category type for either
+filming 1 or 2. Leaves out sections already published as folders and not
+manually indexed.
 
-TODO: Extend to secondary categories.
+Default detail types are subject for geo, geo for ware, or geo for subject.
 
 =cut
 
@@ -627,10 +627,35 @@ sub filmsectionlist {
   my $self    = shift or croak('param missing');
   my $term_id = shift or croak('param missing');
   my $filming = shift or croak('param missing');
+  my $detail_type = shift;
 
-  my @filmsectionlist =
-    ZBW::PM20x::Film->categorysections( $self->{vocab_name}, $term_id,
-    $filming );
+  my $master_type = $self->{vocab_name};
+
+  # set default detail type, if omitted by the caller
+  if ( not $detail_type ) {
+    if ( $master_type eq 'ware' ) {
+      $detail_type = 'geo';
+    } elsif ( $master_type eq 'geo' ) {
+      $detail_type = 'subject';
+    } elsif ( $master_type eq 'subject' ) {
+      $detail_type = 'geo';
+    }
+  }
+
+  my @filmsectionlist;
+
+  # only certain combinations of master/detail categories are valid!
+  if ( ( $master_type eq 'geo' and $detail_type eq 'subject' )
+      or ( $master_type eq 'ware' and $detail_type eq 'geo' ) ) {
+    @filmsectionlist =
+        ZBW::PM20x::Film->categorysections( $master_type, $term_id, $filming );
+  } elsif ( $master_type eq 'geo' and $detail_type eq 'ware'
+      or $master_type eq 'subject' and $detail_type eq 'geo' ) {
+    @filmsectionlist =
+        ZBW::PM20x::Film->categorysections_inv( $master_type, $term_id, $filming );
+  } else {
+    croak("Invalid combination of master $master_type and detail $detail_type");
+  }
 
   return @filmsectionlist;
 }
