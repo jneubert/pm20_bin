@@ -184,7 +184,8 @@ foreach my $category_type ( sort keys %{$definitions_ref} ) {
               $category_type eq 'ware'
             ? $firstletter
             : $master_voc->subheading( $lang, $firstletter );
-          push( @lines, '', "#### $subhead <a name='id_$firstletter'></a>", '' );
+          push( @lines, '', "#### $subhead <a name='id_$firstletter'></a>",
+            '' );
           push( @tabs, { startchar => $firstletter } );
           $firstletter_old = $firstletter;
         }
@@ -522,7 +523,8 @@ foreach my $category_type (qw/ geo subject ware /) {
           # filmsections for the master / detail combination (works in either
           # normal or inversed hierarchical order)
           my @filmsectionlist =
-              $master_voc->filmsectionlist( $category_id, $filming, $detail_type );
+            $master_voc->filmsectionlist( $category_id, $filming,
+            $detail_type );
 
           # how to deal deal with missing information depends ...
           if ( not scalar(@filmsectionlist) > 0 ) {

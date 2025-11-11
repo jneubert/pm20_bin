@@ -16,8 +16,6 @@ my $class = 'ZBW::PM20x::Folder';
 use_ok($class) or die "Could not load $class\n";
 
 my $collection = 'co';
-my $folder_nk = "041389" . "";
-
-
+my $folder_nk  = "041389" . "";
 
 done_testing;

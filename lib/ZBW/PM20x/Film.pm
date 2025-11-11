@@ -264,7 +264,7 @@ sub categorysections {
   my @sectionlist;
 
   croak("wrong category type $category_type")
-      unless $category_type =~ m/^(geo|ware)$/;
+    unless $category_type =~ m/^(geo|ware)$/;
 
 # $CATEGORY = { $category_type => { $category_id => { $filming => [ $section_uri ... ] } } }
   foreach
@@ -304,14 +304,13 @@ sub categorysections_inv {
   my $filming       = shift or croak('param missing');
 
   croak("wrong category type $category_type")
-      unless $category_type =~ m/^(geo|subject)$/;
+    unless $category_type =~ m/^(geo|subject)$/;
 
   my @sectionlist;
 
 # $CATEGORY_INV = { $category_type => { $category_id => { $filming => [ $section_uri ... ] } } }
   foreach my $section_uri (
-      @{ $CATEGORY_INV->{$category_type}{$category_id}{$filming} }
-  )
+    @{ $CATEGORY_INV->{$category_type}{$category_id}{$filming} } )
   {
     my %entry = ( $section_uri => $SECTION->{$section_uri}, );
     push( @sectionlist, $SECTION->{$section_uri} );
@@ -488,7 +487,10 @@ sub _load_filmdata {
         $category_uri =~ m;category/$secondary_category_type/i/(\d{6});;
         my $secondary_category_id = $1;
         push(
-          @{ $CATEGORY_INV->{$secondary_category_type}{$secondary_category_id}{$filming} },
+          @{
+            $CATEGORY_INV->{$secondary_category_type}{$secondary_category_id}
+              {$filming}
+          },
           $section_uri
         );
       }

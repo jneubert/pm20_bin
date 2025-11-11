@@ -624,9 +624,9 @@ Default detail types are subject for geo, geo for ware, or geo for subject.
 =cut
 
 sub filmsectionlist {
-  my $self    = shift or croak('param missing');
-  my $term_id = shift or croak('param missing');
-  my $filming = shift or croak('param missing');
+  my $self        = shift or croak('param missing');
+  my $term_id     = shift or croak('param missing');
+  my $filming     = shift or croak('param missing');
   my $detail_type = shift;
 
   my $master_type = $self->{vocab_name};
@@ -646,13 +646,16 @@ sub filmsectionlist {
 
   # only certain combinations of master/detail categories are valid!
   if ( ( $master_type eq 'geo' and $detail_type eq 'subject' )
-      or ( $master_type eq 'ware' and $detail_type eq 'geo' ) ) {
+    or ( $master_type eq 'ware' and $detail_type eq 'geo' ) )
+  {
     @filmsectionlist =
-        ZBW::PM20x::Film->categorysections( $master_type, $term_id, $filming );
+      ZBW::PM20x::Film->categorysections( $master_type, $term_id, $filming );
   } elsif ( $master_type eq 'geo' and $detail_type eq 'ware'
-      or $master_type eq 'subject' and $detail_type eq 'geo' ) {
+    or $master_type eq 'subject' and $detail_type eq 'geo' )
+  {
     @filmsectionlist =
-        ZBW::PM20x::Film->categorysections_inv( $master_type, $term_id, $filming );
+      ZBW::PM20x::Film->categorysections_inv( $master_type, $term_id,
+      $filming );
   } else {
     croak("Invalid combination of master $master_type and detail $detail_type");
   }

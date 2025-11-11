@@ -13,7 +13,7 @@ my $class = 'ZBW::PM20x::Vocab';
 
 use_ok($class) or die "Could not load $class\n";
 
-my ( $ware_id, $geo_id, $subject_id, $filming, @waresections, @geosections, @subjectsections );
+my ( $ware_id, $geo_id, $subject_id, $filming );
 my $ware_vocab = $class->new('ware');
 
 $ware_id = 142275;
