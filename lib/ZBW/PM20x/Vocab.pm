@@ -304,6 +304,18 @@ sub lookup_ware_name {
   return $term_id;
 }
 
+=item vocab_name ()
+
+Return the name of the vocabulary.
+
+=cut
+
+sub vocab_name {
+  my $self = shift or confess('param missing');
+
+  return $self->{vocab_name};
+}
+
 =back
 
 =head2 Methods for an individual term/category
@@ -356,7 +368,7 @@ sub category_uri {
   my $self    = shift or croak('param missing');
   my $term_id = shift or croak('param missing');
 
-  my $uri = $URI_STUB . $self->{vocab_name} . "/i/$term_id";
+  my $uri = $URI_STUB . $self->vocab_name . "/i/$term_id";
 
   return $uri;
 }
@@ -525,7 +537,7 @@ sub folder_count {
   my $detail_type = shift or croak('param missing');
 
   # get from extended vocab data
-  my $category_type = $self->{vocab_name};
+  my $category_type = $self->vocab_name;
   my $prop          = $COUNT_PROPERTY{$category_type}{$detail_type};
   my $folder_count  = $self->{id}{$term_id}{$prop}{'@value'};
 
@@ -546,8 +558,8 @@ sub folderlist {
 
   my @folderlist;
 
-  my $master_type = $self->{vocab_name};
-  my $detail_type = $detail_voc->{vocab_name};
+  my $master_type = $self->vocab_name;
+  my $detail_type = $detail_voc->vocab_name;
 
   my @detail_category_ids = $detail_voc->category_ids($lang);
   foreach my $detail_id (@detail_category_ids) {
@@ -629,7 +641,7 @@ sub filmsectionlist {
   my $filming     = shift or croak('param missing');
   my $detail_type = shift;
 
-  my $master_type = $self->{vocab_name};
+  my $master_type = $self->vocab_name;
 
   # set default detail type, if omitted by the caller
   if ( not $detail_type ) {
@@ -732,7 +744,7 @@ sub _as_array {
 sub _add_subheadings {
   my $self = shift or croak('param missing');
 
-  if ( $self->{vocab_name} eq 'geo' ) {
+  if ( $self->vocab_name eq 'geo' ) {
     $self->{subhead} = {
       A => {
         de => 'Europa',
@@ -775,7 +787,7 @@ sub _add_subheadings {
         en => 'Tropics',
       },
     };
-  } elsif ( $self->{vocab_name} eq 'subject' ) {
+  } elsif ( $self->vocab_name eq 'subject' ) {
     foreach my $id ( keys %{ $self->{id} } ) {
       my %terminfo  = %{ $self->{id}{$id} };
       my $signature = $terminfo{notation};
@@ -790,7 +802,7 @@ sub _add_subheadings {
         $self->{subhead}{$signature}{$lang} = $label;
       }
     }
-  } elsif ( $self->{vocab_name} eq 'ware' ) {
+  } elsif ( $self->vocab_name eq 'ware' ) {
 
     # here we have no signature, but only start chars
     foreach my $id ( keys %{ $self->{id} } ) {
@@ -843,7 +855,7 @@ sub _init_sorted_ids {
   my %cat_id = %{ $self->{id} };
   foreach my $lang (@LANGUAGES) {
     my @category_ids;
-    if ( $self->{vocab_name} eq 'ware' ) {
+    if ( $self->vocab_name eq 'ware' ) {
       my $uc = Unicode::Collate->new();
       @category_ids = sort {
         $uc->cmp( $cat_id{$a}{'prefLabel'}{$lang},
