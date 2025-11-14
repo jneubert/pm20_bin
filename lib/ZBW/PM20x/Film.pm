@@ -109,7 +109,7 @@ called logical film.
 
 =item new ($film_id)
 
-Return a new film object for the film id.
+Return a new film object for the film id (e.g., 'h1/wa/W0186H').
 
 =cut
 
@@ -117,7 +117,7 @@ sub new {
   my $class   = shift or croak('param missing');
   my $film_id = shift or croak('param missing');
 
-  my ( $set, $collection, $film_name );
+  my ( $set, $collection, $film_name, $uri );
 
   # TODO check/extend for Kiel films
   # NB a film named "S0901aH" exists!
@@ -125,6 +125,7 @@ sub new {
     $set        = $1;
     $collection = $2;
     $film_name  = $3;
+    $uri        = $FILM_ROOT_URI . $film_id;
   } else {
     confess "Invalid film id $film_id";
   }
@@ -134,7 +135,8 @@ sub new {
     set        => $set,
     collection => $collection,
     film_name  => $film_name,
-    uri        => $FILM_ROOT_URI . $film_id,
+    uri        => $uri,
+    status     => $FILM->{$uri}{status},
   };
   bless $self, $class;
 
@@ -205,6 +207,20 @@ sub films {
 
 =over 2
 
+=item id ()
+
+Return the film identifier (e.g., h1/sh/S0073H_1).
+
+=cut
+
+sub id {
+  my $self = shift or croak('param missing');
+
+  my $id = $self->{film_id};
+
+  return $id;
+}
+
 =item name ()
 
 Return the actual name of the film (e.g., S0073H_1).
@@ -270,6 +286,24 @@ sub img_count {
   return $img_count;
 }
 
+=item status ()
+
+Returns one of the following processing stati:
+
+- indexed - film is completly indexed
+
+- unindexed - film is not indexed (only country start entries for sh)
+
+=cut
+
+sub status {
+  my $self = shift or croak('param missing');
+
+  my $status = $self->{status};
+
+  return $status;
+}
+
 =back
 
 =cut
@@ -302,7 +336,7 @@ sub _load_filmdata {
 
   # opening _raw is necessary to avoid "Wide character ..." problem with
   # decode_json (slurp_utf8 does not work!)
-  my $film_file = path('../data/rdf/film.jsonld');
+  my $film_file = path('/pm20/data/rdf/film.jsonld');
   my @filmdata  = @{ decode_json( $film_file->slurp_raw )->{'@graph'} };
 
   foreach my $filmdata_ref (@filmdata) {
