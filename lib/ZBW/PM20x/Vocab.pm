@@ -14,7 +14,7 @@ use Path::Tiny;
 use Readonly;
 use Scalar::Util qw(looks_like_number reftype);
 use Unicode::Collate;
-use ZBW::PM20x::Film;
+use ZBW::PM20x::Film::Section;
 
 # exported package constants
 our @ISA    = qw/ Exporter /;
@@ -544,9 +544,10 @@ sub folder_count {
   return $folder_count;
 }
 
-=item folderlist ( $lang, $term_id, $detail_type )
+=item folderlist ( $lang, $term_id, $detail_vocab )
 
-Returns a list of folders, sorted by long signature or ware name of the detail type.
+Returns a list of folders, sorted by long signature or ware name of the detail
+vocabulary.
 
 =cut
 
@@ -580,7 +581,12 @@ sub folderlist {
       croak("Strange combination of master $master_type $term_id "
           . "and detail $detail_id" );
     }
+
+    # create a folder from  hypotetical combination of terms
     my $folder = ZBW::PM20x::Folder->new( $collection, $folder_nk );
+
+    # filters for actually existing folders
+    # (film sections cannot interfere here)
     if ( $folder->get_doc_count ) {
       push( @folderlist, $folder );
     }
@@ -661,12 +667,13 @@ sub filmsectionlist {
     or ( $master_type eq 'ware' and $detail_type eq 'geo' ) )
   {
     @filmsectionlist =
-      ZBW::PM20x::Film->categorysections( $master_type, $term_id, $filming );
+      ZBW::PM20x::Film::Section->categorysections( $master_type, $term_id,
+      $filming );
   } elsif ( $master_type eq 'geo' and $detail_type eq 'ware'
     or $master_type eq 'subject' and $detail_type eq 'geo' )
   {
     @filmsectionlist =
-      ZBW::PM20x::Film->categorysections_inv( $master_type, $term_id,
+      ZBW::PM20x::Film::Section->categorysections_inv( $master_type, $term_id,
       $filming );
   } else {
     croak("Invalid combination of master $master_type and detail $detail_type");
@@ -846,7 +853,7 @@ sub _init_ware_name {
   }
 }
 
-# init the sorted id lists
+# init the sorted id lists (returns hash of arrays, keyed by language)
 
 sub _init_sorted_ids {
   my $self = shift or croak('param missing');

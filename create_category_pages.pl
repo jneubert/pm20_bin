@@ -31,6 +31,7 @@ use ZBW::PM20x::Folder;
 use ZBW::PM20x::Vocab;
 
 binmode( STDOUT, ":encoding(UTF-8)" );
+binmode( STDERR, ":encoding(UTF-8)" );
 
 ##Readonly my $WEB_ROOT        => path('/tmp/category');
 Readonly my $WEB_ROOT        => path('../web/category');
@@ -509,6 +510,7 @@ foreach my $category_type (qw/ geo subject ware /) {
     foreach my $detail_type (@detail_types) {
 
       print "    detail_type: $detail_type\n";
+      my $detail_voc = ZBW::PM20x::Vocab->new($detail_type);
       my $def_ref = $definitions_ref->{$category_type}->{detail}{$detail_type};
       my $detail_title = $def_ref->{title}{$lang};
 
@@ -544,11 +546,20 @@ foreach my $category_type (qw/ geo subject ware /) {
           foreach my $section (@filmsectionlist) {
             ## TODO is this correct? includes position and R/L!
             my $film_id = substr( $section->{'@id'}, 25 );
-            my $entry   = {
+
+            my $section_label = $section->{title};
+
+            # currently, replace labels only for filming 1 sections
+            if ( $filming == 1 ) {
+              $section_label =
+                get_section_label( $lang, $detail_voc, $section );
+            }
+
+            my $entry = {
               "is_$lang"     => 1,
               filmviewer_url => $section->{'@id'},
               film_id        => $film_id,
-              first_img      => $section->{title},
+              first_img      => $section_label,
             };
             push( @filmsection_loop, $entry );
           }

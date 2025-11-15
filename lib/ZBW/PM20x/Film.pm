@@ -75,7 +75,7 @@ Readonly my %GROUPING_PROPERTY => (
 # $CATEGORY_INV = { $type => { $secondary_category_id => { $filming => [ $section_uri ... ] } } }
 # DOES NOT WORK WITH Readonly!
 ##Readonly my ( $FILM, $SECTION, $FOLDER, $CATEGORY ) => _load_filmdata();
-my ( $FILM, $SECTION, $FOLDER, $CATEGORY, $CATEGORY_INV ) = _load_filmdata();
+my ( $FILM, $SECTION ) = _load_filmdata();
 
 =encoding utf8
 
@@ -89,7 +89,6 @@ ZBW::PM20x::Film - Functions for PM20 microfilms
   use ZBW::PM20x::Film;
   my $film = ZBW::PM20x::Film->new('h1/sh/S0073H_1');
   my @films = ZBW::PM20x::Film->films('h1_sh');
-  my @folder_sections = ZBW::PM20x::Film->foldersections('co/004711', 1);
 
   my $film_name = $film->name();              # S0073H_1
   my $logical_name = $film->logigcal_name();  # S0073H
@@ -160,19 +159,6 @@ sub new_from_location {
   return $class->new($film_id);
 }
 
-=item get_grouping_properties ($collection)
-
-Return metadata structure about the grouping properties for a collection.
-
-=cut
-
-sub get_grouping_properties {
-  my $class      = shift or croak('param missing');
-  my $collection = shift or croak('param missing');
-
-  return $GROUPING_PROPERTY{$collection};
-}
-
 =item films ($subset)
 
 Return a list of films sorted by film id for a subset (e.g. "h1_sh"). (Films
@@ -210,112 +196,6 @@ sub films {
   @films = sort { $a->{film_id} cmp $b->{film_id} } @films;
 
   return @films;
-}
-
-=item foldersections ($folder_id, $filming)
-
-Return a list of film sections for the folder, for a certain filming (1|2).
-Currently, only for collection 'co'.
-
-=cut
-
-sub foldersections {
-  my $class     = shift or croak('param missing');
-  my $folder_id = shift or croak('param missing');
-  my $filming   = shift or croak('param missing');
-
-  my @sectionlist;
-  my ( $collection, $folder_nk ) = $folder_id =~ m;^(co)/(\d{6})$;;
-  foreach my $section_uri ( @{ $FOLDER->{$collection}{$folder_nk}{$filming} } )
-  {
-    my %entry = ( $section_uri => $SECTION->{$section_uri}, );
-    push( @sectionlist, $SECTION->{$section_uri} );
-  }
-  return @sectionlist;
-}
-
-=item categorysections ($category_type, $category_id, $filming)
-
-Return a list of film sections of type secondary for a certain primary category, for a
-certain filming (1|2).
-
-Valid $category_type are:
-
-=over 2
-
-=item *
-
-geo - retrieves a list of subject entries for this geo
-
-=item *
-
-ware - retrieves a list of geo entries for this ware
-
-=back
-
-=cut
-
-sub categorysections {
-  my $class         = shift or croak('param missing');
-  my $category_type = shift or croak('param missing');
-  my $category_id   = shift or croak('param missing');
-  my $filming       = shift or croak('param missing');
-
-  my @sectionlist;
-
-  croak("wrong category type $category_type")
-    unless $category_type =~ m/^(geo|ware)$/;
-
-# $CATEGORY = { $category_type => { $category_id => { $filming => [ $section_uri ... ] } } }
-  foreach
-    my $section_uri ( @{ $CATEGORY->{$category_type}{$category_id}{$filming} } )
-  {
-    my %entry = ( $section_uri => $SECTION->{$section_uri}, );
-    push( @sectionlist, $SECTION->{$section_uri} );
-  }
-  return @sectionlist;
-}
-
-=item categorysections_inv ($category_type, $category_id, $filming)
-
-Inversely, return a list of film sections of type primary for a certain
-secondary category, for a certain filming (1|2).
-
-Valid $category_type are:
-
-=over 4
-
-=item *
-
-geo - retrieves a list of ware entries for this geo
-
-=item *
-
-subject - retrieves a list of geo entries for this subject
-
-=back
-
-=cut
-
-sub categorysections_inv {
-  my $class         = shift or croak('param missing');
-  my $category_type = shift or croak('param missing');
-  my $category_id   = shift or croak('param missing');
-  my $filming       = shift or croak('param missing');
-
-  croak("wrong category type $category_type")
-    unless $category_type =~ m/^(geo|subject)$/;
-
-  my @sectionlist;
-
-# $CATEGORY_INV = { $category_type => { $category_id => { $filming => [ $section_uri ... ] } } }
-  foreach my $section_uri (
-    @{ $CATEGORY_INV->{$category_type}{$category_id}{$filming} } )
-  {
-    my %entry = ( $section_uri => $SECTION->{$section_uri}, );
-    push( @sectionlist, $SECTION->{$section_uri} );
-  }
-  return @sectionlist;
 }
 
 =back
@@ -417,7 +297,7 @@ sub _init_img_count {
 
 sub _load_filmdata {
 
-  my ( $FILM, $SECTION, $FOLDER, $CATEGORY );
+  my ( $FILM, $SECTION );
 
   my $film_file = path('../data/rdf/film.jsonld');
   my @filmdata  = @{ decode_json( $film_file->slurp )->{'@graph'} };
@@ -435,68 +315,19 @@ sub _load_filmdata {
     }
   }
 
-  # films, folders and categories
+  # add sections to films
   foreach my $section_uri ( sort keys %{$SECTION} ) {
-    $section_uri =~ m;/film/h(1|2)/(co|wa|sh)/(.+)?/(\d+)(?:/(R|L))?$;;
-    my $filming    = $1;
-    my $collection = $2;
-    my $film_name  = $3;
-    my $img_nr     = $4;
-    my $rl         = $5;
 
-    my $section_ref = $SECTION->{$section_uri};
-
-    # films
-    ( my $film_uri = $section_uri ) =~ s/^((?:.+)?\/$film_name).+/$1/;
+    ( my $film_uri = $section_uri ) =~ m;^(.+?/film/.+?)/.+$;;
     push( @{ $FILM->{$film_uri}{sections} }, $section_uri );
-
-    # folders (currently only for co)
-    if ( my $pm20_uri = $section_ref->{about}{'@id'} ) {
-      $pm20_uri =~ m;folder/co/(\d{6});;
-      my $folder_nk = $1;
-      push( @{ $FOLDER->{$collection}{$folder_nk}{$filming} }, $section_uri );
-    }
-
-    # categories
-    else {
-      # primary group
-      my $grp_prop_ref = ZBW::PM20x::Film->get_grouping_properties($collection);
-      my $category_type = $grp_prop_ref->{primary_group}{type};
-      my $category_prop = $grp_prop_ref->{primary_group}{jsonld};
-
-      if ( $section_ref->{$category_prop}
-        and my $category_uri = $section_ref->{$category_prop}{'@id'} )
-      {
-        $category_uri =~ m;category/$category_type/i/(\d{6});;
-        my $category_id = $1;
-        push(
-          @{ $CATEGORY->{$category_type}{$category_id}{$filming} },
-          $section_uri
-        );
-      }
-
-      next unless $grp_prop_ref->{secondary_group};
-
-      # secondary group
-      my $secondary_category_type = $grp_prop_ref->{secondary_group}{type};
-      my $secondary_category_prop = $grp_prop_ref->{secondary_group}{jsonld};
-
-      if ( $section_ref->{$secondary_category_prop}
-        and my $category_uri = $section_ref->{$secondary_category_prop}{'@id'} )
-      {
-        $category_uri =~ m;category/$secondary_category_type/i/(\d{6});;
-        my $secondary_category_id = $1;
-        push(
-          @{
-            $CATEGORY_INV->{$secondary_category_type}{$secondary_category_id}
-              {$filming}
-          },
-          $section_uri
-        );
-      }
-    }
   }
-  return $FILM, $SECTION, $FOLDER, $CATEGORY, $CATEGORY_INV;
+
+  return $FILM, $SECTION;
+}
+
+# use only to transmit the pointer to Film::Section
+sub _SECTION() {
+  return $SECTION;
 }
 
 1;

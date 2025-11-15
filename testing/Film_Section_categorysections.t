@@ -9,7 +9,7 @@ use Data::Dumper;
 
 use Test::More;
 
-my $class = 'ZBW::PM20x::Film';
+my $class = 'ZBW::PM20x::Film::Section';
 
 use_ok($class) or die "Could not load $class\n";
 
@@ -34,14 +34,18 @@ $geo_id  = 141731;
 $filming = 1;
 
 @waresections = $class->categorysections( 'ware', $ware_id, $filming );
+##diag Dumper \@waresections;
 ok( @waresections, "ware $ware_id has sections in filming $filming" );
+
+my $section1 = $waresections[0];
+##diag Dumper $section1;
+ok( $section1->isa('ZBW::PM20x::Film::Section'), "section is of class film section");
 
 #warn(Dumper \@waresections);
 
 @geosections = $class->categorysections_inv( 'geo', $geo_id, $filming );
 ok( @geosections, "geo $geo_id has ware sections in filming $filming" );
-
-#warn(Dumper \@geosections);
+##diag Dumper \@geosections;
 
 # create a lookup hash of ware ids for the geo (just for testing)
 my %ware = map { $_->{ware}{'@id'} =~ m/\/(\d+)$/ => 1 } @geosections;

@@ -17,6 +17,7 @@ use Readonly;
 use Scalar::Util qw(looks_like_number reftype);
 use ZBW::PM20x::Vocab;
 use ZBW::PM20x::Film;
+use ZBW::PM20x::Film::Section;
 
 Readonly my $FOLDER_URI_ROOT  => 'https://pm20.zbw.eu/folder/';
 Readonly our $FOLDER_ROOT     => path('/pm20/folder');
@@ -710,7 +711,7 @@ sub get_filmsectionlist {
   my $filming = shift or croak('param missing');
 
   my @filmsectionlist =
-    ZBW::PM20x::Film->foldersections( $self->get_folder_id, $filming );
+    ZBW::PM20x::Film::Section->foldersections( $self->get_folder_id, $filming );
 
   return @filmsectionlist;
 }
