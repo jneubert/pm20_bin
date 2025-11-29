@@ -219,6 +219,8 @@ sub categorysections {
   croak("wrong category type $category_type")
     unless $category_type =~ m/^(geo|ware)$/;
 
+  return unless $CATEGORY->{$category_type}{$category_id}{$filming};
+
   my @sectionlist = @{ $CATEGORY->{$category_type}{$category_id}{$filming} };
 
   return @sectionlist;
@@ -253,6 +255,8 @@ sub categorysections_inv {
 
   croak("wrong category type $category_type")
     unless $category_type =~ m/^(geo|subject)$/;
+
+  return unless $CATEGORY_INV->{$category_type}{$category_id}{$filming};
 
   my @sectionlist =
     @{ $CATEGORY_INV->{$category_type}{$category_id}{$filming} };
@@ -398,10 +402,11 @@ Temporary restrictions: For now, the following cases are skipped:
 sub label {
   my $self       = shift or croak('param missing');
   my $lang       = shift or croak('param missing');
-  my $vocab_name = shift or croak('param missing');
+  my $detail_voc = shift or croak('param missing');
 
   my $section_id = $self->id;
   my $collection = $self->collection;
+  my $vocab_name = $detail_voc->vocab_name;
   my $term_id;
 
   # lazy load
@@ -443,7 +448,7 @@ sub label {
 
   # vocab lookup
   my $label = $vocab{$vocab_name}->label( $lang, $term_id );
-  warn $section_id, "Term $term_id not found in $vocab_name\n" unless $label;
+  warn "$section_id: Term $term_id not found in $vocab_name\n" unless $label;
 
   # TODO handle labels with keys/translations
   # for ware, we for now have labels combined with keywords
@@ -452,90 +457,6 @@ sub label {
       $label = "$label - " . $self->{keywords}[0];
     }
   }
-  return $label;
-}
-
-sub label_bak {
-  my $self       = shift or croak('param missing');
-  my $lang       = shift or croak('param missing');
-  my $detail_voc = shift or croak('param missing');
-
-  my $vocab_name = $detail_voc->vocab_name;
-  my $section_id = $self->id;
-  my $title      = $self->title;
-
-  # TODO skip if section starts with image 0001 from film list
-  if ( $section_id =~ m|/0001$| ) {
-    return $title;
-  }
-
-  # extract term_id from section
-  my $key = $vocab_name eq 'geo' ? 'country' : $vocab_name;
-  my $term_id;
-  if ( not $self->{$key}{'@id'} ) {
-    ##warn "$section_id: $key entry missing\n";
-    # TODO check if this makes sense
-    return ( $lang eq 'de' ? 'Alles über ...' : 'All about ...' );
-  }
-
-  if ( $self->{$key}{'@id'} =~ m|/i/(\d{6})$| ) {
-    $term_id = $1;
-  } else {
-    warn "$section_id: invalid $vocab_name uri for $title\n";
-    return $title;
-  }
-
-  my $label = $detail_voc->label( $lang, $term_id );
-
-  ##print Dumper $section, $vocab_name, $lang, $title, $label;
-
-  # check if the German label equals the relevant title part
-  if ( $lang eq 'de' ) {
-    my $partial_title;
-    my @parts = split( / : /, $title );
-    if ( scalar(@parts) != 2 ) {
-      warn "$section_id: irregular title $title\n";
-    } else {
-
-      # extract relevant part of the title
-      if ( $section_id =~ m;/(sh|wa)/; ) {
-        my $collection = $1;
-        if ( $collection eq 'sh' and $vocab_name eq 'subject' ) {
-          $partial_title = $parts[1];
-        } elsif ( $collection eq 'sh' and $vocab_name eq 'geo' ) {
-          $partial_title = $parts[0];
-        } elsif ( $collection eq 'wa' and $vocab_name eq 'geo' ) {
-          $partial_title = $parts[1];
-        } elsif ( $collection eq 'wa' and $vocab_name eq 'ware' ) {
-          $partial_title = $parts[0];
-        }
-      }
-      if ( not $partial_title ) {
-        warn "$section_id: strange id with title $title\n";
-        return $title;
-      }
-
-      # known special cases
-
-      # TODO special case ' - Literatur'
-      if ( $title =~ m/ - Literatur$/ ) {
-        return $title;
-      }
-
-      # TODO known subdivisions
-      if ( has_known_subdivisions($title) ) {
-        return $title;
-      }
-
-      if ( $label ne $partial_title
-        and not is_known_variant( $vocab_name, $partial_title ) )
-      {
-        warn "$section_id: '$label' does not match title '$title'\n";
-        return $title;
-      }
-    }    # regular title
-  }    # de
-
   return $label;
 }
 
@@ -664,6 +585,7 @@ sub _init_data {
   foreach my $section_uri ( sort keys %{$SECTION} ) {
     my $section = $SECTION->{$section_uri};
     my $filming = $section->filming;
+    my $section_id   = $section->id;
 
     # folders (currently only for co)
     # TODO add folder and section objects
@@ -711,7 +633,7 @@ sub _init_data {
             $section
           );
         } else {
-          warn "no id for ",  Dumper $category_uri;
+          warn "$section_id: no id for $category_uri\n";
         }
       }
     }

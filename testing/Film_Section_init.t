@@ -19,7 +19,7 @@ ok( my $section1 = $class->init_from_uri($uri), "created from uri" );
 
 ok( my $section2 = $class->init_from_id('h1/sh/S0373H/1115'),
   "created from id" );
-diag Dumper $section2;
+##diag Dumper $section2;
 
 is_deeply( $section1, $section2, "same result with init from uri and id" );
 

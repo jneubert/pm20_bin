@@ -13,9 +13,8 @@
 
 use strict;
 use warnings;
-use utf8;
-
-use lib './lib';
+use autodie;
+use utf8::all;
 
 use Carp;
 use Data::Dumper;
@@ -29,9 +28,6 @@ use Unicode::Collate;
 use YAML;
 use ZBW::PM20x::Folder;
 use ZBW::PM20x::Vocab;
-
-binmode( STDOUT, ":encoding(UTF-8)" );
-binmode( STDERR, ":encoding(UTF-8)" );
 
 ##Readonly my $WEB_ROOT        => path('/tmp/category');
 Readonly my $WEB_ROOT        => path('../web/category');
@@ -163,8 +159,11 @@ foreach my $category_type ( sort keys %{$definitions_ref} ) {
 
         my %filmsections;
         foreach my $filming (qw/ 1 2/) {
-          $filmsections{$filming} =
-            [ $master_voc->filmsectionlist( $category_id, $filming ) ];
+          $filmsections{$filming} = [
+            $master_voc->filmsectionlist(
+              $category_id, $filming, $detail_type
+            )
+          ];
         }
 
         my $folder_count =
@@ -547,13 +546,8 @@ foreach my $category_type (qw/ geo subject ware /) {
             ## TODO is this correct? includes position and R/L!
             my $film_id = substr( $section->{'@id'}, 25 );
 
-            my $section_label = $section->{title};
-
-            # currently, replace labels only for filming 1 sections
-            if ( $filming == 1 ) {
-              $section_label =
-                get_section_label( $lang, $detail_voc, $section );
-            }
+            my $section_label =
+              $section->label( $lang, $detail_voc ) || $section->{title};
 
             my $entry = {
               "is_$lang"     => 1,

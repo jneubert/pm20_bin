@@ -31,12 +31,18 @@ $filming = 1;
 @waresections = $ware_vocab->filmsectionlist( $ware_id, $filming, 'geo' );
 ok( @waresections, "ware $ware_id has geo sections in filming $filming" );
 
-#warn(Dumper \@waresections);
+#diag Dumper \@waresections;
 
 @geosections = $geo_vocab->filmsectionlist( $geo_id, $filming, 'ware' );
 ok( @geosections, "geo $geo_id has ware sections in filming $filming" );
 
-#warn(Dumper \@geosections);
+my @section_uris = map { $_->{'@id'} } @geosections;
+
+#diag Dumper \@section_uris;
+
+my @sorted_section_uris = sort @section_uris;
+is_deeply \@section_uris, \@sorted_section_uris,
+  "list is strictly sorted by section uri";
 
 # create a lookup hash of ware ids for the geo (just for testing)
 my %ware = map { $_->{ware}{'@id'} =~ m/\/(\d+)$/ => 1 } @geosections;
