@@ -4,7 +4,8 @@ package ZBW::PM20x::Vocab;
 
 use strict;
 use warnings;
-use utf8;
+use autodie;
+use utf8::all;
 
 use Carp qw/ cluck confess croak /;
 use Data::Dumper;
@@ -115,8 +116,11 @@ sub new {
   my ( %cat, %lookup, $modified );
   my $file = path("$RDF_ROOT/$vocab_name.skos.extended.jsonld");
   foreach my $lang (qw/ en de /) {
+
+    # opening _raw is necessary to avoid "Wide character ..." problem with
+    # decode_json (slurp_utf8 does not work!)
     my @categories =
-      @{ decode_json( $file->slurp )->{'@graph'} };
+      @{ decode_json( $file->slurp_raw )->{'@graph'} };
 
     # read jsonld graph
     foreach my $category (@categories) {

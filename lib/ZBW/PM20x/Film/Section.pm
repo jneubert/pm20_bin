@@ -380,22 +380,13 @@ sub title {
 
 =item label ( $lang, $detail_voc )
 
-Returns the category label for the section which is relevant for listing as 
-$detail_type, in the according language.
-
-If the German category label cannot matched to the according part of the title
-string, returns title in order to avoid loss of information.
+Returns the partial category label from $detail_voc, in the according language.
 
 The full title may include additional information (e.g., individual diseases,
-or political relations to ...). The additional info is handled as follows:
+or political relations to ...). For now, these keywords are added in German.
 
-
-Temporary restrictions: For now, the following cases are skipped:
-
-- section stems from filmlist
-
-- section is from collection sh
-
+For entries from the filmlists, currently no label can be generated (because of
+missing ids), and the full German title is returned.
 
 =cut
 

@@ -2,11 +2,10 @@
 
 use strict;
 use warnings;
-
-use lib '../lib';
+use autodie;
+use utf8::all;
 
 use Data::Dumper;
-
 use Test::More;
 
 my $class = 'ZBW::PM20x::Film::Section';

@@ -2,6 +2,7 @@
 
 use strict;
 use warnings;
+use autodie;
 use utf8::all;
 
 use Data::Dumper;

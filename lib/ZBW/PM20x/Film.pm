@@ -4,7 +4,8 @@ package ZBW::PM20x::Film;
 
 use strict;
 use warnings;
-use utf8;
+use autodie;
+use utf8::all;
 
 use Carp qw/ cluck confess croak /;
 use Data::Dumper;
@@ -299,8 +300,10 @@ sub _load_filmdata {
 
   my ( $FILM, $SECTION );
 
+  # opening _raw is necessary to avoid "Wide character ..." problem with
+  # decode_json (slurp_utf8 does not work!)
   my $film_file = path('../data/rdf/film.jsonld');
-  my @filmdata  = @{ decode_json( $film_file->slurp )->{'@graph'} };
+  my @filmdata  = @{ decode_json( $film_file->slurp_raw )->{'@graph'} };
 
   foreach my $filmdata_ref (@filmdata) {
     my $type = $filmdata_ref->{'@type'};

@@ -4,9 +4,8 @@ package ZBW::PM20x::Folder;
 
 use strict;
 use warnings;
-
-use lib './lib/';
-use utf8;
+use autodie;
+use utf8::all;
 
 use Carp;
 use Data::Dumper;
@@ -761,7 +760,7 @@ sub _load_docdata {
   my $collection = shift or croak('param missing');
 
   my $docdata_file = $DOCDATA_ROOT->child("${collection}_docdata.json");
-  my $docdata_ref  = decode_json( $docdata_file->slurp );
+  my $docdata_ref  = decode_json( $docdata_file->slurp_raw );
   $data{$collection}{docdata} = $docdata_ref;
 }
 
