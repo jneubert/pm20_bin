@@ -567,6 +567,15 @@ foreach my $category_type (qw/ geo subject ware /) {
               $master_voc->film_img_count( $category_id, $filming ),
           );
 
+          # remove image count for ware section on geo pages
+          # or geo sections on subject pages
+          my $master_type = $master_voc->vocab_name;
+          if ( ( $master_type eq 'geo' and $detail_type eq 'ware' )
+            or ( $master_type eq 'subject' and $detail_type eq 'geo' ) )
+          {
+            delete $filming_data{total_number_of_images};
+          }
+
           push( @filmings, \%filming_data );
         }    # $filming
 
