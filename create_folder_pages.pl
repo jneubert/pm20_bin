@@ -432,12 +432,12 @@ sub mk_folder {
 
         my @filmsection_loop;
         foreach my $section ( sort @filmsectionlist ) {
-          my $film_id = substr( $section->{'@id'}, 25 );
-          my $entry   = {
+          my $section_id = substr( $section->{'@id'}, 25 );
+          my $entry      = {
             "is_$lang"     => 1,
-            filmviewer_url => "https://pm20.zbw.eu/film/$film_id",
-            film_id        => $film_id,
-            first_img      => $section->{title},
+            filmviewer_url => "https://pm20.zbw.eu/film/$section_id",
+            section_id     => $section_id,
+            section_label  => $section->{title},
           };
           push( @filmsection_loop, $entry );
         }

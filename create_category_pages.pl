@@ -543,8 +543,7 @@ foreach my $category_type (qw/ geo subject ware /) {
 
           my @filmsection_loop;
           foreach my $section (@filmsectionlist) {
-            ## TODO is this correct? includes position and R/L!
-            my $film_id = substr( $section->{'@id'}, 25 );
+            my $section_id = substr( $section->{'@id'}, 25 );
 
             my $section_label =
               $section->label( $lang, $detail_voc ) || $section->{title};
@@ -552,8 +551,8 @@ foreach my $category_type (qw/ geo subject ware /) {
             my $entry = {
               "is_$lang"     => 1,
               filmviewer_url => $section->{'@id'},
-              film_id        => $film_id,
-              first_img      => $section_label,
+              section_id     => $section_id,
+              section_label  => $section_label,
             };
             push( @filmsection_loop, $entry );
           }

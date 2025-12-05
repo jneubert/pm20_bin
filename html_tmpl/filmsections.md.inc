@@ -17,7 +17,7 @@
 
  | 
 ----|-------
-<tmpl_loop filmsection_loop><a class="btn" href="<tmpl_var filmviewer_url>" rel="nofollow"><tmpl_if is_de>Bilder auf Film </tmpl_if><tmpl_if is_en>Images on film </tmpl_if><tmpl_var film_id></a> | <tmpl_if first_img><tmpl_var first_img></tmpl_if>
+<tmpl_loop filmsection_loop><a class="btn" href="<tmpl_var filmviewer_url>" rel="nofollow"><tmpl_if is_de>Bilder auf Film </tmpl_if><tmpl_if is_en>Images on film </tmpl_if><tmpl_var section_id></a> | <tmpl_if section_label><tmpl_var section_label></tmpl_if>
 </tmpl_loop filmsection_loop>
 
 :::
