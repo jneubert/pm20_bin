@@ -11,6 +11,12 @@ use ZBW::PM20x::Vocab;
 
 my $class = 'ZBW::PM20x::Film::Section';
 
+my %vocab = (
+  'geo' => ZBW::PM20x::Vocab->new('geo'),
+  'subject' => ZBW::PM20x::Vocab->new('subject'),
+  ##  'ware' => ZBW::PM20x::Vocab->new('ware'),
+);
+
 use_ok($class) or die "Could not load $class\n";
 
 my $_ref = [
@@ -115,7 +121,8 @@ foreach my $case_ref (@cases) {
   my $title      = $case_ref->{title};
   my $lang       = $case_ref->{lang};
   my $vocab_name = $case_ref->{vocab_name};
-  $case_ref->{label} = $section->label( $lang, $vocab_name );
+  my $vocab = $vocab{$vocab_name};
+  $case_ref->{label} = $section->label( $lang, $vocab );
   foreach my $field ( keys %{ $case_ref->{expected} } ) {
     if ( my $expected = $case_ref->{expected}{$field} ) {
       is( $case_ref->{$field}, $expected, "$title {$lang, $vocab_name}" );

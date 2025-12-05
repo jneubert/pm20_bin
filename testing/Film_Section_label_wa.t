@@ -7,6 +7,13 @@ use utf8::all;
 
 use Data::Dumper;
 use Test::More;
+use ZBW::PM20x::Vocab;
+
+my %vocab = (
+  'geo' => ZBW::PM20x::Vocab->new('geo'),
+  ##'subject' => ZBW::PM20x::Vocab->new('subject'),
+  'ware' => ZBW::PM20x::Vocab->new('ware'),
+);
 
 my $class = 'ZBW::PM20x::Film::Section';
 
@@ -36,21 +43,21 @@ $filming = 1;
 @waresections = $class->categorysections( 'ware', $ware_id, $filming );
 ##diag Dumper \@waresections;
 ok( @waresections, "ware $ware_id has sections in filming $filming" );
-is( $waresections[1]->label( 'de', 'geo' ), 'Österreich', "utf8 string" );
+is( $waresections[1]->label( 'de', $vocab{geo} ), 'Österreich', "utf8 string" );
 ##diag Dumper $waresections[1];
 
 foreach my $section (@waresections) {
-  diag $section->title, "\n";
-  diag $section->label( 'en', 'geo' ), "\n";
+
+  #diag $section->title, "\n";
+  #diag $section->label( 'en', $vocab{geo} ), "\n";
 }
 
 ##@geosections = $class2->filmsectionlist($geo_id, $filming, 'ware');
-@geosections = $class->categorysections_inv('geo', $geo_id,  $filming);
+@geosections = $class->categorysections_inv( 'geo', $geo_id, $filming );
 foreach my $section (@geosections) {
   ##diag $section->title, "\n";
   ##diag $section->id, "  ", $section->label( 'en', $ware_vocab ), "\n";
 }
-
 
 my $_ref = [
   {
@@ -62,7 +69,7 @@ my $_ref = [
     expected         => {
       label => '',
     },
-    diag => 1,
+    diag => 0,
   },
 ];
 
@@ -76,7 +83,7 @@ my @cases = (
     expected         => {
       label => '',
     },
-    diag => 1,
+    diag => 0,
   },
 );
 
@@ -86,7 +93,8 @@ foreach my $case_ref (@cases) {
   my $title      = $case_ref->{title};
   my $lang       = $case_ref->{lang};
   my $vocab_name = $case_ref->{vocab_name};
-  $case_ref->{label} = $section->label( $lang, $vocab_name );
+  my $vocab      = $vocab{$vocab_name};
+  $case_ref->{label} = $section->label( $lang, $vocab );
   foreach my $field ( keys %{ $case_ref->{expected} } ) {
     if ( my $expected = $case_ref->{expected}{$field} ) {
       is( $case_ref->{$field}, $expected, "$title {$lang, $vocab_name}" );
@@ -97,14 +105,6 @@ foreach my $case_ref (@cases) {
     last;
   }
 }
-
-
-
-
-
-
-
-
 
 # Tests for secondary sections
 
@@ -120,20 +120,20 @@ $filming = 1;
 @waresections = $class->categorysections( 'ware', $ware_id, $filming );
 ##diag Dumper \@waresections;
 ok( @waresections, "ware $ware_id has sections in filming $filming" );
-is( $waresections[1]->label( 'de', 'geo' ), 'Österreich', "utf8 string" );
-diag Dumper $waresections[1];
+is( $waresections[1]->label( 'de', $vocab{geo} ), 'Österreich', "utf8 string" );
+
+#diag Dumper $waresections[1];
 
 foreach my $section (@waresections) {
   ##diag $section->title, "\n";
   #diag $section->label( 'en', $geo_vocab ), "\n";
 }
 ##@geosections = $class2->filmsectionlist($geo_id, $filming, 'ware');
-@geosections = $class->categorysections_inv('geo', $geo_id,  $filming);
+@geosections = $class->categorysections_inv( 'geo', $geo_id, $filming );
 foreach my $section (@geosections) {
   ##diag $section->title, "\n";
   ##diag $section->id, "  ", $section->label( 'en', $ware_vocab ), "\n";
 }
-
 
 @geosections = $class->categorysections_inv( 'geo', $geo_id, $filming );
 ok( @geosections, "geo $geo_id has ware sections in filming $filming" );
