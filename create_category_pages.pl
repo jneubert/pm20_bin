@@ -553,6 +553,7 @@ foreach my $category_type (qw/ geo subject ware /) {
               filmviewer_url => $section->{'@id'},
               section_id     => $section_id,
               section_label  => $section_label,
+              image_count    => $section->img_count,
             };
             push( @filmsection_loop, $entry );
           }

@@ -16,8 +16,8 @@
 ::: {.sectiontable}
 
  | 
-----|-------
-<tmpl_loop filmsection_loop><a class="btn" href="<tmpl_var filmviewer_url>" rel="nofollow"><tmpl_if is_de>Bilder auf Film </tmpl_if><tmpl_if is_en>Images on film </tmpl_if><tmpl_var section_id></a> | <tmpl_if section_label><tmpl_var section_label></tmpl_if>
+--|-------
+<tmpl_loop filmsection_loop><a class="btn" href="<tmpl_var filmviewer_url>" rel="nofollow"><tmpl_var section_id></a> | <tmpl_if section_label><tmpl_var section_label></tmpl_if> &#160; <tmpl_if image_count>[(<tmpl_var image_count> <tmpl_if is_de>Aufnahmen</tmpl_if><tmpl_if is_en>images</tmpl_if>)]{.hint}</tmpl_if>
 </tmpl_loop filmsection_loop>
 
 :::

@@ -7,7 +7,7 @@ use warnings;
 use autodie;
 use utf8::all;
 
-use Carp qw/ cluck confess croak /;
+use Carp;
 use Data::Dumper;
 use JSON;
 use Path::Tiny;
@@ -106,8 +106,12 @@ ZBW::PM20x::Film::Section - Functions for sections of PM20 microfilms
 
 =head1 DESCRIPTION
 
-A film section is defined by the film, by the number of the image with which the
-section starts.  and optionally /(L|R) for the left or right page on the image.
+A film section is defined by the id of the (physical) film and the sequential
+number of the image with which the section starts, plus optionally /(L|R) for
+the left or right page on the image. The sequential number is derived from the
+image file name.
+
+Currently, a section may span both parts of a split film (_1/_2).
 
 =head1 Class methods
 
@@ -439,7 +443,7 @@ sub label {
 
   # vocab lookup
   my $label = $vocab{$vocab_name}->label( $lang, $term_id );
-  warn "$section_id: Term $term_id not found in $vocab_name\n" unless $label;
+  carp "$section_id: Term $term_id not found in $vocab_name\n" unless $label;
 
   # TODO handle labels with keys/translations
   # for ware, we for now have labels combined with keywords
@@ -456,15 +460,18 @@ sub label {
 Returns the number of images in this section, or undef, if section or count is
 not defined.
 
-Uses totalImageCount property - may that span more than one film?
-See read_zotero.pl for the computation of number_of_images.
+If a section starts on film_1 and runs up to film_2, the img_count() returns
+the sum of images on both film parts.
+
+See read_zotero.pl add_number_of_images() for the computation of
+number_of_images.
 
 =cut
 
 sub img_count {
   my $self       = shift or croak('param missing');
   
-  return $self->{totalImageCount};
+  return $self->{totalImageCount}{'@value'};
 }
 
 ##### helper procedures - only internally used?
@@ -624,7 +631,9 @@ sub _init_data {
             $section
           );
         } else {
-          warn "$section_id: no id for $category_uri\n";
+          # particularly, the case of known ... {vocab}/i/nomatch
+          # no additional warning necessary here
+          ##carp "$section_id: no id for $category_uri\n";
         }
       }
     }
