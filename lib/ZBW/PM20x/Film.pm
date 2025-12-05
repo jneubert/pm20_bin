@@ -130,6 +130,12 @@ sub new {
     confess "Invalid film id $film_id";
   }
 
+  # do not accept ids for films which are not in the film dataset
+  # (may be non-existing or already online as folder)
+  if ( not $FILM->{$uri} ) {
+    confess "Non-existant or already online $film_id";
+  }
+
   my $self = {
     film_id    => $film_id,
     set        => $set,
@@ -178,8 +184,12 @@ sub films {
 
   my $subset_path = $subset =~ s/_/\//r;
 
-  foreach my $film_id ( keys %{$IMG_COUNT} ) {
+  foreach my $film_id ( sort keys %{$IMG_COUNT} ) {
     next unless $film_id =~ m/^$subset_path\//;
+
+    # skip film image sets which are already online as folders
+    # (and therefore not part of film dataset)
+    next unless $FILM->{"$FILM_ROOT_URI$film_id"};
 
     # fix error with redundant _1/_2 and full films (e.g. A0023H)
     next
