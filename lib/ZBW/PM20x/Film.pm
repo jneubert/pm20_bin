@@ -7,7 +7,7 @@ use warnings;
 use autodie;
 use utf8::all;
 
-use Carp qw/ cluck confess croak /;
+use Carp;
 use Data::Dumper;
 use JSON;
 use Path::Tiny;
@@ -117,24 +117,15 @@ sub new {
   my $class   = shift or croak('param missing');
   my $film_id = shift or croak('param missing');
 
-  my ( $set, $collection, $film_name, $uri );
-
-  # TODO check/extend for Kiel films
-  # NB a film named "S0901aH" exists!
-  if ( $film_id =~ m;^(h[12])/(co|wa|sh)/([AFSW]\d{4}a?H(_[12])?$)$; ) {
-    $set        = $1;
-    $collection = $2;
-    $film_name  = $3;
-    $uri        = $FILM_ROOT_URI . $film_id;
-  } else {
+  if ( not $class->valid($film_id) ) {
     confess "Invalid film id $film_id";
   }
 
-  # do not accept ids for films which are not in the film dataset
-  # (may be non-existing or already online as folder)
-  if ( not $FILM->{$uri} ) {
-    confess "Non-existant or already online $film_id";
-  }
+  $film_id =~ m;^(h[12])/(co|wa|sh)/([AFSW]\d{4}a?H(_[12])?$)$;;
+  my $set        = $1;
+  my $collection = $2;
+  my $film_name  = $3;
+  my $uri        = $FILM_ROOT_URI . $film_id;
 
   my $self = {
     film_id    => $film_id,
@@ -211,6 +202,43 @@ sub films {
   return @films;
 }
 
+=item valid ($film_id)
+
+Returns 1 if a $film_id is valid (id is formally valid and film is not empty or
+already online), undef otherwise.
+
+=cut
+
+sub valid {
+  my $class   = shift or croak('param missing');
+  my $film_id = shift or croak('param missing');
+
+  # formally valid film id
+  my ( $set, $collection, $film_name, $uri );
+
+  # TODO check/extend for Kiel films
+  # NB a film named "S0901aH" exists!
+  if ( $film_id =~ m;^(h[12])/(co|wa|sh)/([AFSW]\d{4}a?H(_[12])?$)$; ) {
+    $set        = $1;
+    $collection = $2;
+    $film_name  = $3;
+    $uri        = $FILM_ROOT_URI . $film_id;
+  } else {
+    carp("Invalid film id $film_id");
+    return;
+  }
+
+  # TODO check with collection-specific regex
+
+  # do not accept ids for films which are not in the film dataset
+  # (may be non-existing or already online as folder)
+  if ( not defined $FILM->{$uri} ) {
+    return;
+  }
+
+  return 1;
+}
+
 =back
 
 =head1 Instance methods
@@ -271,7 +299,7 @@ sub sections {
 
   my @section_uris = ();
   if ( not defined $FILM->{ $self->{uri} }{sections} ) {
-    warn "No sections for ", Dumper $self;
+    carp "No sections for ", Dumper $self;
   } else {
     @section_uris = @{ $FILM->{ $self->{uri} }{sections} };
   }
