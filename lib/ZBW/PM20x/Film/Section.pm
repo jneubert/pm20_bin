@@ -367,6 +367,23 @@ sub filming {
   return $filming;
 }
 
+=item film ()
+
+Return the film in which the section is located.
+
+=cut
+
+sub film {
+  my $self = shift or croak('param missing');
+
+  # extract from uri
+  my ($film_id) = $self->{'@id'} =~ m;/([hk][12]/(?:co|wa|sh)/.+?)/;;
+
+  my $film = ZBW::PM20x::Film->new($film_id);
+
+  return $film;
+}
+  
 =item title ()
 
 Returns the full section title, as captured in Zotero or in the film lists,
@@ -472,6 +489,32 @@ sub img_count {
   my $self       = shift or croak('param missing');
   
   return $self->{totalImageCount}{'@value'};
+}
+
+=item is_filmstartonly ()
+
+Returns 1 if this is the first section on a film and the film is not indexed.
+
+TODO: additional condition: the section title is the same as in the prior
+section (otherwise, accidentally new content started at film start).
+
+=cut
+
+sub is_filmstartonly {
+  my $self = shift or croak('param missing');
+
+  my $filmstartonly;
+
+  my $film = $self->film;
+
+  my @sections = $film->sections;
+  if ( $self eq $sections[0] 
+      and scalar( split( / : /, $self->title ) ) == 2 ) {
+    if ( $film->status eq 'unindexed' ) {
+      $filmstartonly = 1;
+    }
+  }
+  return $filmstartonly;
 }
 
 ##### helper procedures - only internally used?

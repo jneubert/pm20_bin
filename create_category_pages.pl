@@ -555,6 +555,9 @@ foreach my $category_type (qw/ geo subject ware /) {
               section_label  => $section_label,
               image_count    => $section->img_count,
             };
+            if ( $section->is_filmstartonly ) {
+              $entry->{is_filmstartonly} = 1;
+            }
             push( @filmsection_loop, $entry );
           }
 
