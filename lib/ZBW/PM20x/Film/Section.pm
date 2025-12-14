@@ -383,7 +383,7 @@ sub film {
 
   return $film;
 }
-  
+
 =item title ()
 
 Returns the full section title, as captured in Zotero or in the film lists,
@@ -422,7 +422,7 @@ sub label {
   my $term_id;
 
   # lazy load
-  if (not defined $vocab{$vocab_name}) {
+  if ( not defined $vocab{$vocab_name} ) {
     __PACKAGE__->_load_vocab($vocab_name);
   }
 
@@ -432,8 +432,7 @@ sub label {
       if ( $self->{country}{'@id'} =~ m;.+/i/(\d{6})$; ) {
         $term_id = $1;
       }
-    }
-    elsif ( $vocab_name eq 'subject' ) {
+    } elsif ( $vocab_name eq 'subject' ) {
       if ( $self->{subject} && $self->{subject}{'@id'} =~ m;.+/i/(\d{6})$; ) {
         $term_id = $1;
       } else {
@@ -448,8 +447,7 @@ sub label {
       if ( $self->{ware}{'@id'} =~ m;.+/i/(\d{6})$; ) {
         $term_id = $1;
       }
-    }
-    elsif ( $vocab_name eq 'geo' ) {
+    } elsif ( $vocab_name eq 'geo' ) {
       if ( $self->{country} && $self->{country}{'@id'} =~ m;.+/i/(\d{6})$; ) {
         $term_id = $1;
       } else {
@@ -486,8 +484,8 @@ number_of_images.
 =cut
 
 sub img_count {
-  my $self       = shift or croak('param missing');
-  
+  my $self = shift or croak('param missing');
+
   return $self->{totalImageCount}{'@value'};
 }
 
@@ -508,8 +506,9 @@ sub is_filmstartonly {
   my $film = $self->film;
 
   my @sections = $film->sections;
-  if ( $self eq $sections[0] 
-      and scalar( split( / : /, $self->title ) ) == 2 ) {
+  if ( $self eq $sections[0]
+    and scalar( split( / : /, $self->title ) ) == 2 )
+  {
     if ( $film->status eq 'unindexed' ) {
       $filmstartonly = 1;
     }
@@ -624,9 +623,9 @@ sub _init_data {
 
   # folders and categories
   foreach my $section_uri ( sort keys %{$SECTION} ) {
-    my $section = $SECTION->{$section_uri};
-    my $filming = $section->filming;
-    my $section_id   = $section->id;
+    my $section    = $SECTION->{$section_uri};
+    my $filming    = $section->filming;
+    my $section_id = $section->id;
 
     # folders (currently only for co)
     # TODO add folder and section objects
@@ -664,7 +663,7 @@ sub _init_data {
       if ( $section->{$secondary_category_prop}
         and my $category_uri = $section->{$secondary_category_prop}{'@id'} )
       {
-        if ($category_uri =~ m;category/$secondary_category_type/i/(\d{6});) {
+        if ( $category_uri =~ m;category/$secondary_category_type/i/(\d{6}); ) {
           my $secondary_category_id = $1;
           push(
             @{
@@ -674,6 +673,7 @@ sub _init_data {
             $section
           );
         } else {
+
           # particularly, the case of known ... {vocab}/i/nomatch
           # no additional warning necessary here
           ##carp "$section_id: no id for $category_uri\n";
@@ -685,8 +685,8 @@ sub _init_data {
 }
 
 sub _load_vocab {
-  my $class = shift or confess ('class missing');
-  my $vocab_name = shift or confess ('param missing');
+  my $class      = shift or confess('class missing');
+  my $vocab_name = shift or confess('param missing');
 
   $vocab{$vocab_name} = ZBW::PM20x::Vocab->new($vocab_name) || croak;
 }

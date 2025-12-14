@@ -393,7 +393,8 @@ sub _load_filmdata {
   # add sections to films
   foreach my $section_uri ( sort keys %{$SECTION} ) {
 
-    ( my $film_uri ) = $section_uri =~ m;^(.+?/film/[hk][12]/(?:co|sh|wa)/.+?)/.+$;;
+    ( my $film_uri ) =
+      $section_uri =~ m;^(.+?/film/[hk][12]/(?:co|sh|wa)/.+?)/.+$;;
     push( @{ $FILM->{$film_uri}{sections} }, $section_uri );
   }
 
