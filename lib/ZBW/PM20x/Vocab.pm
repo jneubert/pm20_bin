@@ -636,7 +636,7 @@ sub start_sig {
 
 =item filmsectionlist( $term_id, $filming, $detail_type )
 
-Return a sorted list of film sections of detail category type $detail_type
+Return a (currently unsorted) list of film sections of detail category type $detail_type
 (defaults see below) for a term of the given (main) category type for either
 filming 1 or 2. Leaves out sections already published as folders and not
 manually indexed.

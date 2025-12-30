@@ -561,6 +561,14 @@ foreach my $category_type (qw/ geo subject ware /) {
             push( @filmsection_loop, $entry );
           }
 
+          # sort ware entries alphabetically
+          if ( $detail_type eq 'ware' ) {
+            my $uc = Unicode::Collate->new();
+            @filmsection_loop =
+              sort { $uc->cmp( $a->{'section_label'}, $b->{'section_label'} ) }
+              @filmsection_loop;
+          }
+
           my %filming_data = (
             "is_$lang"             => 1,
             filming_title          => $filming_ref->{title}{$lang},
