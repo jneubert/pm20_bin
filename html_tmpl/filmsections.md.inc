@@ -1,4 +1,4 @@
-<a id="filmsections" />
+<tmpl_if detail_is_geo><a id="geo_filmsections" /></tmpl_if><tmpl_if detail_is_subject><a id="subject_filmsections" /></tmpl_if><tmpl_if detail_is_ware><a id="ware_filmsections" /></tmpl_if>
 <tmpl_loop filming_loop>
 ### <tmpl_var filming_title>
 
