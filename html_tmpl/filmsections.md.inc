@@ -1,6 +1,27 @@
 <tmpl_if detail_is_geo><a id="geo_filmsections" /></tmpl_if><tmpl_if detail_is_subject><a id="subject_filmsections" /></tmpl_if><tmpl_if detail_is_ware><a id="ware_filmsections" /></tmpl_if>
+
+<tmpl_if is_de>
+### Abschnitte von digitalisierten Mikrofilmen
+
+Die Erschließung der digitalisierten Mikrofilme ist work in progress. Sie wird, Film für Film, von Mitgliedern des [Wikipedia Projekt Pressearchiv](https://de.wikipedia.org/wiki/Wikipedia:Projekt_Pressearchiv) in Zusammenarbeit mit der ZBW geleistet. Einige Filme sind vollständig erschlossen, einige nur auf oberster Ebene, andere gar nicht. Die folgende Liste von Filmabschnitten ist daher unvollständig. TODO: für unterschiedliche Fälle präzisieren!
+
+<tmpl_if is_secondary_category>Weiteres Material über "<tmpl_var label>" ist verstreut über die <tmpl_var detail_title> Filmlisten, die primär <tmpl_var ordered_by> geordnet sind. ([1. Verfilmung](<tmpl_var filmlist1>), [2. Verfilmung](<tmpl_var filmlist2>)).</tmpl_if>
+
+[Ausgegraute Abschnittsnamen]{.gray} zeigen lediglich einen zufälligen Einschnitt, den Beginn eines neuen Films, an. Das entsprechende Thema kann bereits auf dem vorigen Film begonnen haben, und die angezeigte Anzahl Aufnahmen umfasst meist nicht nur das genannte Thema.
+</tmpl_if>
+
+<tmpl_if is_en>
+### Sections of digitized microfilms
+
+The indexing of the unprocessed digitized microfilms is work in progress. It is conducted, film by film, by members of the [Wikipedia Projekt Pressearchiv](https://de.wikipedia.org/wiki/Wikipedia:Projekt_Pressearchiv) in cooperation with ZBW. Some films are fully indexed, some only top-level, some not at all. The list of film sections below is therefore uncomplete. TODO: put more precisely for different cases.
+
+<tmpl_if is_secondary_category>Further material about "<tmpl_var label>" is dispersed across the <tmpl_var detail_title> film lists, which are primarily ordered <tmpl_var ordered_by> ([1st filming](<tmpl_var filmlist1>), [2nd filming](<tmpl_var filmlist2>)).</tmpl_if>
+
+[Grayed-out section labels]{.gray} indicates just an arbitrary cut at the beginning of an new film. The topic may have already started on the previous film, and the number of images may comprise much more than the given topic.
+</tmpl_if>
+
 <tmpl_loop filming_loop>
-### <tmpl_var filming_title>
+#### <tmpl_var detail_title> - <tmpl_var filming_title>
 
 <p><tmpl_var legal></p>
 

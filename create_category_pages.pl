@@ -499,6 +499,7 @@ foreach my $category_type (qw/ geo subject ware /) {
 
   # master vocabulary reference
   $master_voc = ZBW::PM20x::Vocab->new($category_type);
+  my $master_type = $master_voc->vocab_name;
 
   foreach my $lang (@LANGUAGES) {
     print "  lang: $lang\n";
@@ -571,6 +572,7 @@ foreach my $category_type (qw/ geo subject ware /) {
 
           my %filming_data = (
             "is_$lang"             => 1,
+            detail_title           => $detail_title,
             filming_title          => $filming_ref->{title}{$lang},
             legal                  => $filming_ref->{legal}{$lang},
             filmsection_loop       => \@filmsection_loop,
@@ -580,7 +582,6 @@ foreach my $category_type (qw/ geo subject ware /) {
 
           # remove image count for ware section on geo pages
           # or geo sections on subject pages
-          my $master_type = $master_voc->vocab_name;
           if ( ( $master_type eq 'geo' and $detail_type eq 'ware' )
             or ( $master_type eq 'subject' and $detail_type eq 'geo' ) )
           {
@@ -593,14 +594,30 @@ foreach my $category_type (qw/ geo subject ware /) {
         if ( scalar(@filmings) ) {
           $category_data{$category_type}{$category_id}{$detail_type}
             {filming_loop}{$lang} = \@filmings;
-        }
+
+          # add data for special text about secondary categories
+          if ( ( $master_type eq 'geo' and $detail_type eq 'ware' )
+            or ( $master_type eq 'subject' and $detail_type eq 'geo' ) )
+          {
+            my $collection = $detail_type eq 'ware' ? 'wa' : 'sh';
+            my %suppl      = (
+              label        => $master_voc->label( $lang, $category_id ),
+              detail_title => $detail_title,
+              ordered_by   => $def_ref->{ordered_by}{$lang},
+              filmlist1    => "/film/h1_$collection.de.html",
+              filmlist2    => "/film/h2_$collection.de.html",
+            );
+            $category_data{$category_type}{$category_id}{$detail_type}
+              {secondary_category}{$lang} = \%suppl;
+          }    # secondary_category
+        }    # scalar(@filmings)
       }    # $category_id
     }    # $detail_type
   }    # $lang
 }
 
 ###print "\n## size inc. film: ", total_size(\%category_data) / (1024*1024), "\n";
-###print Dumper \%category_data; exit;
+###path('/tmp/category.dat')->spew(Dumper \%category_data); exit;
 
 print "\n\nOutput of individual category pages\n\n";
 
@@ -636,8 +653,19 @@ foreach my $lang (@LANGUAGES) {
         if ( defined $filming_loop_ref ) {
           $data{filming_loop} = $filming_loop_ref;
         }
-        push( @detail_data, \%data );
 
+        # supplemental data for secondary category
+        ## TODO fix ugly construct
+        if ( defined $category_ref->{$detail_type}{secondary_category} ) {
+          $data{is_secondary_category} = 1;
+          foreach
+            my $key (qw[ label ordered_by detail_title filmlist1 filmlist2 ])
+          {
+            $data{$key} =
+              $category_ref->{$detail_type}{secondary_category}{$lang}{$key};
+          }
+        }
+        push( @detail_data, \%data );
       }    # $detail_type
 
       # actual output
