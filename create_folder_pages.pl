@@ -442,6 +442,12 @@ sub mk_folder {
           push( @filmsection_loop, $entry );
         }
 
+        # sort entries by location
+        my $uc = Unicode::Collate->new();
+        @filmsection_loop =
+          sort { $uc->cmp( $a->{'section_id'}, $b->{'section_id'} ) }
+          @filmsection_loop;
+
         my %filming_data = (
           "is_$lang"             => 1,
           filming_title          => $filming_ref->{title}{$lang},
