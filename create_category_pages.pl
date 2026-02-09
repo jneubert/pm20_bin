@@ -256,7 +256,12 @@ foreach my $category_type ( sort keys %{$definitions_ref} ) {
           ( $master_voc->geo_category_type($category_id) )
           ? $master_voc->geo_category_type($category_id) . ' '
           : ''
-        ) . "[($entry_body)]{.hint}";
+        );
+
+        # don't output completely empty notes as "()"
+        if ($entry_body) {
+          $entry_note .= "[($entry_body)]{.hint}";
+        }
 
         # main entry
         my $siglink = $master_voc->siglink($category_id)
@@ -570,14 +575,16 @@ foreach my $category_type (qw/ geo subject ware /) {
               @filmsection_loop;
           }
 
+          my $total_number_of_images =
+            $master_voc->film_img_count( $category_id, $filming );
+
           my %filming_data = (
             "is_$lang"             => 1,
             detail_title           => $detail_title,
             filming_title          => $filming_ref->{title}{$lang},
             legal                  => $filming_ref->{legal}{$lang},
             filmsection_loop       => \@filmsection_loop,
-            total_number_of_images =>
-              $master_voc->film_img_count( $category_id, $filming ),
+            total_number_of_images => $total_number_of_images,
           );
 
           # remove image count for ware section on geo pages
@@ -594,23 +601,20 @@ foreach my $category_type (qw/ geo subject ware /) {
         if ( scalar(@filmings) ) {
           $category_data{$category_type}{$category_id}{$detail_type}
             {filming_loop}{$lang} = \@filmings;
+        }
 
-          # add data for special text about secondary categories
-          if ( ( $master_type eq 'geo' and $detail_type eq 'ware' )
-            or ( $master_type eq 'subject' and $detail_type eq 'geo' ) )
-          {
-            my $collection = $detail_type eq 'ware' ? 'wa' : 'sh';
-            my %suppl      = (
-              label        => $master_voc->label( $lang, $category_id ),
-              detail_title => $detail_title,
-              ordered_by   => $def_ref->{ordered_by}{$lang},
-              filmlist1    => "/film/h1_$collection.de.html",
-              filmlist2    => "/film/h2_$collection.de.html",
-            );
-            $category_data{$category_type}{$category_id}{$detail_type}
-              {secondary_category}{$lang} = \%suppl;
-          }    # secondary_category
-        }    # scalar(@filmings)
+        # add data for special text about secondary categories
+        if ( is_secondary_category( $master_type, $detail_type ) ) {
+          my $collection = $detail_type eq 'ware' ? 'wa' : 'sh';
+          my %suppl      = (
+            detail_title => $detail_title,
+            ordered_by   => $def_ref->{ordered_by}{$lang},
+            filmlist1    => "/film/h1_$collection.de.html",
+            filmlist2    => "/film/h2_$collection.de.html",
+          );
+          $category_data{$category_type}{$category_id}{$detail_type}
+            {secondary_category}{$lang} = \%suppl;
+        }    # secondary_category
       }    # $category_id
     }    # $detail_type
   }    # $lang
@@ -629,6 +633,7 @@ foreach my $lang (@LANGUAGES) {
 
     # master vocabulary reference
     $master_voc = ZBW::PM20x::Vocab->new($category_type);
+    my $master_type = $master_voc->vocab_name;
 
     foreach my $category_id ( sort keys %{ $category_data{$category_type} } ) {
 
@@ -656,10 +661,10 @@ foreach my $lang (@LANGUAGES) {
 
         # supplemental data for secondary category
         ## TODO fix ugly construct
-        if ( defined $category_ref->{$detail_type}{secondary_category} ) {
+        if ( is_secondary_category( $master_type, $detail_type ) ) {
           $data{is_secondary_category} = 1;
           foreach
-            my $key (qw[ label ordered_by detail_title filmlist1 filmlist2 ])
+            my $key (qw[ ordered_by detail_title filmlist1 filmlist2 ])
           {
             $data{$key} =
               $category_ref->{$detail_type}{secondary_category}{$lang}{$key};
@@ -829,3 +834,15 @@ sub get_filmlist_link {
   return $filmlist_link;
 }
 
+sub is_secondary_category {
+  my $master_type = shift or croak('param missing');
+  my $detail_type = shift or croak('param missing');
+
+  if ( ( $master_type eq 'geo' and $detail_type eq 'ware' )
+    or ( $master_type eq 'subject' and $detail_type eq 'geo' ) )
+  {
+    return 1;
+  } else {
+    return;
+  }
+}
